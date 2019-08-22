@@ -78,14 +78,11 @@
 
 .unit {
     display: flex;
-    flex-direction: column;
-    align-items: center;
     border-radius: 10px;
     margin: 5px;
-    cursor: pointer;
     position: relative;
-    height: 140px;
-    width: 130px;
+    width: 300px;
+    padding: 5px;
 }
 
 .unit.owned {
@@ -95,6 +92,19 @@
 .unit.owned.sevenStars {
     background-color: #F9D2DA;
 }
+
+.onlyOwnedUnits .unit.notOwned {
+    display: none;
+}
+
+.onlyTimeLimited .unit:not(.timeLimited) {
+    display: none;
+}
+
+.onlySevenStar .unit.notSevenStars{
+    display: none;
+}
+
 .sevenStars .numberDiv .glyphicon {
     color: #F9D2DA;
 }
@@ -103,30 +113,16 @@
     background-color: #F9D2DA;
 }
 
-#mode {
-    display: flex;
-    margin-top: 20px;
-    flex-direction: column;
-    align-items: center;
-}
-
-#mode .info {
-    text-align: center;
-    font-size: 85%;
-}
-
-.simpleMode .numberDiv .glyphicon {
-    visibility: hidden;
+.badge.sevenStar {
+    background-color: #ff8888;
 }
 
 .unit.notOwned {
     opacity: 0.3;
 }
 .unit .glyphicon-time {
-    position: absolute;
-    left: 9px;
-    top: 5px;
     color: #999;
+    margin-left: 5px;
 }
 
 .unit:hover {
@@ -136,28 +132,44 @@
     color: #fff;
 }
 
-.unitImageWrapper {
-    height: 100px;
-    width: 130px;
-    display: flex;
-    flex-direction: column-reverse;
-    align-items: center;
-}
 
 .unitImage {
-    max-height: 100px;
+    margin-right: 5px;
+    margin-left: 5px;
 }
 
 .unitRarity img {
-    width: 16px;
-    height: 16px;
+    width: 10px;
+    height: 10px;
     margin-left: 1px;
     margin-right: 1px;
 }
 
 .unitRarity {
-    position: absolute;
-    bottom: 5px;
+    opacity: 0.6;
+    display: flex;
+}
+
+.actions {
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    visibility: hidden;
+}
+
+.unit:hover .actions {
+    visibility: visible;
+}
+
+.actions > .glyphicon {
+    font-size: 20px;
+    background-color: aliceblue;
+    border: 1px solid grey;
+    border-radius: 5px;
+    padding: 1px;
+    cursor: pointer;
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 .result-tab-pane {
@@ -252,12 +264,62 @@
     font-size: 1.2em;
 }
 
+.ownedNumbers {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    width: 50px;
+    flex-shrink: 0;
+}
+
+.ownedNumber {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
 .numberOwnedDiv {
     left: 5px;
 }
 
+
+.secondColumn {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    flex-grow: 1
+}
+
+.thirdColumn {
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    justify-content: space-evenly;
+    flex-shrink: 0;
+}
+
+.imageAndName {
+    display: flex;
+}
+
 .farmableTMRDiv {
     right: 5px;
+}
+
+.filterOptions {
+    display: flex;
+    flex-direction: column;
+    padding-top: 6px;
+}
+
+.checkboxGroup {
+    display: flex;
+    align-items: center;
+}
+
+.checkboxGroup label {
+    padding-left: 5px;
+    margin-bottom: 0px;
+    font-weight: 100;
 }
 
 .notOwned .numberDiv .glyphicon {
@@ -305,23 +367,17 @@
     text-decoration: none;
 }
 
-.explanation {
-    position: absolute;
-    top: 15px;
-    right: 25px;
-    font-size: 0.9em;
-}
 
-.readOnly .explanation.readOnly {
-    display: block;
-}
-
-.readOnly .navbar, .readOnly #exportLinks, .readOnly .notOwned .numberDiv,.readOnly .explanation, .explanation.readOnly {
+.readOnly #header, .readOnly #loginMessage, .readOnly .navbar, .readOnly #exportLinks, .readOnly .notOwned .numberDiv {
     display: none;
 }
 
 .readOnly .modifyCounterButton {
     visibility: hidden;
+}
+
+.readOnly #units {
+    margin-top: 10px;
 }
 
 .readOnly .unit {
@@ -338,25 +394,47 @@
     color: #999;
 }
 
-.farmable .farmedButton {
-    position: absolute;
-    top: -5px;
-    right: -6px;
-    height: 45px;
+.farmedButton {
+    display: none;
+    height: 44px;
+    margin-top: -10px;
+    margin-bottom: -10px;
+    margin-left: -5px;
+    margin-right: -5px;
+    cursor: pointer;
 }
 
-i.awakenButton {
-    height: 28px;
-    position: absolute;
-    top: 2px;
-    left: 7px;
+.farmable .farmedButton.tmr {
+    display: block;
+}
+
+.farmableStmr .farmedButton.stmr {
+    display: block;
+}
+
+.awakenButton {
+    cursor: pointer;
     display: none;
 }
 
-.awakenable:hover .awakenButton,
-.farmable:hover .farmedButton {
-    display: block;
+.actions > .glyphicon.glyphicon-pencil {
+    font-size: 16px;
+    padding: 3px;
+    height: 24px;
+    width: 24px;
 }
+
+.unit.notOwned .actions > .glyphicon.glyphicon-pencil {
+    display: none;
+}
+
+.unit.notOwned .awakenButton {
+    display: none;
+}
+
+.awakenable .awakenButton {
+    display: block;
+} 
 
 .stats {
     margin-top: 10px;
@@ -406,25 +484,65 @@ i.awakenButton {
     font-size: 0.9em;
 }
 
-.unitName {
-    position: absolute;
-    bottom: 18px;
-    height: 34px;
+.unitNameAndRarity {
     display: flex;
-    justify-content: space-around;
-    align-items: center;
-    line-height: 14px;
-    text-align: center;
+    flex-direction: column;
+}
+
+.unitName {
     font-weight: bold;
 }
 
+.trustCounter {
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+}
 
-.unit .glyphicon-plus, .unit .glyphicon-minus {
-    width: 20px;
-    height: 20px;
-    text-align: center;
-    line-height: 15px;
-    z-index: 10;
+.trustCounter.stmr {
+    display: flex;
+    opacity: 0.4;
+}
+
+.unit:not(.showStmr) .trustCounter.stmr {
+    display: none;
+}
+
+.sevenStars .trustCounter.stmr {
+    opacity: 1
+}
+
+.trustCounter.tmr {
+    display: flex;
+    opacity: 0.4
+}
+
+.owned .trustCounter.tmr {
+    opacity: 1
+}
+
+.trustCounter .badge {
+    margin-left: 3px;
+}
+
+.ownedNumbers .sevenStarNumber {
+    display: none;
+}
+
+.sevenStars .ownedNumbers .sevenStarNumber {
+    display: block;
+}
+
+.ui-tooltip {
+    max-width: 600px !important;
+}
+
+.items .tbody .tr .td, .results {
+    border-top: none !important;
+}
+
+.unit .tmr, .unit .stmr {
+    cursor: help;
 }
 
 #importLink {
@@ -433,6 +551,10 @@ i.awakenButton {
 
 /* For small screen, show stats in line and mode fixed lower right */
 @media (max-width: 768px) {
+    
+    .actions {
+        visibility: visible;
+    }   
     
     #unitsWrapper {
         display: block;
@@ -482,26 +604,6 @@ i.awakenButton {
     .stats h4 {
         margin-top: 0;
     }
-
-    #mode {
-        position: fixed;
-        z-index: 9999;
-        right: 10px;
-        bottom: 20px;
-        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-        border-radius: 10px;
-        border: none;
-        background: none;
-        opacity: 0.75;
-    }
-
-    #mode:hover {
-        opacity: 1;
-    }
-
-    #mode .info {
-        display: none;
-    }
     
     #exportLinks a.dropdown-toggle {
         padding: 6px 8px;
@@ -535,11 +637,6 @@ i.awakenButton {
     }
 }
 
-@media (min-width: 768px) {
-    .unitsSidebar.collapsed #mode .toggle.btn {
-        width: 100% !important;
-    }
-}
 
 @media (min-width: 1200px) {
     .unitsContent {

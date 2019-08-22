@@ -359,7 +359,27 @@
     "206002005" : {"type":"summon","name":"Monk Sabin of Kolts"},
     "100020505" : {"type":"summon","name":"Summer Fina & Lid"},
     "100020905" : {"type":"summon","name":"Summer Folka & Citra"},
-
+    "100017505" : {"type":"summon","name":"Regina"},
+    "100013704" : {"type":"summon","name":"Vesvia"},
+    "100021504" : {"type":"summon","name":"Amber"},
+    "100021603" : {"type":"summon","name":"Krowa"},
+    "207000505" : {"type":"summon","name":"Red XIII"},
+    "207000405" : {"type":"summon","name":"Aerith"},
+    "100021905" : {"type":"summon","name":"Kimono Ayaka"},
+    "100022005" : {"type":"summon","name":"Dressy Aileen"},
+    "100021304" : {"type":"summon","name":"Chocobo Rain"},
+    "100021705" : {"type":"summon","name":"Sacred Shield Charlotte"},
+    "100022104" : {"type":"summon","name":"Friese"},
+    "100021803" : {"type":"summon","name":"Shepard"},
+    "207001105" : {"type":"summon","name":"Zack"},
+    "207000605" : {"type":"summon","name":"Yuffie"},
+    "401008405" : {"type":"summon","name":"Elena"},
+    "401007005" : {"type":"summon","name":"Morgana"},
+    "401007705" : {"type":"summon","name":"Rivera"},
+    "213001005" : {"type":"summon","name":"Radiant Lightning"},
+    "213001105" : {"type":"summon","name":"Neverending Hope"},
+    "401008505" : {"type":"summon","name":"Kaito"},
+    "401007105" : {"type":"summon","name":"Tsukiko"},
 
     "100009204" : {"type":"event","name":"Kupolkan"},
 	"100009304" : {"type":"event","name":"Ashteroze"},
@@ -479,5 +499,8 @@
     "331000603" : {"type":"event","name":"Chu-Chu"},
     "331000705" : {"type":"event","name":"Citan"},
 	"331000805" : {"type":"event","name":"Maria"},
-    "331000904" : {"type":"event","name":"Billy"}
+    "331000904" : {"type":"event","name":"Billy"},
+    "304000405" : {"type":"event","name":"Flammie"},
+    "304000503" : {"type":"event","name":"Rabite"},
+    "401007305" : {"type":"event","name":"Immortal Flame Katy"}
 }

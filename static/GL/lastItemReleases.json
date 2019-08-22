@@ -1,4 +1,62 @@
 [
+    {"date":"August the 17th, 2019","sources": [
+        {"type":"banner", "units":["401008505","401007105"]},
+        {"type":"event", "name":"Demon Parade"}
+    ]},
+    {"date":"August the 10th, 2019","sources": [
+        {"type":"event", "name":"The Gapra Whitewood - Exploration"},
+        {"type":"event", "name":"Road Through Hell"},
+        {"type":"storyPart", "name":"Scorn of the Fallen Ice Bird", "ids":["313005300"]}
+    ]},
+    {"date":"July the 31th, 2019","sources": [
+        {"type":"banner", "units":["213001005","213001105"]},
+        {"type":"event", "name":"The Gapra Whitewood"}
+    ]},
+    {"date":"July the 19th, 2019","sources": [
+        {"type":"banner", "units":["401007705"]},
+        {"type":"event", "name":"The Empress of Virtue"},
+        {"type":"event", "name":"Golden Bomb Rush!"},
+        {"type":"event", "name":"Golden Bomb Battle!"},
+        {"type":"storyPart", "name":"Login reward", "ids":["504227641"]}
+    ]},
+    {"date":"July the 19th, 2019","sources": [
+        {"type":"banner", "units":["401008405", "401007005"]},
+        {"type":"event", "name":"The Will of the Planet"},
+        {"type":"event", "name":"Fundamental Forces"},
+        {"type":"event", "name":"In the Name of Love"}
+    ]},
+    {"date":"July the 12th, 2019","sources": [
+        {"type":"banner", "units":["207001105", "207000605", "207000204", "207000703"]},
+        {"type":"event", "name":"Da-chao Statue"},
+        {"type":"storyPart", "name":"Chamber of the Vengeful - Armeggeddon", "ids":["1500000096", "1500000097", "1100000264", "1100000265", "1100000266"]}
+    ]},
+    {"date":"July the 4th, 2019","sources": [
+        {"type":"banner", "units":["100021705", "100022104", "100021803"]},
+        {"type":"event", "name":"Chocobo Forest - Exploration"},
+        {"type":"event", "name":"A World United"}
+    ]},
+    {"date":"June the 29th, 2019","sources": [
+        {"type":"banner", "units":["100021905", "100022005", "100021304"]},
+        {"type":"event", "name":"Farplane de Chocobo!"},
+        {"type":"event", "name":"The Dreaded Lost Continent"},
+        {"type":"storyPart", "name":"Scorn of the Lich", "ids":["308004800"]}
+    ]},
+    {"date":"June the 21th, 2019","sources": [
+        {"type":"banner", "units":["304000105", "304000405", "304000503"]},
+        {"type":"event", "name":"The Mana Beast"},
+        {"type":"event", "name":"To the Forgotten Capital - Exploration"}
+    ]},
+    {"date":"June the 14th, 2019","sources": [
+        {"type":"banner", "units":["207000405", "207000505", "207000204", "207000703"]},
+        {"type":"banner", "units":["401007305"]},
+        {"type":"event", "name":"Temple of the Ancients"},
+        {"type":"event", "name":"Pop Hits"},
+        {"type":"event", "name":"Hennes Mines"}
+    ]},
+    {"date":"June the 7th, 2019","sources": [
+        {"type":"banner", "units":["100017505", "100013704", "100021504", "100021603"]},
+        {"type":"event", "name":"Memories of an Automaton"}
+    ]},
     {"date":"May the 31th, 2019","sources": [
         {"type":"banner", "units":["100020505", "100020905"]},
         {"type":"event", "name":"Figaro Castle - Exploration"},

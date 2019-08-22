@@ -73,7 +73,7 @@ var formulaByVariable = {
     "hybridDamage":                     {"type":"skill", "id":"0","name":"1x hybrid ATK damage", "formulaName":"hybridDamage", "value": {"type":"damage", "value":{"mecanism":"hybrid", "coef":1}}},
     "jumpDamage":                       {"type":"skill", "id":"0","name":"1x jump damage", "formulaName":"jumpDamage", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"body", "coef":1, "jump":true}}},
     "magDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical MAG damage", "formulaName":"magDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"mind", "coef":1}}},
-    "sprDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithPhysicalMecanism", "formulaName":"physicalDamage", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
+    "sprDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
     "defDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical DEF damage", "formulaName":"defDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"body", "coef":1, "use":{"stat":"def"}}}},
     "sprDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
     "summonerSkill":                    {"type":"skill", "id":"0","name":"1x Evoke damage", "formulaName":"summonerSkill", "value": {"type":"damage", "value":{"mecanism":"summonerSkill", "damageType":"mind", "coef":1, "magSplit":0.5, "sprSplit":0.5}}},
@@ -162,7 +162,7 @@ function parseExpression(formula, pos, unit) {
         var token = tokenInfo.token;
         
         if (token.startsWith("MULTICAST(") && token.endsWith(")")) {
-            var skills = token.substr(10, token.length - 11).split(",").map(x => x.trim()).map(x => getFormulaFromSkillToken(x, unit));
+            var skills = token.substr(10, token.length - 11).split(",").map(x => x.trim()).map(x => getFormulaFromSkillToken(x, unit, true));
             outputQueue.push({"type":"multicast", "skills":skills});
         } else if (token.startsWith("SKILL(") && token.endsWith(")")) {
             var skillFormula = getFormulaFromSkillToken(token, unit);
@@ -244,15 +244,15 @@ function parseExpression(formula, pos, unit) {
     return outputQueue[0];
 }
 
-function getFormulaFromSkillToken(token, unit) {
+function getFormulaFromSkillToken(token, unit, multicast = false) {
     if (token.startsWith("SKILL(") && token.endsWith(")")) {
         var upgradeTriggerUsed = false;
         var skillName = token.substr(6, token.length - 7);
         var skill = getSkillFromName(skillName, unit);
         if (!skill) {
-            skill = getSkillFromId(skillName, unit);
+            skill = getSkillFromId(skillName, unit, multicast);
         }
-        return formulaFromSkill(skill);
+        return formulaFromSkill(skill, multicast);
     } else {
         return null;
     }
@@ -441,7 +441,7 @@ function formulaFromSkill(skill, multicast = false, isLb = false) {
         if (!effects[i].effect) {
             return {"type": "skill", "id":skill.id, "name":skill.name, "notSupported":true};
         }
-        var formulaToAdd = formulaFromEffect(effects[i]);
+        var formulaToAdd = formulaFromEffect(effects[i], multicast);
         if (formulaToAdd) {
             if (formulaToAdd.notSupported) {
                 return {"type": "skill", "id":skill.id, "name":skill.name, "notSupported":true};
@@ -475,7 +475,7 @@ function formulaFromSkill(skill, multicast = false, isLb = false) {
     return null;
 }
 
-function formulaFromEffect(effect) {
+function formulaFromEffect(effect, multicast = false) {
     if (effect.effect.damage) {
         var coef = effect.effect.damage.coef;
         return {"type":"damage", "value":effect.effect.damage};
@@ -515,7 +515,7 @@ function formulaFromEffect(effect) {
             "value": effect.effect.skillEnhancement
         }
     } else if (effect.effect.cooldownSkill) {
-        return formulaFromSkill(effect.effect.cooldownSkill);
+        return formulaFromSkill(effect.effect.cooldownSkill, multicast);
     }
     return null;
 }
@@ -777,7 +777,7 @@ function isSimpleFormula(formula) {
                 && formula.value2.value1.type == 'value' && formula.value2.value1.name == "mag"
                 && formula.value2.value2.type == 'constant' && formula.value2.value2.value == 10;
         case "value":
-            return formula.name == "hp" 
+            return !formula.lb && (formula.name == "hp"
             || formula.name == "mp" 
             || formula.name == "atk" 
             || formula.name == "def" 
@@ -788,7 +788,7 @@ function isSimpleFormula(formula) {
             || formula.name == "atkDamageWithFixedMecanism"
             || formula.name == "physicalDamageMultiCast"
             || formula.name == "fixedDamageWithPhysicalMecanism"
-            || formula.name == "summonerSkill";
+            || formula.name == "summonerSkill");
         default:
             return false;
     }

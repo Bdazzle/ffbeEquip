@@ -229,10 +229,16 @@ function optimize() {
             "useNewJpDamageFormula": useNewJpDamageFormula,
         }));
     }
-    
-    
-    var typeCombinationGenerator = new TypeCombinationGenerator(forceDoubleHand, forceDualWield, tryEquipSources, builds[currentUnitIndex], dataStorage.dualWieldSources, dataStorage.equipSources, dataStorage.dataByType, dataStorage.weaponsByTypeAndHands);
+    let forceTmrAbility = $("#forceTmrAbility input").prop('checked');
+
+    var typeCombinationGenerator = new TypeCombinationGenerator(forceDoubleHand, forceDualWield, tryEquipSources, builds[currentUnitIndex], dataStorage.dualWieldSources, dataStorage.equipSources, dataStorage.dataByType, dataStorage.weaponsByTypeAndHands, forceTmrAbility);
     remainingTypeCombinations = typeCombinationGenerator.generateTypeCombinations();
+
+    if (remainingTypeCombinations.length == 0) {
+        stopBuild();
+        alert("The build rules chosen are not compatible with available equipments");
+        return;
+    }
     
     typeCombinationChunckSize = Math.min(typeCombinationChunckSize, Math.ceil(remainingTypeCombinations.length/20));
     
@@ -642,7 +648,7 @@ function logBuild(build, value) {
         
         var upperCaseStat = statsToDisplay[statIndex].toUpperCase();
         if (baseStats.includes(statsToDisplay[statIndex])) {
-            var equipmentFlatStatBonus = Math.round((getEquipmentStatBonus(build, statsToDisplay[statIndex], false, builds[currentUnitIndex].tdwCap) - 1) * 100);
+            var equipmentFlatStatBonus = Math.round((getEquipmentStatBonus(build, statsToDisplay[statIndex], false) - 1) * 100);
             if (equipmentFlatStatBonus > 0) {
                 bonusTextElement.attr("title", `(${upperCaseStat} increase % - Equipped ${upperCaseStat} (DH) increase %) modifiers, capped individually.`);
                 bonusPercent += "&nbsp;-&nbsp;";
@@ -862,7 +868,7 @@ function getItemLine(index, short = false) {
     } else if (!item.placeHolder) {
         var enhancementText = item.enhancements ? JSON.stringify(item.enhancements).replace(/\"/g, "'") : false;
         html += `<div class="td actions"><img title="Pin this item" class="pin notFixed" onclick="fixItem('${item.id}', ${index}, ${enhancementText});" src="img/icons/pin.png"></img><img title="Remove this item" class="delete" onclick="removeItemAt('${index}')" src="img/icons/delete.png"></img>`;
-        html += '<span title="Exclude this item from builds" class="excludeItem glyphicon glyphicon-ban-circle" onclick="excludeItem(\'' + item.id +'\')" />';
+        html += '<span title="Exclude this item from builds" class="excludeItem glyphicon glyphicon-ban-circle" onclick="excludeItem(\'' + item.id +'\', ' + index + ')" />';
         if (weaponList.includes(item.type)) {
             html += '<img class="itemEnchantmentButton" title="Modify this weapon enchantment" src="img/icons/dwarf.png" onclick="currentItemSlot = ' + index + ';selectEnchantement(getRawItemForEnhancements(builds[currentUnitIndex].build[' + index + ']))" />';
         }
@@ -1098,13 +1104,16 @@ function onUnitChange() {
     $("#unitsSelect").find(':selected').each(function() {
         var unitId = $(this).val();
         var selectedUnitData;
+        let iconId;
         if (unitId.endsWith("-6")) {
             selectedUnitData = units[unitId.substr(0,unitId.length-2)]["6_form"];
+            iconId = unitId.substr(0,unitId.length-3) + '6';
         } else {
-            selectedUnitData = units[unitId];    
+            selectedUnitData = units[unitId];
+            iconId = unitId.substr(0,unitId.length-1) + selectedUnitData.max_rarity;
         }
         if (selectedUnitData) {
-            $("#unitTabs .tab_" + currentUnitIndex + " a").html("<img src=\"img/units/unit_icon_" + selectedUnitData.id + ".png\"/>" + selectedUnitData.name);
+            $("#unitTabs .tab_" + currentUnitIndex + " a").html("<img src=\"img/units/unit_icon_" + iconId + ".png\"/>" + selectedUnitData.name);
             var sameUnit = (builds[currentUnitIndex].unit && builds[currentUnitIndex].unit.id == selectedUnitData.id && builds[currentUnitIndex].unit.sixStarForm == selectedUnitData.sixStarForm);
             var oldValues = builds[currentUnitIndex].baseValues;
             var oldLevel = builds[currentUnitIndex]._level;
@@ -1354,6 +1363,15 @@ function displayUnitEnhancements() {
                     } else {
                         html += '>' + enhancement.name + ' unlocked</option>';
                     }
+                } else if (enhancement.levels[0].length == 0) {
+                    // latent skills
+                    if (j == 0) {
+                        html += '>' + enhancement.name + ' not unlocked</option>';
+                    } else if (j == 1) {
+                        html += '>' + enhancement.name + '</option>';
+                    } else {
+                        html += '>' + enhancement.name + ' +' + (j-1) + '</option>';
+                    }
                 } else {
                     html += '>' + enhancement.name + ' +' + j + '</option>';    
                 }
@@ -1535,8 +1553,16 @@ var displayUnitRarity = function(unit) {
         for (var i = 0; i < rarity; i++) {
             rarityWrapper.append('<i class="rarity-star"></i>');
         }
+        if (rarity == "7") {
+            $('#forceTmrAbility').removeClass('hidden');
+        } else {
+            $('#forceTmrAbility').addClass('hidden');
+            $("#tryReduceOverCap input").prop('checked', false);
+        }
     } else {
         rarityWrapper.hide();
+        $('#forceTmrAbility').addClass('hidden');
+        $("#tryReduceOverCap input").prop('checked', false);
     }
 };
 
@@ -1774,7 +1800,7 @@ function updateSearchResult() {
         }
     }
     readItemsExcludeInclude();
-    displaySearchResults(sort(filter(dataWithOnlyOneOccurence, false, searchStat, baseStat, searchText, builds[currentUnitIndex].unit.id, types, [], [], [], [], [], "", !dataStorage.excludeNotReleasedYet, true)));
+    displaySearchResults(sort(filter(dataWithOnlyOneOccurence, false, searchStat, baseStat, searchText, builds[currentUnitIndex].unit.id, types, [], [], [], [], [], "", !dataStorage.excludeNotReleasedYet, true), builds[currentUnitIndex].unit.id));
     
     if (searchStat == "") {
         $("#fixItemModal .results").addClass("notSorted");
@@ -2009,11 +2035,13 @@ function removeItemAt(slot) {
     logCurrentBuild();
 }
 
-function excludeItem(itemId) {
+function excludeItem(itemId, slot = -1) {
     if (!itemsToExclude.includes(itemId)) {
         for (var index = 0; index < 11; index++) {
             if (builds[currentUnitIndex].build[index] && builds[currentUnitIndex].build[index].id == itemId) {
-                removeItemAt(index);
+                if (slot == index || builds[currentUnitIndex].fixedItems[index] == null) {
+                    removeItemAt(index);
+                }
             }
         }
         itemsToExclude.push(itemId);
@@ -2839,30 +2867,72 @@ function showExcludedItems() {
 }
 
 function showMonsterList() {
-    var text = "";
-    for (var index = 0, len = bestiary.monsters.length; index < len; index++) {
-        var monster = bestiary.monsters[index];
-        text += '<div class="tr" onclick="selectMonster(' + index +')">' +
-            getNameColumnHtml(monster) + 
-            '<div class="td special">' + getSpecialHtml(monster) + '</div>';
-        text += '<div class="td access">';
-        for (var raceIndex = 0, racesLen = monster.races.length; raceIndex < racesLen; raceIndex++) {
-            text += "<div>" + monster.races[raceIndex] + "</div>";
+    var text = '<ul class="nav nav-tabs">';
+    let first = true;
+    Object.keys(bestiary.monstersByCategory).forEach(c => {
+        text += '<li class="bestiaryCategory ' + escapeName(c);
+        if (first) {
+            text += ' active';
+            first = false;
         }
+        text += '"><a href="#" onclick="selectBestiaryCategory(\'' + escapeName(c) + '\')">' + c + '</a></li>';
+    });
+    text += '</ul>'
+
+    text += '<div class="tab-content">';
+    Object.keys(bestiary.monstersByCategory).forEach(c => {
+        text += '<div class="bestiaryMonsters ' + escapeName(c) + ' tab-pane fade in active">';
+        text += '<div class="table items monsters">';
+        bestiary.monstersByCategory[c].forEach((monster, index) => {
+            text += '<div class="tr" onclick="selectMonster(\'' + c + '\',' + index +')">' +
+                getNameColumnHtml(monster) +
+                '<div class="td special">' + getSpecialHtml(monster) + '</div>';
+            text += '<div class="td access">';
+            for (var raceIndex = 0, racesLen = monster.races.length; raceIndex < racesLen; raceIndex++) {
+                text += "<div>" + monster.races[raceIndex] + "</div>";
+            }
+            text += '</div>';
+            text += '</div>';
+
+        });
         text += '</div>';
         text += '</div>';
-    }
+    });
+    // var text = "";
+    // for (var index = 0, len = bestiary.monsters.length; index < len; index++) {
+    //     var monster = bestiary.monsters[index];
+    //     text += '<div class="tr" onclick="selectMonster(' + index +')">' +
+    //         getNameColumnHtml(monster) +
+    //         '<div class="td special">' + getSpecialHtml(monster) + '</div>';
+    //     text += '<div class="td access">';
+    //     for (var raceIndex = 0, racesLen = monster.races.length; raceIndex < racesLen; raceIndex++) {
+    //         text += "<div>" + monster.races[raceIndex] + "</div>";
+    //     }
+    //     text += '</div>';
+    //     text += '</div>';
+    // }
     
     Modal.show({
         title: "Monster List",
-        body: '<div class="table items monsters">' + text + '</div>',
+        body: '<div>' + text + '</div>',
         size: 'large',
         withCancelButton: false
     });
+    if (Object.keys(bestiary.monstersByCategory).length) {
+        selectBestiaryCategory(escapeName(Object.keys(bestiary.monstersByCategory)[0]));
+    }
 }
 
-function selectMonster(monsterIndex) {
-    var monster = bestiary.monsters[monsterIndex];
+function selectBestiaryCategory(category) {
+    $('.bestiaryCategory').removeClass("active");
+    $('.bestiaryMonsters').addClass("hidden");
+    $('.bestiaryCategory.' + category).addClass("active");
+    $('.bestiaryMonsters.' + category).removeClass("hidden");
+
+}
+
+function selectMonster(category, monsterIndex) {
+    var monster = bestiary.monstersByCategory[category][monsterIndex];
     $("#monsterDefensiveStats .def .stat").val(monster.def);
     $("#monsterDefensiveStats .spr .stat").val(monster.spr);
     $("#monsterDefensiveStats .def .buff").val('');
@@ -3026,16 +3096,11 @@ function onPotsChange(stat) {
     if (builds[currentUnitIndex].unit) {
         let element = $(".unitStats .stat." + stat + " .pots input");
         var value = parseInt(element.val()) || 0;
-        
-        if (server == "JP") {
-            if (value > Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5)) {
-                element.val(Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5));
-            }
-        } else {
-            if (value > builds[currentUnitIndex].unit.stats.pots[stat]) {
-                element.val(builds[currentUnitIndex].unit.stats.pots[stat]);
-            }  
+
+        if (value > Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5)) {
+            element.val(Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5));
         }
+
         updatePotStyle(stat);
         logCurrentBuild();
     }
@@ -3048,27 +3113,18 @@ function updatePotStyle(stat) {
     element.removeClass("maxPot");
     element.removeClass("door");
     element.removeClass("maxDoor");
-    if (server == "JP") {
-        if (value == Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5)) {
-          element.addClass("maxDoor");
-        } else if (value > builds[currentUnitIndex].unit.stats.pots[stat]) {
-          element.addClass("door");
-        } else if (value == builds[currentUnitIndex].unit.stats.pots[stat]) {
-          element.addClass("maxPot");
-        } else if (value > 0) {
-          element.addClass("poted");
-        }
-    } else {
-      if (value == builds[currentUnitIndex].unit.stats.pots[stat]) {
-          element.addClass("maxPot");
-        } else if (value > 0) {
-          element.addClass("poted");
-        }
+    if (value == Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5)) {
+      element.addClass("maxDoor");
+    } else if (value > builds[currentUnitIndex].unit.stats.pots[stat]) {
+      element.addClass("door");
+    } else if (value == builds[currentUnitIndex].unit.stats.pots[stat]) {
+      element.addClass("maxPot");
+    } else if (value > 0) {
+      element.addClass("poted");
     }
 }
 
 function switchPots() {
-  if (server == "JP") {
     var allZero = baseStats.every(stat => {
       let value = parseInt($(".unitStats .stat." + stat + " .pots input").val()) || 0;
       return value == 0;
@@ -3095,23 +3151,6 @@ function switchPots() {
         });
       }
     }
-  } else {
-    var notMaxed = baseStats.some(stat => {
-      let value = parseInt($(".unitStats .stat." + stat + " .pots input").val()) || 0;
-      return value < builds[currentUnitIndex].unit.stats.pots[stat]
-    });
-    if (notMaxed) {
-      baseStats.forEach(stat => {
-        $(".unitStats .stat." + stat + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[stat]);
-        updatePotStyle(stat);
-      });
-    } else {
-      baseStats.forEach(stat => {
-        $(".unitStats .stat." + stat + " .pots input").val("0");
-        updatePotStyle(stat);
-      })
-    }
-  }
 }
 
 function onBuffChange(stat) {
@@ -3696,7 +3735,7 @@ function initWorkers() {
                                 if (percent > statsBonusCap[server]) {
                                     overcapedStats.push(percentValues[baseStats[i]]);
                                 }
-                                var equipmentFlatStatBonus = Math.round((getEquipmentStatBonus(builds[currentUnitIndex].build, baseStats[i], false, builds[currentUnitIndex].tdwCap) - 1) * 100);
+                                var equipmentFlatStatBonus = Math.round((getEquipmentStatBonus(builds[currentUnitIndex].build, baseStats[i], false) - 1) * 100);
                                 if (equipmentFlatStatBonus > 0) {
                                     if (builds[currentUnitIndex].build[0] && builds[currentUnitIndex].build[1] && weaponList.includes(builds[currentUnitIndex].build[0].type) && weaponList.includes(builds[currentUnitIndex].build[1].type)) {
                                         if (equipmentFlatStatBonus > 100) {

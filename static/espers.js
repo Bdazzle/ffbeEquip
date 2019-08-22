@@ -24,6 +24,19 @@ const maxStatLevelByStar = {
     "3": 100
 }
 
+const statsProgressionByTypeAndRarity = {
+    "1": {
+        "1": [0, 3, 7, 10, 14, 17, 21, 24, 28, 31, 35, 38, 42, 45, 49, 52, 55, 58, 62, 65, 69, 72, 76, 79, 83, 86, 90, 93, 97, 100],
+        "2": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 37, 40, 43, 46, 49, 52, 55, 58, 61, 64, 67, 70, 73, 76, 79, 82, 85, 88, 91, 94, 97, 100],
+        "3": [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60]
+    },
+    "2": {
+        "1": [0, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 21, 24, 27, 30, 33, 37, 41, 45, 49, 54, 59, 64, 69, 75, 81, 87, 93, 100],
+        "2": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 37, 40, 43, 46, 49, 52, 56, 60, 64, 68, 72, 77, 82, 88, 94, 100],
+        "3": [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60]
+    }
+}
+
 function beforeShow() {
     $("#pleaseWaitMessage").addClass("hidden");
     $("#esper").removeClass("hidden");
@@ -270,8 +283,9 @@ function addStats(level, star, esperName) {
 
     for (index = 0; index < baseStats.length; index++) {
         var minStat = board.stats[star][baseStats[index].toUpperCase()][0];
-        var maxStat = board.stats[star][baseStats[index].toUpperCase()][1];
-        ownedEsper[baseStats[index]] = minStat + (maxStat - minStat) / maxStatLevelByStar[star] * level;
+        var maxStatGain = board.stats[star][baseStats[index].toUpperCase()][1] - minStat;
+        
+        ownedEsper[baseStats[index]] = Math.round(minStat + maxStatGain * statsProgressionByTypeAndRarity[board.statPattern[star]][star][level - 1]/100);
     }
     
     for (index in board.nodes) {
@@ -979,7 +993,11 @@ function loadLink() {
 function onLevelChange() {
     var star = $("#esperStar").val();
     var level = parseInt($("#level").val());
-    if (level > maxLevelByStar[star]) {
+    if (level < 1) {
+        $("#level").val("1");
+        setEsperLevel(1);
+    } else if (level > maxLevelByStar[star]) {
+        $("#level").val(maxLevelByStar[value]);
         setEsperLevel(maxLevelByStar[value]);
     } else {
         setEsperLevel(level);

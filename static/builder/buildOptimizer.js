@@ -15,7 +15,11 @@ class BuildOptimizer {
                 for (var i = skill.equipedConditions.length; i--;) {
                     if (!elementList.includes(skill.equipedConditions[i]) && !typeList.includes(skill.equipedConditions[i])) {
                         if (!this._unitBuild.fixedItemsIds.includes(skill.equipedConditions[i]) && !this.desirableItemIds.includes(skill.equipedConditions[i])) {
-                            this.desirableItemIds.push(skill.equipedConditions[i]);            
+                            if (Array.isArray(skill.equipedConditions[i])) {
+                                this.desirableItemIds = this.desirableItemIds.concat(skill.equipedConditions[i]);
+                            } else {
+                                this.desirableItemIds.push(skill.equipedConditions[i]);
+                            }        
                         }
                     }
                 }
@@ -28,8 +32,20 @@ class BuildOptimizer {
     }
     
     optimizeFor(typeCombinations, betterBuildFoundCallback) {
-                
+
+        this.elementalConditionItemsByType = {};
         this.betterBuildFoundCallback = betterBuildFoundCallback;
+        this.itemConditionalElements = {};
+        this.dataWithCondition.forEach(entry => {
+            entry.item.equipedConditions.forEach(condition => {
+                if (elementList.includes(condition)) {
+                    if (!this.itemConditionalElements[condition]) {
+                        this.itemConditionalElements[condition] = [];
+                    }
+                    this.itemConditionalElements[condition].push(entry);
+                }
+            })
+        })
         var combinationsNumber = typeCombinations.length;
         for (var index = 0, len = combinationsNumber; index < len; index++) {
 
@@ -102,7 +118,8 @@ class BuildOptimizer {
             if (item.type == type && ((entry.owned && !dataWithConditionKeyAlreadyAddedOwned.includes(item.id)) || (!entry.owned && !dataWithConditionKeyAlreadyAddedNotOwned.includes(item.id))))  {
                 var allFound = true;
                 for (var conditionIndex in item.equipedConditions) {
-                    if (!typeCombination.includes(item.equipedConditions[conditionIndex])) {
+                    let condition = item.equipedConditions[conditionIndex]
+                    if (!typeCombination.includes(condition)) {
                         allFound = false;
                         break;
                     }
@@ -220,7 +237,14 @@ class BuildOptimizer {
     
     
     findBestBuildForCombination(index, build, typeCombination, dataWithConditionItems, fixedItems, elementBasedSkills, itemBasedSkills) {
+        let restorePool;
+        let savedItemPools;
         if (index == 2) {
+            savedItemPools = [];
+            savedItemPools.push(dataWithConditionItems[typeCombination[2]]);
+            savedItemPools.push(dataWithConditionItems[typeCombination[3]]);
+            savedItemPools.push(dataWithConditionItems[typeCombination[4]]);
+            savedItemPools.push(dataWithConditionItems[typeCombination[6]]);
             // weapon set, try elemental based skills
             for (var skillIndex = elementBasedSkills.length; skillIndex--;) {
                 if (build.includes(elementBasedSkills[skillIndex])) {
@@ -233,13 +257,54 @@ class BuildOptimizer {
                     }
                 }
             }
+            // Try to see if elemental items are activated
+            let activatedItemsByType = {};
+            let activatedItemIds = [];
+            if (build[0] && build[0].element) {
+                build[0].element.forEach(element => {
+                   if (this.itemConditionalElements[element]) {
+                       this.itemConditionalElements[element].forEach(entry => {
+                           if (!activatedItemIds.includes(entry.item.id)) {
+                               if (!activatedItemsByType[entry.item.type]) {
+                                   activatedItemsByType[entry.item.type] = [];
+                               }
+                               activatedItemsByType[entry.item.type].push(entry);
+                               activatedItemIds.push(entry.item.id);
+                           }
+                       })
+                   }
+                });
+            }
+            if (build[1] && build[1].element) {
+                build[1].element.forEach(element => {
+                    if (this.itemConditionalElements[element]) {
+                        this.itemConditionalElements[element].forEach(entry => {
+                            if (!activatedItemIds.includes(entry.item.id)) {
+                                if (!activatedItemsByType[entry.item.type]) {
+                                    activatedItemsByType[entry.item.type] = [];
+                                }
+                                activatedItemsByType[entry.item.type].push(entry);
+                                activatedItemIds.push(entry.item.id);
+                            }
+                        })
+                    }
+                });
+            }
+            if (Object.keys(activatedItemsByType).length > 0) {
+                Object.keys(activatedItemsByType).forEach(type => {
+                    restorePool = true;
+                    dataWithConditionItems[type] = dataWithConditionItems[type].clone();
+                    dataWithConditionItems[type].addItems(activatedItemsByType[type]);
+                    dataWithConditionItems[type].prepare();
+                });
+            }
         }
 
         if (fixedItems[index]) {
             this.tryItem(index, build, typeCombination, dataWithConditionItems, fixedItems[index], fixedItems,elementBasedSkills, itemBasedSkills);
         } else {
             if (typeCombination[index]) {
-                var itemPool = dataWithConditionItems[typeCombination[index]];
+                let itemPool = dataWithConditionItems[typeCombination[index]];
                 var foundAnItem = false;
                 for (var i = itemPool.keptItems.length; i--;) {
                     if (itemPool.keptItems[i].active) {
@@ -258,7 +323,13 @@ class BuildOptimizer {
                 this.tryItem(index, build, typeCombination, dataWithConditionItems, null, fixedItems, elementBasedSkills, itemBasedSkills);
             }
         }
-        build[index] = null;
+        if (restorePool) {
+            build[index] = null;
+            dataWithConditionItems[typeCombination[2]] = savedItemPools[0];
+            dataWithConditionItems[typeCombination[3]] = savedItemPools[1];
+            dataWithConditionItems[typeCombination[4]] = savedItemPools[2];
+            dataWithConditionItems[typeCombination[6]] = savedItemPools[3];
+        }
     }
 
     tryItem(index, build, typeCombination, dataWithConditionItems, item, fixedItems, elementBasedSkills, itemBasedSkills) {
@@ -367,16 +438,14 @@ class BuildOptimizer {
                 slotToRemove--;
                 continue;
             }
-            for (var skillIndex = build.length - 1; skillIndex > 10; skillIndex--) {
-                if (build[skillIndex].equipedConditions && build[skillIndex].equipedConditions.includes(build[slotToRemove].id)) {
-                    slotToRemove--;
-                    continue slotToRemoveLoop;
-                }
+            if (this.desirableItemIds.includes(build[slotToRemove].id)) {
+                slotToRemove--;
+                continue slotToRemoveLoop;
             }
             var removedItem = build[slotToRemove];
             build[slotToRemove] = null;
             
-            var testValue = calculateBuildValueWithFormula(build, this._unitBuild, this.ennemyStats, this._unitBuild.formula, this.goalVariation);
+            var testValue = calculateBuildValueWithFormula(build, this._unitBuild, this.ennemyStats, this._unitBuild.formula, this.goalVariation, this.useNewJpDamageFormula);
             if (testValue[this.goalVariation] >= value[this.goalVariation]) {
                 slotToRemove--;
                 slotsRemoved++;
