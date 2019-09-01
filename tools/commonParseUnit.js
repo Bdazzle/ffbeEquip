@@ -899,6 +899,7 @@ function parsePassiveRawEffet(rawEffect, skills, unit, lbs) {
     } else if (rawEffect[2] == 72) {
         
         var lbIn = lbs[rawEffect[3][0]];
+        console.log(JSON.stringify(rawEffect));
         var lb = parseLb(lbIn, unit, skills);
         result = {
             "replaceLb": lb
@@ -1210,8 +1211,12 @@ function parseActiveRawEffect(rawEffect, skillIn, skills, unit, skillId, enhance
         result={"heal":{"base":rawEffect[3][2], "coef":rawEffect[3][0]/100, "split":rawEffect[3][3]}}
     // Damage increased against a race
     } else if (rawEffect[2] == 22) {
-        result = {"damage":{"mecanism":"physical", "damageType":"body", "coef":1, "ifUsedAgain":{"race":raceMap[rawEffect[3][0]], "coef":rawEffect[3][3]/100}}};    
-        
+        result = {"damage":{"mecanism":"physical", "damageType":"body", "coef":1, "ifUsedAgain":{"race":raceMap[rawEffect[3][0]], "coef":rawEffect[3][3]/100}}};
+
+    // Critical Physical Damage
+    } else if (rawEffect[2] == 43) {
+        result = {"damage":{"mecanism":"physical", "damageType":"body", "coef":rawEffect[3][2]*1.5/100}};
+
     // inflict status
     } else if (rawEffect[2] == 6) {
         result = {"noUse":true};
