@@ -68,6 +68,10 @@ var localStorageAvailable = function(){
     return enabled;
 }();
 
+function toggleTheme() {
+    $('body').toggleClass('dark');
+}
+
 function getImageHtml(item, actionOnImage = undefined) {
     var html = '<div class="td type">';
 
@@ -249,7 +253,13 @@ function getSpecialHtml(item) {
         special += "</li>";
     }
     if (item.allowUseOf) {
-        special += "<li>Allow use of <i class='img img-equipment-" + item.allowUseOf + " inline'></i></li>";
+        if (Array.isArray(item.allowUseOf)) {
+            special += "<li>Allow use of ";
+            special += item.allowUseOf.map(allowUseOf => "<i class='img img-equipment-" + allowUseOf + " inline'></i>").join(", ");
+            special += "</li>";
+        } else {
+            special += "<li>Allow use of <i class='img img-equipment-" + item.allowUseOf + " inline'></i></li>";
+        }
     }
     if (item.conditional) {
         special += getConditionalHtml(item.conditional);
@@ -588,7 +598,7 @@ function isEnter(evt) {
 // Get the values for a filter type
 var getSelectedValuesFor = function(type) {
     var values = [];
-        $('.active input[name='+ type +']').each(function() {
+        $('.active>input[name='+ type +']').each(function() {
             values.push($(this).val());
         });
     return values;
@@ -1273,7 +1283,11 @@ function prepareSearch(data) {
             });
         }
         if (item.allowUseOf) {
-            textToSearch += "|Allow use of " + item.allowUseOf;
+            if (Array.isArray(item.allowUseOf)) {
+                textToSearch += item.allowUseOf.map(allowUseOf => "|Allow use of " + item.allowUseOf).join("");       
+            } else {
+                textToSearch += "|Allow use of " + item.allowUseOf;    
+            }
         }
         if (item.mpRefresh) {
             textToSearch += "|Recover MP (" + item.mpRefresh + "%) per turn";
@@ -2195,3 +2209,24 @@ $(function() {
         }
     }
 }());
+
+const throttle = (func, limit) => {
+  let lastFunc
+  let lastRan
+  return function() {
+    const context = this
+    const args = arguments
+    if (!lastRan) {
+      func.apply(context, args)
+      lastRan = Date.now()
+    } else {
+      clearTimeout(lastFunc)
+      lastFunc = setTimeout(function() {
+        if ((Date.now() - lastRan) >= limit) {
+          func.apply(context, args)
+          lastRan = Date.now()
+        }
+      }, limit - (Date.now() - lastRan))
+    }
+  }
+}

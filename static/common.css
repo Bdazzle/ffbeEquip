@@ -488,6 +488,7 @@ mark {
 .unit-rarity {
     display: inline-flex;
     margin-left: 20px;
+    font-size: 2em;
 }
 
 .rarity-star {
@@ -802,6 +803,7 @@ nav {
 
 .item.enhanced {
     border: 2px solid brown !important;
+    border-radius: 15px;
 }
 
 .choice .btn {
@@ -895,6 +897,16 @@ p.linkInputCopied {
 
 .uppercase {
     text-transform: uppercase;
+}
+
+.panel.with-nav-tabs .panel-heading{
+    padding: 5px 5px 0 5px;
+}
+.panel.with-nav-tabs .nav-tabs{
+	border-bottom: none;
+}
+.panel.with-nav-tabs .nav-justified{
+	margin-bottom: -1px;
 }
 
 @media (max-width: 991px) {

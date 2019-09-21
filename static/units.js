@@ -826,7 +826,7 @@ function sortTMRAlphabetically(units) {
 };
 
 function sortByRarity(units) {
-    var unitsToSort = units.slice();
+    var unitsToSort = Object.values(units).slice();
     return unitsToSort.sort(function (unit1, unit2){
         var maxRarity1 = unit1.max_rarity;
         var maxRarity2 = unit2.max_rarity;
@@ -871,10 +871,6 @@ function updateResults() {
 
 function inventoryLoaded() {
     onDataReady();
-
-    if (Object.keys(ownedUnits).length === 0) {
-        $("#firstTimeMessage").removeClass('hidden');
-    }
 }
 
 function prepareData() {
@@ -890,7 +886,9 @@ function prepareData() {
             if (itemInventory[item.id]) {
                 stmrNumberByUnitId[item.stmrUnit] = itemInventory[item.id];
             }
-            stmrByUnitId[item.stmrUnit] = item;
+            if (!stmrByUnitId[item.stmrUnit]) {
+                stmrByUnitId[item.stmrUnit] = item;
+            }
         }
     }
 }
@@ -1235,7 +1233,7 @@ let importValidator = jjv();
 // Register a `user` schema
 importValidator.addSchema('units', {
   type: 'array',
-  maxItems: 3000,
+  maxItems: 6000,
   items: {
     type: 'object',
     properties: {
@@ -1287,7 +1285,7 @@ importValidator.addSchema('units', {
       },
       enhancements: {
         type: 'array',
-        maxItems: 20,
+        maxItems: 30,
         items: {
           type: "string",
           minLength: 5,

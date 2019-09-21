@@ -7,10 +7,18 @@ class TypeCombinationGenerator {
         this.equipSourcesByType = {};
         this.forceTmrAbility = forceTmrAbility;
         for (var index = equipSources.length; index --;) {
-            if (!this.equipSourcesByType[equipSources[index].allowUseOf]) {
-                this.equipSourcesByType[equipSources[index].allowUseOf] = [];
+            let allowUseOfs = equipSources[index].allowUseOf;
+            if (!Array.isArray(equipSources[index].allowUseOf)) {
+                allowUseOfs = [allowUseOfs];
             }
-            this.equipSourcesByType[equipSources[index].allowUseOf].push(equipSources[index]);
+            allowUseOfs.forEach(allowUseOf => {
+                if (!this.equipSourcesByType[allowUseOf]) {
+                    this.equipSourcesByType[allowUseOf] = [];
+                }
+                if (!this.equipSourcesByType[allowUseOf].map(i => i.id).includes(equipSources[index].id)) {
+                    this.equipSourcesByType[allowUseOf].push(equipSources[index]);
+                }
+            });
         }
         this.dataByType = dataByType;
         this.weaponsByTypeAndHands = weaponsByTypeAndHands;
@@ -26,10 +34,10 @@ class TypeCombinationGenerator {
             let tmrPinned = dataStorage.availableTmr && this.unitBuild.fixedItems.filter(i => i).some(i => i.id == dataStorage.availableTmr.id);
             let stmrPinned = dataStorage.availableStmr && this.unitBuild.fixedItems.filter(i => i).some(i => i.id == dataStorage.availableStmr.id);
             if (!tmrPinned && !stmrPinned) {
-                if (dataStorage.availableTmr) {
+                if (dataStorage.availableTmr && !this.unitBuild.bannedEquipableTypes.includes(dataStorage.availableTmr.type)) {
                     combinations = combinations.concat(this.generateTypeCombinations(dataStorage.availableTmr));
                 }
-                if (dataStorage.availableStmr) {
+                if (dataStorage.availableStmr && !this.unitBuild.bannedEquipableTypes.includes(dataStorage.availableStmr.type)) {
                     combinations = combinations.concat(this.generateTypeCombinations(dataStorage.availableStmr));
                 }
                 return combinations;
@@ -224,27 +232,37 @@ class TypeCombinationGenerator {
                 var typesToTry = this.getEquipSourceToTry(index);
                 for (var typeIndex = 0, lenType = typesToTry.length; typeIndex < lenType; typeIndex++) {
                     var typeToTry = typesToTry[typeIndex];
-                    if (this.equipSourcesByType[typeToTry]) {
+                    if (this.equipSourcesByType[typeToTry] && !this.unitBuild.bannedEquipableTypes.includes(typeToTry)) {
                         for (var equipSourceIndex = 0, lenEquipSources = this.equipSourcesByType[typeToTry].length; equipSourceIndex < lenEquipSources; equipSourceIndex++) {
                             var equipSource = this.equipSourcesByType[typeToTry][equipSourceIndex];
                             var slot = this.unitBuild.getItemSlotFor(equipSource, this.forceDoubleHand);
                             if (slot >= 0) {
-                                var savedEquipable = this.unitBuild.equipable[index];
-                                var savedEquipable1; 
-                                if (index == 0 && this.unitBuild.hasDualWield()) {
-                                    savedEquipable1 = this.unitBuild.equipable[1];
-                                    this.unitBuild.equipable[1] = this.unitBuild.equipable[1].concat([typeToTry]);
+                                let savedEquipable = this.unitBuild.equipable.slice();
+                                let allowUseOfs = equipSource.allowUseOf;
+                                if (!Array.isArray(allowUseOfs)) {
+                                    allowUseOfs = [allowUseOfs];
                                 }
+                                allowUseOfs.forEach(type => {
+                                    if (type != typeToTry) {
+                                        if (index == 0 && weaponList.includes(type) && !this.unitBuild.equipable[1].includes(type) && this.unitBuild.hasDualWield()) {
+                                            this.unitBuild.equipable[1] = this.unitBuild.equipable[1].concat([type]);
+                                        } else if (shieldList.includes(type) && !this.unitBuild.equipable[1].includes(type)) {
+                                            this.unitBuild.equipable[1] = this.unitBuild.equipable[1].concat([type]);
+                                        } else if (headList.includes(type) && !this.unitBuild.equipable[2].includes(type)) {
+                                            this.unitBuild.equipable[2] = this.unitBuild.equipable[2].concat([type]);
+                                        } else if (bodyList.includes(type) && !this.unitBuild.equipable[3].includes(type)) {
+                                            this.unitBuild.equipable[3] = this.unitBuild.equipable[3].concat([type]);
+                                        }
+
+                                    }
+                                });
                                 var savedFixedItems = this.unitBuild.fixedItems;
                                 this.unitBuild.fixedItems = this.unitBuild.fixedItems.slice();
                                 this.unitBuild.fixedItems[slot] = equipSource;
                                 this.unitBuild.equipable[index] = this.unitBuild.equipable[index].concat([typeToTry]);
                                 this.tryType(index, typeCombination, typeToTry, combinations, forcedItems.concat([equipSource]));
                                 this.unitBuild.fixedItems = savedFixedItems;
-                                this.unitBuild.equipable[index] = savedEquipable;
-                                if (index == 0 && this.unitBuild.hasDualWield()) {
-                                    this.unitBuild.equipable[1] = savedEquipable1;
-                                }
+                                this.unitBuild.equipable = savedEquipable;
                             }
                         }
                     }

@@ -276,7 +276,13 @@ function treatItem(items, itemId, result, skills) {
         var uitId = unitIdByTmrId[itemOut.id];
         var unit = unitNamesById[uitId];
         var access = "TMR-" + unit.minRarity + "*";
+        if (uitId == "401008505") {
+            console.log(JSON.stringify(releasedUnits[uitId]));
+        }
         if (unit.event || (releasedUnits[uitId] && releasedUnits[uitId].type == "event")) {
+            if (uitId == "401008505") {
+                console.log("added event");
+            }
             access += "-event";
         }
         if (!releasedUnits[uitId]) {
@@ -453,6 +459,7 @@ function readSkills(itemIn, itemOut, skills) {
         if (masterySkills.length > 0) {
             addMasterySkills(itemOut, masterySkills, result);
         }
+        masterySkills = [];
         for (var restrictedIndex in restrictedSkills) {
             var skill = restrictedSkills[restrictedIndex];
             var effectsNotTreated = [];
@@ -466,9 +473,7 @@ function readSkills(itemIn, itemOut, skills) {
                     }
                 }
                 if (copy.exclusiveUnits) {
-                    console.log(JSON.stringify(copy.exclusiveUnits) + " + " + JSON.stringify(unitsFound));
                     unitsFound = intersect(copy.exclusiveUnits, unitsFound);
-                    console.log(" => " + JSON.stringify(unitsFound));
                 }   
                 copy.exclusiveUnits = [];
                 unitsFound.forEach(u => addExclusiveUnit(copy, u));
@@ -674,7 +679,11 @@ function addEffectToItem(item, skill, rawEffectIndex, skills) {
 
     // Equip X
     } else if ((rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 5) {
-        item.allowUseOf = typeMap[rawEffect[3]];
+        if (item.allowUseOf) {
+            item.allowUseOf.push(typeMap[rawEffect[3]]);
+        } else {
+            item.allowUseOf = [typeMap[rawEffect[3]]];
+        }
 
     // Doublehand
     } else if ((rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 13) {

@@ -385,6 +385,10 @@
     "205001205" : {"type":"summon","name":"Light Warrior Lenna"},
     "100023404" : {"type":"summon","name":"Atri"},
     "100023503" : {"type":"summon","name":"Tessen"},
+    "100022305" : {"type":"summon","name":"Sol"},
+    "100022404" : {"type":"summon","name":"Heliarc"},
+    "100022504" : {"type":"summon","name":"Eclipsa"},
+    "100022603" : {"type":"summon","name":"Pertira"},
 
     "100009204" : {"type":"event","name":"Kupolkan"},
 	"100009304" : {"type":"event","name":"Ashteroze"},
@@ -511,5 +515,9 @@
     "334000205" : {"type":"event","name":"Olberic"},
     "334000105" : {"type":"event","name":"Primrose"},
     "334000304" : {"type":"event","name":"Therion"},
-    "334000403" : {"type":"event","name":"Tressa"}
+    "334000403" : {"type":"event","name":"Tressa"},
+    "401007405" : {"type":"event","name":"A.I. Katy"},
+    "401007505" : {"type":"event","name":"Lovely Katy"},
+    "335000405" : {"type":"event","name":"Riku"},
+    "335000305" : {"type":"event","name":"Sephiroth (KH)"}
 }

@@ -9,6 +9,8 @@ const involvedStatsByValue = {
     "magDamageWithPhysicalMecanismMultiCast":    ["mag","weaponElement","physicalKiller","meanDamageVariance"],
     "sprDamageWithPhysicalMecanismMultiCast":    ["spr","weaponElement","physicalKiller","meanDamageVariance"],
     "defDamageWithPhysicalMecanismMultiCast":    ["def","weaponElement","physicalKiller","meanDamageVariance"],
+    "atkDamageWithMagicalMecanism":     ["atk","magicalKiller"],
+    "atkDamageWithMagicalMecanismMultiCast":     ["atk","magicalKiller"],
     "sprDamageWithMagicalMecanism":     ["spr","magicalKiller"],
     "atkDamageWithFixedMecanism":       ["atk","meanDamageVariance"],
     "physicalDamageMultiCast":          ["atk","weaponElement","physicalKiller","meanDamageVariance"],
@@ -45,6 +47,7 @@ class UnitBuild {
             this.stats = {"hp":0, "mp":0, "atk":0, "def":0, "mag":0, "spr":0};
         }
         this._tdwCap = null;
+        this._bannedEquipableTypes = [];
     }
     
     getPartialDualWield() {
@@ -108,6 +111,24 @@ class UnitBuild {
         return false;
     }
     
+    set bannedEquipableTypes(bannedEquipableTypes) {
+        this._bannedEquipableTypes = bannedEquipableTypes;
+        this.prepareEquipable();
+    }
+    
+    get bannedEquipableTypes() {
+        return this._bannedEquipableTypes;
+    }
+    
+    toogleEquipableType(equipableType) {
+        if (this._bannedEquipableTypes.includes(equipableType)) {
+            this._bannedEquipableTypes = this._bannedEquipableTypes.filter(e => e != equipableType);
+        } else {
+            this._bannedEquipableTypes.push(equipableType);
+        }
+        this.prepareEquipable();
+    }   
+    
     prepareEquipable(ignoreSlot = -1) {
         this.equipable = [[],[],[],[],["accessory"],["accessory"],["materia"],["materia"],["materia"],["materia"],["esper"]];
         if (this.unit) {
@@ -154,11 +175,19 @@ class UnitBuild {
     getCurrentUnitEquip() {
         var equip = this.unit.equip.concat(["accessory", "materia"]);
         for (var index = 10; index--;) {
-            if (this.build[index] && this.build[index].allowUseOf && !equip.includes(this.build[index].allowUseOf)) {
-                equip.push(this.build[index].allowUseOf);
+            if (this.build[index] && this.build[index].allowUseOf) {
+                let allowUseOf = this.build[index].allowUseOf;
+                if (!Array.isArray(allowUseOf)) {
+                    allowUseOf = [allowUseOf];
+                }
+                allowUseOf.forEach(a => {
+                    if (!equip.includes(a)) {
+                        equip.push(a);
+                    }
+                });
             }
         }
-        return equip;
+        return equip.filter(e => !this._bannedEquipableTypes.includes(e));
     }
     
     getItemSlotFor(item, forceDoubleHand = false) {
@@ -261,10 +290,14 @@ class UnitBuild {
                 }
             } else if (formula.value.mecanism == "magical") {
                 this.addToInvolvedStats(["magicalKiller"]);
-                if (formula.value.use) {
-                    this.addToInvolvedStats([formula.value.use.stat]);
+                if (formula.value.damageType == "mind") {
+                    if (formula.value.use) {
+                        this.addToInvolvedStats([formula.value.use.stat]);
+                    } else {
+                        this.addToInvolvedStats(["mag"]);
+                    }
                 } else {
-                    this.addToInvolvedStats(["mag"]);
+                    this.addToInvolvedStats(["atk"]);
                 }
             } else if (formula.value.mecanism == "hybrid") {
                 this.addToInvolvedStats(["weaponElement","physicalKiller","meanDamageVariance", "atk", "mag"]);
@@ -356,6 +389,7 @@ class UnitBuild {
 
     setUnit(unit) {
         this.unit = unit;
+        this._bannedEquipableTypes = [];
         this.prepareEquipable();
         if (this.unit) {
             this.stats = this.unit.stats.maxStats;

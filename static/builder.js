@@ -9,6 +9,7 @@ const formulaByGoal = {
     "magDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical MAG damage", "formulaName":"magDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"mind", "coef":1}}},
     "sprDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
     "defDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical DEF damage", "formulaName":"defDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"body", "coef":1, "use":{"stat":"def"}}}},
+    "atkDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x magical ATK damage", "formulaName":"atkDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"body", "coef":1}}},
     "sprDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
     "atkDamageWithFixedMecanism":       {"type":"value","name":"atkDamageWithFixedMecanism"},
     "physicalDamageMultiCast":          {"type":"value","name":"physicalDamageMultiCast"},
@@ -37,6 +38,7 @@ const goalQuickSelectDefaultValues = [
     ["magDamageWithPhysicalMecanism","Physical type MAG damage"],
     ["sprDamageWithPhysicalMecanism","Physical type SPR damage"],
     ["defDamageWithPhysicalMecanism","Physical type DEF damage"],
+    ["atkDamageWithMagicalMecanism","Magical type ATK damage"],
     ["sprDamageWithMagicalMecanism","Magical type SPR damage"],
     ["atkDamageWithFixedMecanism","Fixed type ATK damage"],
     ["physicalDamageMultiCast","Physical damage Multicast"],
@@ -120,6 +122,7 @@ var secondaryOptimizationFixedItemSave;
 var secondaryOptimizationFormulaSave;
 
 var defaultWeaponEnhancement = [];
+var parameterChallengesMode = false;
 var runningParamChallenge = false;
 var currentUnitIdIndexForParamChallenge = -1;
 var currentBestParamChallengeBuild = {
@@ -127,6 +130,8 @@ var currentBestParamChallengeBuild = {
     value:0,
     build:null
 }
+
+let buildCounter = 0;
 
 function onBuildClick() {
     runningParamChallenge = false;
@@ -143,6 +148,9 @@ function build() {
     secondaryOptimization = false;
 
     $(".buildLinks").addClass("hidden");
+    buildCounter = 0;
+    logBuildCounter();
+    $(".buildCounterDiv").removeClass("hidden");
     
     if (!builds[currentUnitIndex].unit) {
         Modal.showMessage("No unit selected", "Please select an unit");
@@ -160,7 +168,7 @@ function build() {
     
     running = true;
     $("body").addClass("building");
-    $("#buildButton").text("STOP");
+    updateBuildButtonDisplay();
     
     try {
         optimize();
@@ -177,9 +185,23 @@ function stopBuild() {
     initWorkers();
     workerWorkingCount = 0;
     running = false;
-    $("#buildButton").text("Build !");
+    updateBuildButtonDisplay();
     $("body").removeClass("building");
     runningParamChallenge = false;
+}
+
+function updateBuildButtonDisplay() {
+    if (running) {
+        $("#buildButton").removeClass('hidden');
+        $("#buildButton").text("STOP");
+    } else {
+        $("#buildButton").text("Build !");
+        if (parameterChallengesMode) {
+            $("#buildButton").addClass('hidden');
+        } else {
+            $("#buildButton").removeClass('hidden');
+        }
+    }
 }
 
 function optimize() {
@@ -680,8 +702,8 @@ function logBuild(build, value) {
         pMitigation = pMitigation * (1 - (builds[currentUnitIndex].baseValues["mitigation"].global / 100)) * (1 - (builds[currentUnitIndex].baseValues["mitigation"].physical / 100));
         mMitigation = mMitigation * (1 - (builds[currentUnitIndex].baseValues["mitigation"].global / 100)) * (1 - (builds[currentUnitIndex].baseValues["mitigation"].magical / 100))
     }
-    $("#resultStats .physicaleHp .value").html(Math.floor(values["def"] * values["hp"] / pMitigation));
-    $("#resultStats .magicaleHp .value").html(Math.floor(values["spr"] * values["hp"] / mMitigation));
+    $("#resultStats .physicaleHp .value").html(Math.floor(values["def"] * values["hp"] / pMitigation).toLocaleString());
+    $("#resultStats .magicaleHp .value").html(Math.floor(values["spr"] * values["hp"] / mMitigation).toLocaleString());
     $("#resultStats .mpRefresh .value").html(Math.floor(values["mp"] * calculateStatValue(build, "mpRefresh", builds[currentUnitIndex]).total / 100));
     $("#resultStats .lbPerTurn .value").html(calculateStatValue(build, "lbPerTurn", builds[currentUnitIndex]).total);
     $("#resultStats .evoMag .value").html(calculateStatValue(build, "evoMag", builds[currentUnitIndex]).total);    
@@ -1072,6 +1094,7 @@ function goalSelectTemplate(state) {
             case "magDamageWithPhysicalMecanism":
             case "sprDamageWithPhysicalMecanism":
             case "defDamageWithPhysicalMecanism":
+            case "atkDamageWithMagicalMecanism":
             case "sprDamageWithMagicalMecanism":
             case "atkDamageWithFixedMecanism":
             case "physicalDamageMultiCast":
@@ -1302,10 +1325,11 @@ function updateGoal() {
         }
         manageMulticast(multicastedSkills);
 
-        if (customFormula) {
+        if (builds[currentUnitIndex].goal == 'custom' && !isSimpleFormula(builds[currentUnitIndex]._formula)) {
             $('.normalGoalChoices').addClass("hidden");
             $('.customGoalChoice').removeClass("hidden");
-            $("#customGoalFormula").text(formulaToString(customFormula));
+            $("#customGoalFormula").text(formulaToString(builds[currentUnitIndex]._formula));
+            customFormula = builds[currentUnitIndex]._formula;
             $(".goal .chainMultiplier").addClass("hidden");
         } else {
             $('.normalGoalChoices').removeClass("hidden");
@@ -1460,6 +1484,16 @@ function updateUnitStats() {
         
 }
 
+function reinitBuilds() {
+    for (var i = builds.length; i-- > 1; ) {
+        closeTab(i);
+    }
+    builds[0] = new UnitBuild(null, [null, null, null, null, null, null, null, null,null,null,null], {});
+    loadBuild(0);
+    $(".panel.goal .goalLine").addClass("hidden");
+    $(".panel.goal .simpleConditions").addClass("hidden");
+}
+
 function reinitBuild(buildIndex) {
     builds[buildIndex] = new UnitBuild(null, [null, null, null, null, null, null, null, null,null,null,null], {});
     readGoal(buildIndex);
@@ -1482,6 +1516,7 @@ function loadBuild(buildIndex) {
     updateUnitStats();
     displayUnitEnhancements();
     
+    customFormula = null;
     updateGoal();
     readGoal();
     
@@ -1491,7 +1526,7 @@ function loadBuild(buildIndex) {
     }
 }
 
-function addNewUnit() {
+function addNewUnit(focusUnitSelect = true) {
     $("#unitTabs li").removeClass("active");
     let newId = builds.length;
     var newTab = $("<li class='active tab_" + newId + "'><a href='#'>Select unit</a><span class=\"closeTab glyphicon glyphicon-remove\" onclick=\"closeTab()\"></span></li>");
@@ -1509,7 +1544,9 @@ function addNewUnit() {
         $("#addNewUnitButton").addClass("hidden");
     }
     selectUnitDropdownWithoutNotify(null);
-    $('#unitsSelect').select2('open');
+    if (focusUnitSelect) {
+        $('#unitsSelect').select2('open');
+    }
 }
 
 function selectUnitTab(index) {
@@ -1551,7 +1588,7 @@ var displayUnitRarity = function(unit) {
         rarityWrapper.empty();
 
         for (var i = 0; i < rarity; i++) {
-            rarityWrapper.append('<i class="rarity-star"></i>');
+            rarityWrapper.append('☆');
         }
         if (rarity == "7") {
             $('#forceTmrAbility').removeClass('hidden');
@@ -1578,6 +1615,14 @@ function inventoryLoaded() {
         $(".panel.paramChallenge").removeClass("hidden");
     }
     $("#savedTeamPanel").removeClass("hidden");
+}
+
+function updateSavedTeamPanelVisibility() {
+    if (itemInventory) {
+        $("#savedTeamPanel").removeClass("hidden");
+    } else {
+        $("#savedTeamPanel").addClass("hidden");
+    }
 }
 
 function notLoaded() {
@@ -2651,13 +2696,13 @@ function loadStateHashAndBuild(data, importMode = false) {
         
         if (first) {
             if (importMode && (builds.length > 1 || builds[0].unit != null)) {
-                addNewUnit();
+                addNewUnit(false);
             } else {
                 reinitBuild(0);
             }
             first = false;
         } else {
-            addNewUnit();
+            addNewUnit(false);
         }
         
         var unit = data.units[i];
@@ -3151,12 +3196,13 @@ function switchPots() {
         });
       }
     }
+    logCurrentBuild();
 }
 
 function onBuffChange(stat) {
     if (builds[currentUnitIndex].unit) {
         var value = parseInt($(".unitStats .stat." + stat + " .buff input").val()) || 0;
-        var maxValue = 600;
+        var maxValue = (stat === "hp" ? 10000 : 600);
         if (stat == "pMitigation" || stat == "mMitigation" || stat == "mitigation") {
             maxValue = 99;
         }
@@ -3378,7 +3424,7 @@ function findUnitForParamChallenge() {
     let goal = $("#paramChallengeSelect").val();
     let tokens = goal.split("_");
     let statToSearch = tokens[0].toLocaleLowerCase();
-    let unitPool = $('.paramChallenge input[name=paramChallengeUnitChoice]:checked').val();
+    let unitPool = $('#parameterChallenges input[name=paramChallengeUnitChoice]:checked').val();
     let idsToSearch = ids.filter(id => {
         if (unitPool == "sevenStar") {
             return ownedUnits[id].sevenStar || id == "306000804"
@@ -3420,12 +3466,18 @@ function findUnitForParamChallenge() {
     chooseCustomFormula(tokens[0]);
     builds[currentUnitIndex] = currentBestParamChallengeBuild.build;
     logCurrentBuild();
+    updateFindAWayButtonDisplay();
+}
+
+function updateFindAWayButtonDisplay() {
+    if (currentUnitIdIndexForParamChallenge == -1) {
+        $('#paramChallengeButton').text('Find a way !');
+    } else {
+        $('#paramChallengeButton').text('Find another way !');
+    }
 }
 
 function getUnitBaseValue(stat, unit) {
-    if (!unit) {
-        console.log("!!");
-    }
     let baseStatValue = unit.stats.maxStats[stat] + unit.stats.pots[stat];
     var coef = 1;
     if (unit.skills && unit.skills[0] && unit.skills[0][stat + '%']) {
@@ -3434,12 +3486,38 @@ function getUnitBaseValue(stat, unit) {
     return baseStatValue * coef;
 }
 
+
+function onFeatureSelect(selectedFeature) {
+    if (selectedFeature === 'buildAUnit') {
+        $('.panel.buildRules').removeClass('hidden');
+        $('#addNewUnitButton').removeClass('hidden');
+        updateSavedTeamPanelVisibility();
+        parameterChallengesMode = false;
+    } else {
+        reinitBuilds();
+        $('.panel.unit').addClass('hidden');
+        $('.panel.buildRules').addClass('hidden');
+        $('.panel.monster').addClass('hidden');
+        $('#addNewUnitButton').addClass('hidden');
+        $("#savedTeamPanel").addClass("hidden");
+        if (itemInventory) {
+            $('#parameterChallenges .content').removeClass("hidden");
+            $('#parameterChallenges .notAvailableMessage').addClass("hidden");
+        } else {
+            $('#parameterChallenges .content').addClass("hidden");
+            $('#parameterChallenges .notAvailableMessage').removeClass("hidden");
+        }
+        currentUnitIdIndexForParamChallenge = -1;
+        parameterChallengesMode = true;
+    }
+    updateBuildButtonDisplay();
+}
+
+
 // will be called by common.js at page load
 function startPage() {
     progressElement = $("#buildProgressBar .progressBar");
-    if (server == "JP") {
-        $('#useNewJpDamageFormula').prop('checked', true);
-    }
+    $('#useNewJpDamageFormula').prop('checked', true);
     
     registerWaitingCallback(["data", "unitsWithPassives", "unitsWithSkill"], () => {
         populateUnitSelect();
@@ -3560,21 +3638,14 @@ function startPage() {
         $(".unitStats .stat." + baseStats[statIndex] + " .pots .leftIcon").click(function(stat) {
             if (builds[currentUnitIndex].unit) {
                 var value = parseInt($(".unitStats .stat." + baseStats[statIndex] + " .pots input").val()) || 0;
-                if (server == "JP") {
-                    if (value < builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]) {
-                        $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]);
-                    } else if (value < Math.floor(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]] * 1.5)) {
-                        $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val(Math.floor(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]] * 1.5));
-                    } else {
-                        $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val("0");
-                    }
+                if (value < builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]) {
+                    $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]);
+                } else if (value < Math.floor(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]] * 1.5)) {
+                    $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val(Math.floor(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]] * 1.5));
                 } else {
-                    if (value == builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]) {
-                        $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val("0");
-                    } else {
-                        $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]);
-                    }  
+                    $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val("0");
                 }
+                onPotsChange(baseStats[statIndex]);
             }
         });
     }
@@ -3640,6 +3711,12 @@ function initWorkerNumber() {
     }));
 }
 
+let buildCounterThrottle = throttle(logBuildCounter, 1000);
+
+function logBuildCounter() {
+    $("#buildCounter").text(buildCounter.toLocaleString());
+}
+
 function initWorkers() {
     workers = [];
     for (var index = 0, len = numberOfWorkers; index < len; index++) {
@@ -3648,6 +3725,10 @@ function initWorkers() {
         workers[index].onmessage = function(event) {
             var messageData = JSON.parse(event.data);
             switch(messageData.type) {
+                case "buildCounterUpdate":
+                    buildCounter += messageData.counter;
+                    buildCounterThrottle();
+                    break;
                 case "betterBuildFound":
                     if (!builds[currentUnitIndex].buildValue[goalVariation] 
                             || builds[currentUnitIndex].buildValue[goalVariation] < messageData.value[goalVariation]
@@ -3672,6 +3753,7 @@ function initWorkers() {
                                 progressElement.width("100%");
                                 progressElement.text("100%");    
                                 document.title = "100% - FFBE Equip - Builder";
+                                updateFindAWayButtonDisplay();
                             } else {
                                 if (messageData.value.max > currentBestParamChallengeBuild.value) {
                                     currentBestParamChallengeBuild.build = builds[currentUnitIndex];
@@ -3723,7 +3805,7 @@ function initWorkers() {
                             progressElement.addClass("finished");
                             $("body").removeClass("building");
                             console.timeEnd("optimize");
-                            $("#buildButton").text("Build !"); 
+                            updateBuildButtonDisplay();
                             logCurrentBuild();
                             dataStorage.calculateAlreadyUsedItems(builds, currentUnitIndex);
                             builds[currentUnitIndex].prepareEquipable();
@@ -3803,7 +3885,7 @@ function initWorkers() {
                                 progressElement.addClass("finished");
                                 console.timeEnd("optimize");
                                 if (!runningParamChallenge) {
-                                    $("#buildButton").text("Build !"); 
+                                    updateBuildButtonDisplay();
                                     $("body").removeClass("building");
                                 }
                             }
@@ -3828,19 +3910,27 @@ function populateUnitEquip() {
             var target = $(".unitEquipable.weapons2");
             target.html("");
         }
-        target.append('<i class="img img-equipment-'+weaponList[key]+' notEquipable"></i>');
+        target.append('<i class="img img-equipment-'+weaponList[key]+' notEquipable" onclick="toogleEquipableType(\'' + weaponList[key] + '\');"></i>');
 	}
     var target = $(".unitEquipable.armors");
     target.html("");
     for (var key in shieldList) {
-        target.append('<i class="img img-equipment-'+shieldList[key]+' notEquipable"></i>');
+        target.append('<i class="img img-equipment-'+shieldList[key]+' notEquipable" onclick="toogleEquipableType(\'' + shieldList[key] + '\');"></i>');
 	}
     for (var key in headList) {
-        target.append('<i class="img img-equipment-'+headList[key]+' notEquipable"></i>');
+        target.append('<i class="img img-equipment-'+headList[key]+' notEquipable" onclick="toogleEquipableType(\'' + headList[key] + '\');"></i>');
 	}
     for (var key in bodyList) {
-        target.append('<i class="img img-equipment-'+bodyList[key]+' notEquipable"></i>');
+        target.append('<i class="img img-equipment-'+bodyList[key]+' notEquipable" onclick="toogleEquipableType(\'' + bodyList[key] + '\');"></i>');
 	}
+    if (builds[currentUnitIndex]) {
+        builds[currentUnitIndex].bannedEquipableTypes.forEach(type => $('.unitEquipable .img-equipment-' + type).addClass("banned"));
+    }
+}
+
+function toogleEquipableType(equipableType) {
+    builds[currentUnitIndex].toogleEquipableType(equipableType);
+    $('.unitEquipable .img-equipment-' + equipableType).toggleClass("banned");
 }
     
 function populateItemType(equip) {

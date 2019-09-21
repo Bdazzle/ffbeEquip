@@ -1,7 +1,9 @@
 var equipments;
 var materia;
+let itemsById = {};
+var stmrs = [];
 var lastItemReleases;
-var allUnits;
+var units;
 
 var currentEnhancementItem;
 var currentEnhancementItemPos;
@@ -10,6 +12,7 @@ var displayId = 0;
 
 var equipmentLastSearch = "";
 var materiaLastSearch = "";
+var farmableStmrLastSearch = "";
 
 function beforeShow(clearTabSelection = true) {
     $("#pleaseWaitMessage").addClass("hidden");
@@ -21,10 +24,13 @@ function beforeShow(clearTabSelection = true) {
     
     // Hidden by default, enabled by materia and equipment tabs
     $("#searchBox").addClass("hidden");
+    // Hidden by default, enabled by farmable stmr tab
+    $('.searchHeader .stmrMoogleAvailableDiv').addClass("hidden");
 
     if(clearTabSelection) {
         $(".nav-tabs li.equipment").removeClass("active");
         $(".nav-tabs li.materia").removeClass("active");
+        $(".nav-tabs li.farmableStmr").removeClass("active");
         $(".nav-tabs li.history").removeClass("active");
         $(".nav-tabs li.settings").removeClass("active");
     }
@@ -54,8 +60,20 @@ function showEquipments() {
     displayStats();
 }
 
+function showFarmableStmr() {
+    beforeShow();
+    
+    $(".nav-tabs li.farmableStmr").addClass("active");
+    $("#sortType").text("");
+    $("#searchBox").val(farmableStmrLastSearch);
+    $("#searchBox").removeClass("hidden");
+    // filter, sort and display the results
+    showSearch();
+    displayStats();
+    $('.searchHeader .stmrMoogleAvailableDiv').removeClass("hidden");
+}
+
 function showSearch() {
-    beforeShow(false);
     
     var inEquipment = $(".nav-tabs li.equipment").hasClass("active");
 
@@ -78,6 +96,24 @@ function showHistory() {
     var $resultDiv = $("#results").empty();
     displayId++;
     displayItemsByHistoryAsync(0, 4, displayId, $resultDiv);
+    afterShow();
+}
+
+function setTooltips() {
+    $(document).tooltip({
+        items: ".item .type",
+        content: function() {
+            let element = $(this);
+            let itemDiv = element.closest('.item');
+            let itemId = itemDiv.prop('classList')[4]
+            let item = itemsById[itemId];
+            
+            return '<div class="table notSorted items results"><div class="tbody"><div class="tr">' +  displayItemLine(item) + '</div></div></div>';
+        },
+        open: function() {
+            lazyLoader.update();
+        }
+    });
 }
 
 function displayItemsByHistoryAsync(dateIndex, dateIndexMax, id, $resultDiv, $loadMore) {
@@ -102,7 +138,7 @@ function displayItemsByHistoryAsync(dateIndex, dateIndexMax, id, $resultDiv, $lo
                 } else if (unitIndex > 0) {
                     html += ", ";
                 }
-                html += allUnits[currentItemReleases.sources[sourceIndex].units[unitIndex]].name;
+                html += units[currentItemReleases.sources[sourceIndex].units[unitIndex]].name;
             }
             html += "</div>";
         } else if (currentItemReleases.sources[sourceIndex].type == "event" || currentItemReleases.sources[sourceIndex].type == "storyPart") {
@@ -162,6 +198,7 @@ var displayItems = function(items, byType = false) {
     var resultDiv = $("#results");
     resultDiv.empty();
     displayId++;
+    var inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
     if (byType) {
         // Jump list display
         htmlTypeJump = '<div class="typeJumpList" data-html2canvas-ignore>';
@@ -179,7 +216,7 @@ var displayItems = function(items, byType = false) {
 
         displayItemsByTypeAsync(items, 0, resultDiv, displayId, resultDiv.find('.typeJumpList'));
     } else {
-        displayItemsAsync(items, 0, resultDiv, displayId);
+        displayItemsAsync(items, 0, resultDiv, displayId, inFarmableStmr);
     }
 };
 
@@ -192,7 +229,7 @@ function displayItemsByTypeAsync(items, start, div, id, jumpDiv) {
     html += '<div class="itemList">';
     for (var index = start, len = items.length; index < len; index++) {
         var item = items[index];
-        if (item === undefined || (item.access.includes("not released yet") && !itemInventory[item.id])) continue;
+        if (item === undefined || (item.id != "9999999999" && item.access.includes("not released yet") && !itemInventory[item.id])) continue;
 
         if (item.type === currentItemType) {
             html += getItemDisplay(item);
@@ -212,16 +249,18 @@ function displayItemsByTypeAsync(items, start, div, id, jumpDiv) {
         // Launch next run of type
         if (index < items.length) {
             setTimeout(displayItemsByTypeAsync, 0, items, index, div, id, jumpDiv);
+        } else {
+            setTooltips();
         }
     }
 }
 
-function displayItemsAsync(items, start, div, id, max = 20) {
+function displayItemsAsync(items, start, div, id, showStmrRecipe = false, max = 20) {
     var html = '';
     var end = Math.min(start + max, items.length);
     for (var index = start; index < end; index++) {
-        if (items[index] === undefined || (items[index].access.includes("not released yet") && !itemInventory[items[index].id])) continue;
-        html += getItemDisplay(items[index]);
+        if (items[index] === undefined || (items[index].id != "9999999999" && items[index].access.includes("not released yet") && !itemInventory[items[index].id])) continue;
+        html += getItemDisplay(items[index], showStmrRecipe);
     }
 
     if (id == displayId) {
@@ -231,12 +270,14 @@ function displayItemsAsync(items, start, div, id, max = 20) {
         if (start === 0 || index >= items.length) lazyLoader.update();
         // Launch next run of type
         if (index < items.length) {
-            setTimeout(displayItemsAsync, 0, items, index, div, id);
-        }    
+            setTimeout(displayItemsAsync, 0, items, index, div, id, showStmrRecipe);
+        } else {
+            setTooltips();
+        }
     }
 }
 
-function getItemDisplay(item)
+function getItemDisplay(item, showStmrRecipe = false)
 {
     var html = "";
 
@@ -256,7 +297,14 @@ function getItemDisplay(item)
     if (itemInventory[item.id] && item.maxNumber && itemInventory[item.id] > item.maxNumber) {
         html += ' maxNumberOverflow';
     }
-    html+= '" onclick="addToInventory(\'' + escapeQuote(item.id) + '\')">';
+    if (showStmrRecipe && item.stmrAccess) {
+        html += ' stmr">';
+    } else {
+        html += '" onclick="addToInventory(\'' + escapeQuote(item.id) + '\')">';
+    }
+    if (showStmrRecipe && item.stmrAccess) {
+        html += '<div class="wrapperForStmr">'
+    }
     if (itemInventory) {
         html+= '<div class="td inventory">';
         html += '<span class="glyphicon glyphicon-plus" onclick="event.stopPropagation();addToInventory(\'' + escapeQuote(item.id) + '\')" />';
@@ -275,7 +323,39 @@ function getItemDisplay(item)
     }
     html += getImageHtml(item) + getNameColumnHtml(item);
     
+    if (showStmrRecipe && item.stmrAccess) {
+        html += "</div>";
+        html += '<div class="stmrRecipe">'
+        html += '<div><img class="unitImage" src="/img/units/unit_icon_' + item.stmrUnit.substr(0, item.stmrUnit.length - 1) + 7 + '.png"/></div>';
+        html += '<div class="column">'
+        
+        html += '<div class="unitName">' + toLink(units[item.stmrUnit].name) + '</div>';
+        
+        html += '<div class="recipe">';
+        if (item.stmrAccess.base == "sixStar") {
+            html += '<i class="img img-crystal-rainbowCrystal"></i><i class="img img-crystal-rainbowCrystal"></i> &rArr; <i class="img img-crystal-sevenStarCrystal"></i><div class="then">then</div>'
+        }
+        html += '<i class="img img-crystal-sevenStarCrystal"></i>'
+        if (item.stmrAccess.sevenStar) {
+            html += ' + <i class="img img-crystal-sevenStarCrystal"></i>'
+        }
+        if (item.stmrAccess.sixStar) {
+            html += ' + '
+            for (let i = 0; i < item.stmrAccess.sixStar; i++) {
+                html += '<i class="img img-crystal-rainbowCrystal"></i>'
+            }
+        }
+        if (item.stmrAccess.stmrMoogle) {
+            html += ' + ' + item.stmrAccess.stmrMoogle + '% <div style="position:relative;"><img class="stmrMoogle" src="/img/units/unit_ills_906000105.png"></div>'
+        }
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+    }
+    
     html += "</div>";
+    
+    
 
     return html;
 }
@@ -439,14 +519,24 @@ function farmedTMR(unitId) {
 }
 
 function search(textToSearch) {
-    var result = [];
-    var inEquipment = $(".nav-tabs li.equipment").hasClass("active");
+    let result = [];
+    let inEquipment = $(".nav-tabs li.equipment").hasClass("active");
+    let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+    let onlyTimeLimited = $('#onlyTimeLimited').prop('checked');
     
     var itemsToSearch = [];
     if(inEquipment) {
         itemsToSearch = equipments;
         equipmentLastSearch = textToSearch;
+    } else if (inFarmableStmr) {
+        let availableStmrMoogle = $('#stmrMoogleAvailable').val() || 0;
+        itemsToSearch = stmrs.filter(stmr => stmr.stmrAccess.stmrMoogle <= availableStmrMoogle);
+        if (onlyTimeLimited) {
+            itemsToSearch = itemsToSearch.filter(stmr => units[stmr.stmrUnit].summon_type === 'event')
+        }
+        farmableStmrLastSearch = textToSearch;
     } else {
+        // In materia tab
         itemsToSearch = materia;
         materiaLastSearch = textToSearch;
     }
@@ -466,7 +556,6 @@ function search(textToSearch) {
 }
 
 function keepOnlyOneOfEachEquipement() {
-    var idsAlreadyKept = [];
     var tempResult = {};
     for (var index in data) {
         var item = data[index];
@@ -494,21 +583,80 @@ function keepOnlyOneOfEachEquipement() {
     var result = [];
     for (var index in tempResult) {
         result.push(tempResult[index]);
+        itemsById[tempResult[index].id] = tempResult[index];
     }
     return result;
 }
 
 function keepOnlyOneOfEachMateria() {
-    var idsAlreadyKept = [];
     var result = [];
+    
+    var tempResult = {};
     for (var index in data) {
         var item = data[index];
-        if (item.type == "materia" && !idsAlreadyKept.includes(item.id)) {
-            result.push(item);
-            idsAlreadyKept.push(item.id);
+        if (item.type == "materia") {
+            if (tempResult[item.id]) {
+                var alreadyPutItem = tempResult[item.id];
+                if (item.equipedConditions) {
+                    if (alreadyPutItem.equipedConditions) {
+                        if (item.equipedConditions.length > alreadyPutItem.equipedConditions.length) {
+                            tempResult[item.id] = item;
+                        }
+                    } else {
+                        tempResult[item.id] = item;
+                    }
+                }
+                if (item.exclusiveUnits) {
+                    tempResult[item.id] = item;
+                }
+            } else {
+                tempResult[item.id] = item;
+            }
         }
     }
+    
+    for (var index in tempResult) {
+        result.push(tempResult[index]);
+        itemsById[tempResult[index].id] = tempResult[index];
+    }
+    
     return result;
+}
+
+function keepOnlyStmrs() {
+    stmrs = equipments.filter(item => {
+        return item.stmrUnit && ownedUnits[item.stmrUnit] && (ownedUnits[item.stmrUnit].farmableStmr > 0 || ownedUnits[item.stmrUnit].number >= 2)
+    });
+    stmrs = stmrs.concat(materia.filter(item => item.stmrUnit && ownedUnits[item.stmrUnit] && (ownedUnits[item.stmrUnit].farmableStmr > 0 || ownedUnits[item.stmrUnit].number >= 2)));
+    stmrs.forEach(stmr => {
+        if (stmr.stmrUnit == "100005805") {
+            console.log("!!");
+        }
+        stmr.stmrAccess = {
+            'base':"",
+            'sevenStar': 0,
+            'sixStar': 0,
+            'stmrMoogle': 100
+        }
+        if (ownedUnits[stmr.stmrUnit].farmableStmr) {
+            stmr.stmrAccess.base = "sevenStar";
+        } else {
+            stmr.stmrAccess.base = "sixStar";
+        }
+        if (ownedUnits[stmr.stmrUnit].farmableStmr > 1) {
+            stmr.stmrAccess.sevenStar = 1;
+            stmr.stmrAccess.stmrMoogle = 0;
+        } else {
+            let sixStarNumber = stmr.stmrAccess.base == "sixStar" ? ownedUnits[stmr.stmrUnit].number - 2 : ownedUnits[stmr.stmrUnit].number;
+            if (sixStarNumber >= 2) {
+                stmr.stmrAccess.sixStar = 2;
+                stmr.stmrAccess.stmrMoogle = 0;
+            } else if (sixStarNumber == 1) {
+                stmr.stmrAccess.sixStar = 1;
+                stmr.stmrAccess.stmrMoogle = 50;
+            }
+        }
+    });
 }
 
 var sortOrderDefault = ["atk","mag","def","spr", "sortId"];
@@ -711,6 +859,7 @@ function toggleItemEnhancement(enhancement) {
 function inventoryLoaded() {
     if (data) {
         showEquipments();
+        keepOnlyStmrs();
     }
 }
 
@@ -727,11 +876,11 @@ function prepareSearch(data) {
         if (item.jpname) {
             item.searchString += "|" + item.jpname;
         }
-        if (item.tmrUnit && allUnits[item.tmrUnit]) {
-            item.searchString += "|" + allUnits[item.tmrUnit].name;
+        if (item.tmrUnit && units[item.tmrUnit]) {
+            item.searchString += "|" + units[item.tmrUnit].name;
         }
-        if (item.stmrUnit && allUnits[item.stmrUnit]) {
-            item.searchString += "|" + allUnits[item.stmrUnit].name;
+        if (item.stmrUnit && units[item.stmrUnit]) {
+            item.searchString += "|" + units[item.stmrUnit].name;
         }
     }
 }
@@ -787,12 +936,31 @@ function prepareLastItemReleases() {
 }
 
 function exportAsCsv() {
-    var csv = "Item Id;Item Name;Item type;Number Owned;TMR of;Access\n";
+    var csv = "Item Id;Item Name;Item type;Number Owned;TMR of;Access;Enhancement 1;Enhancement 2;Enhancement 3\n";
     var sortedItems = sort(equipments).concat(sort(materia));
     for (var index = 0, len = sortedItems.length; index < len; index++) {
         var item = sortedItems[index];
         if (itemInventory[item.id]) {
-            csv +=  "\"" + item.id + "\";" + "\"" + item.name + "\";" + "\"" + item.type + "\";" + itemInventory[item.id] + ';\"' + (item.tmrUnit ? allUnits[item.tmrUnit].name : "") + "\";\"" + item.access.join(", ") + "\"\n";
+            let ownedNumber = itemInventory[item.id];
+            if (itemInventory.enchantments[item.id]) {
+                ownedNumber -= itemInventory.enchantments[item.id].length;
+                itemInventory.enchantments[item.id].forEach(enhancements => {
+                    csv +=  "\"" + item.id + "\";" + "\"" + item.name + "\";" + "\"" + item.type + '";1;"' + (item.tmrUnit ? units[item.tmrUnit].name : "") + '";"' + item.access.join(", ") + '"';
+                    enhancements.forEach(enhancement => {
+                        if (enhancement.startsWith('rare')) {
+                            csv += ';"' + itemEnhancementLabels[enhancement][item.type] + '"';
+                        } else {
+                            csv += ';"' + itemEnhancementLabels[enhancement] + '"';
+                        }
+
+                    });
+                    csv += '\n';
+
+                });
+            }
+            if (ownedNumber) {
+                csv += "\"" + item.id + "\";" + "\"" + item.name + "\";" + "\"" + item.type + "\";" + ownedNumber + ';\"' + (item.tmrUnit ? units[item.tmrUnit].name : "") + "\";\"" + item.access.join(", ") + "\"\n";
+            }
         }
     }
     window.saveAs(new Blob([csv], {type: "text/csv;charset=utf-8"}), 'FFBE_Equip - Equipment.csv');
@@ -977,7 +1145,7 @@ function startPage() {
     getStaticData("data", true, function(result) {
         data = result;
         getStaticData("units", true, function(unitResult) {
-            allUnits = unitResult;
+            units = unitResult;
             prepareSearch(data);
             equipments = keepOnlyOneOfEachEquipement();
             materia = keepOnlyOneOfEachMateria();
@@ -987,6 +1155,13 @@ function startPage() {
             getStaticData("lastItemReleases", false, function(result) {
                 lastItemReleases = result;
                 prepareLastItemReleases();
+            });
+            getStaticData("releasedUnits", false, function(releasedUnitResult) {
+                for (var unitId in units) {
+                    if (releasedUnitResult[unitId]) {
+                        units[unitId].summon_type = releasedUnitResult[unitId].type;
+                    }
+                }
             });
         });
     });
@@ -1012,6 +1187,8 @@ function startPage() {
     });
     
     $("#searchBox").on("input", $.debounce(300,showSearch));
+    $("#stmrMoogleAvailable").on("input", $.debounce(300,showSearch));
+    $('#onlyTimeLimited').on("input", showSearch);
 
     // Start stats collapse for small screen
     if ($window.outerWidth() < 990) {
