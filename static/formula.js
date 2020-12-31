@@ -1,5 +1,5 @@
 const skillToken = "SKILL";
-const baseVariables = ["HP","MP","ATK","DEF","MAG","SPR","MP_REFRESH","P_EVADE","M_EVADE", "EVO_MAG","P_DAMAGE","M_DAMAGE","H_DAMAGE", "F_DAMAGE","P_DAMAGE_MAG", "P_DAMAGE_MULTICAST", "P_DAMAGE_SPR", "P_DAMAGE_DEF", "P_DAMAGE_MAG_MULTICAST", "P_DAMAGE_SPR_MULTICAST", "P_DAMAGE_DEF_MULTICAST", "F_DAMAGE_ATK","M_DAMAGE_SPR","J_DAMAGE", "S_DAMAGE","R_FIRE","R_ICE","R_THUNDER", "R_LIGHTNING","R_WATER","R_EARTH","R_WIND","R_LIGHT","R_DARK","R_POISON","R_BLIND","R_SLEEP","R_SILENCE","R_PARALYSIS","R_CONFUSION","R_DISEASE","R_PETRIFICATION","R_DEATH","I_DISABLE","LB", "ACCURACY", "LB_DAMAGE", "DRAW_ATTACKS", "ANY"];
+const baseVariables = ["HP","MP","ATK","DEF","MAG","SPR","MP_REFRESH","P_EVADE","M_EVADE", "EVO_MAG","P_DAMAGE","M_DAMAGE","H_DAMAGE", "F_DAMAGE","P_DAMAGE_MAG", "P_DAMAGE_MULTICAST", "P_DAMAGE_SPR", "P_DAMAGE_DEF", "P_DAMAGE_MAG_MULTICAST", "P_DAMAGE_SPR_MULTICAST", "P_DAMAGE_DEF_MULTICAST", "F_DAMAGE_ATK","M_DAMAGE_ATK","M_DAMAGE_SPR","J_DAMAGE", "S_DAMAGE","R_FIRE","R_ICE","R_THUNDER", "R_LIGHTNING","R_WATER","R_EARTH","R_WIND","R_LIGHT","R_DARK","R_POISON","R_BLIND","R_SLEEP","R_SILENCE","R_PARALYSIS","R_CONFUSION","R_DISEASE","R_PETRIFICATION","R_DEATH","R_STOP","R_CHARM","I_DISABLE","LB", "ACCURACY", "LB_DAMAGE", "DRAW_ATTACKS", "ANY", "MONSTER_DAMAGE"];
 const elementVariables = ["E_FIRE", "E_ICE", "E_THUNDER", "E_WATER", "E_EARTH", "E_WIND", "E_LIGHT", "E_DARK", "E_NONE"];
 const operators = ["/","*","+","-",">", "OR", "AND", ";"];
 const booleanResultOperators=[">", "OR", "AND", ";"];
@@ -59,10 +59,13 @@ const attributeByVariable = {
     "R_DISEASE":"resist|disease.percent",
     "R_PETRIFICATION":"resist|petrification.percent",
     "R_DEATH":"resist|death.percent",
+    "R_STOP":"resist|stop.percent",
+    "R_CHARM":"resist|charm.percent",
     "LB":"lbPerTurn",
     "ACCURACY": "accuracy",
     "DRAW_ATTACKS": "drawAttacks",
-    "ANY":"any"
+    "ANY":"any",
+    "MONSTER_DAMAGE": "monsterDamage",
 };
 
 const simpleImunityValues = ["resist|poison.percent","resist|blind.percent","resist|sleep.percent","resist|silence.percent","resist|paralysis.percent","resist|confuse.percent","resist|disease.percent","resist|petrification.percent","resist|death.percent"];
@@ -78,7 +81,7 @@ var formulaByVariable = {
     "sprDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
     "defDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical DEF damage", "formulaName":"defDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"body", "coef":1, "use":{"stat":"def"}}}},
     "atkDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x physical ATK damage", "formulaName":"atkDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"body", "coef":1}}},
-    "sprDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
+    "sprDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x magical SPR damage", "formulaName":"sprDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
     "summonerSkill":                    {"type":"skill", "id":"0","name":"1x Evoke damage", "formulaName":"summonerSkill", "value": {"type":"damage", "value":{"mecanism":"summonerSkill", "damageType":"mind", "coef":1, "magSplit":0.5, "sprSplit":0.5}}},
 }
 const abbreviations = {
@@ -105,6 +108,10 @@ const abbreviations = {
     "I_EARTH" : "R_EARTH > 100",
     "I_LIGHT" : "R_LIGHT > 100",
     "I_DARK" : "R_DARK > 100",
+    "I_STOP" : "R_STOP > 100",
+    "I_CHARM" : "R_CHARM > 100",
+    "SURVIVING" : "HP > MONSTER_DAMAGE",
+    "MP_TURN" : "MP * MP_REFRESH",
 }
 
 var elementVariablesUsed = [];
@@ -176,7 +183,11 @@ function parseExpression(formula, pos, unit) {
                 return;
             }
         } else if (token.startsWith("CHAIN_MULT(") && token.endsWith(")")) {
-            outputQueue.push({"type":"chainMultiplier", "value":parseFloat(token.substr(11, token.length - 12))});
+            let chainMult = token.substr(11, token.length - 12);
+            if (chainMult != 'MAX') {
+                chainMult = parseFloat(chainMult);
+            }
+            outputQueue.push({"type":"chainMultiplier", "value":chainMult});
         } else if (token == "LB_DAMAGE") {
             outputQueue.push(formulaFromSkill(unit.lb));
         } else if (baseVariables.includes(token)) {
@@ -334,8 +345,10 @@ function popOperator(operatorStack, outputQueue) {
             return false;
         }
         if (value2.type != "constant") {
-            alert("Error. Right part of a " + operator + " must evaluate to a constant.");
-            return false;
+            if (!(value1.type === 'value' && value1.name === 'hp' && value2.type === 'value' && value2.name === 'monsterDamage')) {
+                alert("Error. Right part of a " + operator + " must evaluate to a constant.");
+                return false;
+            }
         }
     } else {
         if (booleanResultOperators.includes(value1.type)) {
@@ -468,6 +481,9 @@ function formulaFromSkill(skill, multicast = false, isLb = false) {
     }
     if (formula) {
         formula = {"type": "skill", "id":skill.id, "name":skill.name, "value":formula, "stack":hasStack, "lb":isLb};
+        if (skill.preventDualCastWithDualWield) {
+            formula.preventDualCastWithDualWield = true;
+        }
     }
     if (canBeGoal || multicast) {
         if (hasStack && !caracts.includes("stack")) {
@@ -519,15 +535,27 @@ function formulaFromEffect(effect, multicast = false) {
         }
     } else if (effect.effect.cooldownSkill) {
         return formulaFromSkill(effect.effect.cooldownSkill, multicast);
+    } else if (effect.effect.berserk) {
+        return {
+            "type": "berserk",
+            "value": effect.effect.berserk.percent,
+            "duration": effect.effect.berserk.duration
+        };
     }
+    
     return null;
 }
 
-function formulaToString(formula, useParentheses = false) {
+function formulaToString(formula, addPrefix = true) {
     if (!formula) {
         return "EMPTY FORMULA";
     }
-    return "Maximize " + innerFormulaToString(formula);
+    let result = "";
+    if (addPrefix) {
+        result += "Maximize ";
+    }
+    result += innerFormulaToString(formula);
+    return result;
 }
 
 function innerFormulaToString(formula, useParentheses = false) {
@@ -635,6 +663,10 @@ function innerGetSimpleConditions(formula, simpleConditions) {
                 } else if (formula.value1.name == "accuracy" && formula.value2.value == 100) {
                     if (!simpleConditions.various.includes("accuracy")) {
                         simpleConditions.various.push("accuracy")
+                    }
+                } else if (formula.value1.name == "drawAttacks" && formula.value2.value == 100) {
+                    if (!simpleConditions.various.includes("drawAttacks")) {
+                        simpleConditions.various.push("drawAttacks")
                     }
                 }
             }
@@ -744,7 +776,6 @@ function isSimpleFormula(formula) {
     switch(formula.type) {
         case "condition":
             return isSimpleFormula(formula.formula) && isSimpleFormula(formula.condition);
-            break;
         case "multicast":
         case "elementCondition":
         case "skill" :
@@ -797,6 +828,26 @@ function isSimpleFormula(formula) {
     }
 }
 
+function isAttackFormula(formula) {
+    switch(formula.type) {
+        case "*":
+        case "+":
+            return isAttackFormula(formula.value1) && isAttackFormula(formula.value2);
+        case "constant":
+            return true;
+        case "skill":
+            return !formula.lb && (
+                formula.formulaName == "physicalDamage"
+            || formula.formulaName == "magicalDamage" 
+            || formula.formulaName == "hybridDamage" 
+            || formula.formulaName == "fixedDamageWithPhysicalMecanism" 
+            || formula.formulaName == "atkDamageWithFixedMecanism" 
+            );
+        default:
+            return false;
+    }
+}
+
 function getSkillIds(formula) {
     if (formula.type == "skill") {
         if (formula.id) {
@@ -824,42 +875,61 @@ function getSkillIds(formula) {
 }
 
 function getMulticastSkillAbleToMulticast(skills, unit) {
-    var passiveAndActives = unit.actives.concat(unit.passives);
-    for (var i = passiveAndActives.length; i--;) {
-        var skill = passiveAndActives[i];
+    var actives = unit.actives;
+    for (var i = actives.length; i--;) {
+        var skill = actives[i];
         var multicastEffect;
         for (var j = skill.effects.length; j--;) {
             if (skill.effects[j].effect && skill.effects[j].effect.multicast) {
                 multicastEffect = skill.effects[j].effect.multicast;
-                break;
-            }
-        }
-        if (multicastEffect && multicastEffect.time == skills.length) {
-            switch(multicastEffect.type) {
-                case "skills":
-                    var possibleSkillIds = multicastEffect.skills.map(x => x.id.toString());
-                    if (skills.every(x => x && possibleSkillIds.includes(x.id))) {
-                        return skill;
-                    }
-                    break;
-                case "magic":
-                    if (skills.every(x => x && x.magic)) {
-                        return skill;
-                    }
-                    break;
-                case "whiteMagic":
-                    if (skills.every(x => x && x.magic == "white")) {
-                        return skill;
-                    }
-                    break;
-                case "blackMagic":
-                    if (skills.every(x => x && x.magic == "black")) {
-                        return skill;
-                    }
-                    break;
+                if (multicaEffectMatch(multicastEffect, skills)) {
+                    return skill;
+                }
             }
         }
     }
+}
+
+function multicaEffectMatch(multicastEffect, skills) {
+    if (multicastEffect.time === skills.length) {
+        switch(multicastEffect.type) {
+            case "skills":
+                var possibleSkillIds = multicastEffect.skills.map(x => x.id.toString());
+                if (skills.every(x => x && possibleSkillIds.includes(x.id))) {
+                    return true;
+                }
+                break;
+            case "magic":
+                if (skills.every(x => x && x.magic)) {
+                    return true;
+                }
+                break;
+            case "whiteMagic":
+                if (skills.every(x => x && x.magic == "white")) {
+                    return true;
+                }
+                break;
+            case "blackMagic":
+                if (skills.every(x => x && x.magic == "black")) {
+                    return true;
+                }
+                break;
+        }
+    }
+    return false;
+}
+
+function hasMulticast(unit) {
+    var actives = unit.actives;
+    for (var i = actives.length; i--;) {
+        var skill = actives[i];
+        for (var j = skill.effects.length; j--;) {
+            if (skill.effects[j].effect && skill.effects[j].effect.multicast) {
+                return true
+            }
+        }
+    }
+    return false;
 }
 
 

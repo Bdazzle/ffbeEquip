@@ -25,7 +25,8 @@ var accessListFilters = [
     { icon: 'chocobo', value: 'chocobo', tooltip: 'items exchanged with fat chocobo or mother chocobo' },
     { icon: 'trial', value: 'trial', tooltip: 'items from trial rewards' },
     { icon: 'unitExclusive', value: 'unitExclusive', tooltip: 'items having an ability exclusive to a specific unit' },
-    { icon: 'premium', value: 'premium', tooltip: 'items from premium (paid) bundles' }
+    { icon: 'premium', value: 'premium', tooltip: 'items from premium (paid) bundles' },
+    { icon: 'darkVision', value: 'darkVision', tooltip: 'items from Dark Vision' }
 ];
 
 var stat;
@@ -36,8 +37,13 @@ var physicalKillers;
 var magicalKillers;
 var accessToRemove;
 var additionalStat;
+var elementsAnd = false;
+var ailmentsAnd = false;
+var killersAnd = false;
 
 var displayId = 0;
+
+var itemList;
 
 // Main function, called at every change. Will read all filters and update the state of the page (including the results)
 var update = function() {
@@ -49,8 +55,8 @@ var update = function() {
     
     if (!onlyShowOwnedItems && stat.length == 0 && searchText.length == 0 && types.length == 0 && elements.length == 0 && ailments.length == 0 && physicalKillers.length == 0 && magicalKillers.length == 0 && accessToRemove.length == 0 && additionalStat.length == 0) {
 		// Empty filters => no results
-        $("#results .tbody").html("");
-        $("#results").addClass("notSorted");
+        $("#resultsContent").html("");
+        $("#resultsContent").addClass("notSorted");
         $("#resultNumber").html("Add filters to see results");
         return;
     }
@@ -63,16 +69,37 @@ var update = function() {
         $("#results").addClass("notSorted");
     }
     
+    
+    var filters = [];
+    if (stat.length > 0) filters.push({type: 'stat', value: stat});
+    if (searchText) filters.push({type: 'text', value: searchText});
+    if (additionalStat.length > 0) filters.push({type: 'stat', value: additionalStat});
+    if (accessToRemove.length > 0) {
+        accessToRemove = accessToRemove.flatMap(a => a.split('/'));
+        let authorizedAccess = accessList.filter(a => !accessToRemove.some(forbiddenAccess => a.startsWith(forbiddenAccess) || a.endsWith(forbiddenAccess)));
+        filters.push(convertValuesToFilter(authorizedAccess, 'access'));
+    }
+    if (magicalKillers.length > 0) filters.push(convertValuesToFilter(magicalKillers, 'magicalKiller', killersAnd ? 'and' : 'or'));
+    if (physicalKillers.length > 0) filters.push(convertValuesToFilter(physicalKillers, 'physicalKiller', killersAnd ? 'and' : 'or'));
+    if (ailments.length > 0) filters.push(convertValuesToFilter(ailments, 'ailment', ailmentsAnd ? 'and' : 'or'));
+    if (elements.length > 0) filters.push(convertValuesToFilter(elements, 'element', elementsAnd ? 'and' : 'or'));
+    if (types.length > 0) filters.push(convertValuesToFilter(types, 'type'));
+    if (onlyShowOwnedItems) filters.push({type: 'onlyOwned'});
+    
+    let filter = andFilters(...filters);
+    
+    let filteredItems = filterItems(data, filter, showNotReleasedYet);
+    filteredItems.forEach(item => calculateValue(item, baseStat, stat, ailments, elements, killers));
+    
 	// filter, sort and display the results
-    displayItems(sort(filter(data, onlyShowOwnedItems, stat, baseStat, searchText, selectedUnitId, 
-                             types, elements, ailments, physicalKillers, magicalKillers, accessToRemove, additionalStat, showNotReleasedYet)));
+    displayItems(sort(filteredItems));
 	
 	// If the text search box was used, highlight the corresponding parts of the results
     $("#results").unmark({
         done: function() {
             if (searchText && searchText.length != 0) {
-                searchText.split(" ").forEach(function (token) {
-                    $("#results").mark(token);
+                getSearchTokens(searchText).forEach(function (token) {
+                    $("#results").mark(token, {separateWordSearch: false});
                 });
             }
         }
@@ -106,7 +133,14 @@ var readFilterValues = function() {
     magicalKillers = getSelectedValuesFor("magicalKillers");
     accessToRemove = getSelectedValuesFor("accessToRemove");
     additionalStat = getSelectedValuesFor("additionalStat");
-    onlyShowOwnedItems = $("#onlyShowOwnedItems").prop('checked');
+    elementsAnd = getSelectedValuesFor("elementsLogicalConnector")[0] === 'and';
+    ailmentsAnd = getSelectedValuesFor("ailmentsLogicalConnector")[0] === 'and';
+    killersAnd = getSelectedValuesFor("killersLogicalConnector")[0] === 'and';
+    if (itemInventory) {
+        onlyShowOwnedItems = $("#onlyShowOwnedItems").prop('checked');
+    } else {
+        onlyShowOwnedItems = false;
+    }
     showNotReleasedYet = $("#showNotReleasedYet").prop('checked');
 }
 
@@ -148,6 +182,21 @@ var modifyUrl = function() {
 			state.baseStats[value] = statValue;
 		}
 	});
+    if (onlyShowOwnedItems) {
+        state.onlyShowOwnedItems = true;
+    }
+    if (showNotReleasedYet) {
+        state.showNotReleasedYet = true;
+    }
+    if (elementsAnd) {
+        state.elementsAnd = true;
+    }
+    if (ailmentsAnd) {
+        state.ailmentsAnd = true;
+    }
+    if (killersAnd) {
+        state.killersAnd = true;
+    }
     window.location.hash = '#' + window.btoa(unescape(encodeURIComponent(JSON.stringify(state))));
 };
 
@@ -177,77 +226,48 @@ var modifyFilterSummary = function() {
 
 // Construct HTML of the results. String concatenation was chosen for rendering speed.
 var displayItems = function(items) {
-    displayId++;
-    var resultDiv = $("#results .tbody");
-    resultDiv.empty();
-    displayItemsAsync(items, 0, resultDiv, displayId);
     $("#resultNumber").html(items.length);
-    $(baseStats).each(function(index, currentStat) {
-        if (additionalStat.length != 0 && !additionalStat.includes(currentStat) && currentStat != stat) {
-            $("#results .tbody .name .detail ." + currentStat).addClass("notSelected");
-        }
-    });
-    $(elementList).each(function(index, resist) {
-        if (elements.length != 0 && !elements.includes(resist)) {
-            $("#results .tbody .special .resist-" + resist).addClass("notSelected");
-        }
-    });
-    $(ailmentList).each(function(index, resist) {
-        if (ailments.length != 0 && !ailments.includes(resist)) {
-            $("#results .tbody .special .resist-" + resist).addClass("notSelected");
-        }
-    });
-    $(killerList).each(function(index, killer) {
-        if (physicalKillers.length == 0 || !physicalKillers.includes(killer)) {
-            $("#results .tbody .special .killer-physical.killer-" + killer).addClass("notSelected");
-        }
-        if (magicalKillers.length == 0 || !magicalKillers.includes(killer)) {
-            $("#results .tbody .special .killer-magical.killer-" + killer).addClass("notSelected");
-        }
-    });
+    itemList.display(items);
+
     if (itemInventory) {
-        $("#results .thead .inventory").removeClass("hidden");
+        $("#resultsContent").addClass("logged");
     } else {
-        $("#results .thead .inventory").addClass("hidden");
+        $("#resultsContent").removeClass("logged");
     }
 };
 
-function displayItemsAsync(items, start, div, id) {
-    var html = '';
-    var end = Math.min(start + 20, items.length);
-    for (var index = start; index < end; index++) {
-        var item = items[index];
-        html += '<div class="tr';
-        if (item.temp) {
-            html += ' userInputed';
+function getItemsHtmls(items) {
+    var htmls = [];
+    
+    items.forEach(item => {
+        htmls.push(getItemHtml(item));
+    });
+    return htmls;
+}
+
+function getItemHtml(item) {
+    let html = '<div class="tr';
+    if (item.temp) {
+        html += ' userInputed';
+    }
+    html += '">';
+    html += displayItemLine(item);
+    if (itemInventory) {
+        html+= '<div class="td inventory ' + escapeName(item.id) + ' ' ;
+        if (!itemInventory[item.id]) {
+            html+= "notPossessed";
         }
         html += '">';
-        html += displayItemLine(item);
-        if (itemInventory) {
-            html+= '<div class="td inventory ' + escapeName(item.id) + ' ' ;
-            if (!itemInventory[item.id]) {
-                html+= "notPossessed";
-            }
-            html += '">';
-            html += '<span class="number badge badge-success">';
-            if (itemInventory[item.id]) {
-                html += itemInventory[item.id];
-            }
-            html += '</span>';
-            
-            html += '</div>';
+        html += '<span class="number badge badge-success">';
+        if (itemInventory[item.id]) {
+            html += itemInventory[item.id];
         }
-        html += "</div>";
+        html += '</span>';
+
+        html += '</div>';
     }
-    
-    if (id == displayId) {
-        div.append(html);
-        if (index < items.length) {
-            setTimeout(displayItemsAsync, 0, items, index, div, id);
-        } else {
-            afterDisplay();
-        }
-    }
+    html += "</div>";
+    return html;
 }
 
 function afterDisplay() {
@@ -357,6 +377,33 @@ function loadHash() {
             select(filter, state[filter]);
         }
     });
+    if (state.onlyShowOwnedItems) {
+        $("#onlyShowOwnedItems").prop('checked', true);
+    }
+    if (state.showNotReleasedYet) {
+        $("#showNotReleasedYet").prop('checked', true);
+    }
+    $("input[name='elementsLogicalConnector']").each(function(index, checkbox) {
+        let check = checkbox.value === 'and' && state.elementsAnd || checkbox.value === 'or' && !state.elementsAnd;
+        $(checkbox).prop('checked', check);
+        if (check) {
+            $(checkbox).parent().addClass('active');
+        }
+    });
+    $("input[name='ailmentsLogicalConnector']").each(function(index, checkbox) {
+        let check = checkbox.value === 'and' && state.ailmentsAnd || checkbox.value === 'or' && !state.ailmentsAnd;
+        $(checkbox).prop('checked', check);
+        if (check) {
+            $(checkbox).parent().addClass('active');
+        }
+    });
+    $("input[name='killersLogicalConnector']").each(function(index, checkbox) {
+        let check = checkbox.value === 'and' && state.killersAnd || checkbox.value === 'or' && !state.killersAnd;
+        $(checkbox).prop('checked', check);
+        if (check) {
+            $(checkbox).parent().addClass('active');
+        }
+    });
 };
 
 // Select on the 'types' filter the provided values that match the selected unit equipable item types
@@ -434,6 +481,7 @@ function startPage() {
             $("#searchText").val('').trigger('input').focus();
         }
     });
+    itemList = new VirtualScroll($('#resultsContent'), getItemHtml, 64);
 	
 	// Triggers on search text box change
     $("#searchText").on("input", $.debounce(300,update));
@@ -441,11 +489,14 @@ function startPage() {
 	// Ajax calls to get the item and units data, then populate unit select, read the url hash and run the first update
     getStaticData("data", true, function(result) {
         data = result;
-        getStaticData("units", true, function(result) {
-            units = result;
-            populateUnitSelect();
-            prepareSearch(data);
-            tryToLoadHash();
+        getStaticData("visionCards", false, function(cards) {
+            addCardsToData(cards, data);
+            getStaticData("units", true, function(result) {
+                units = result;
+                populateUnitSelect();
+                prepareSearch(data);
+                tryToLoadHash();
+            });
         });
     });
 	
@@ -476,7 +527,7 @@ function startPage() {
     $("#results").addClass(server);
     
 	// Triggers on filter selection
-	$('.choice input').change($.debounce(300,update));
+	$('.choice input').change(update);
     
     $(window).on("beforeunload", function () {
         if  (saveNeeded) {

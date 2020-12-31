@@ -37,6 +37,28 @@ const statsProgressionByTypeAndRarity = {
     }
 }
 
+const importIdConversion = {
+    1: "Siren",
+    2: "Ifrit",
+    3: "Shiva",
+    4: "Carbuncle",
+    5: "Diabolos",
+    6: "Golem",
+    7: "Ramuh",
+    8: "Titan",
+    9: "Tetra Sylphid",
+    10: "Odin",
+    11: "Lakshmi",
+    12: "Leviathan",
+    13: "Alexander",
+    14: "Phoenix",
+    15: "Bahamut",
+    16: "Fenrir",
+    17: "Anima",
+    18: "Asura",
+    19: "Black Dragon"
+};
+
 function beforeShow() {
     $("#pleaseWaitMessage").addClass("hidden");
     $("#esper").removeClass("hidden");
@@ -89,7 +111,8 @@ function showAll() {
             html += "<td class='stats mag'><span class='bonus sortValue'>+" +calculateStatBonus(esper.name, 'mag') + "</span> ("+ esper.mag +")</td>";
             html += "<td class='stats spr'><span class='bonus sortValue'>+" +calculateStatBonus(esper.name, 'spr') + "</span> ("+ esper.spr +")</td>";
             html += "<td class='resists'>" + getResistHtml(esper) + "</td>";
-            html += "<td class='killers'>" + getKillersHtml(esper) + "</td>";
+            let killerHtml = getKillerHtml(esper.killers);
+            html += "<td class='killers'><div>" + killerHtml.physical + '</div><div>' + killerHtml.magical + "</div></td>";
 
             html += "</tr>";
         }
@@ -135,7 +158,8 @@ function show(esperName) {
             $(".stats").removeClass("invisible");
             $(".esperOtherStats").removeClass("invisible");
             $("#esperResist").html(getResistHtml(ownedEspers[currentEsper]));
-            $("#esperSkills").html(getKillersHtml(ownedEspers[currentEsper]));
+            let killers = getKillerHtml(ownedEspers[currentEsper].killers);
+            $("#esperSkills").html('<div>' + killers.physical + '</div><div>' + killers.magical + '</div>');
         } else {
             $("#esper .levelLine").addClass("hidden");
             $("#esper .spLine").addClass("hidden");
@@ -296,14 +320,14 @@ function addStats(level, star, esperName) {
 function calculateStatBonus(esperName, baseStat) {
     var ownedEsper = ownedEspers[esperName];
     var statBonusCoef = 1;
-    if (ownedEsper.esperStatsBonus && ownedEsper.esperStatsBonus[baseStat]) {
-        statBonusCoef += ownedEsper.esperStatsBonus[baseStat] / 100;
+    if (ownedEsper.esperStatsBonus && ownedEsper.esperStatsBonus.all[baseStat]) {
+        statBonusCoef += ownedEsper.esperStatsBonus.all[baseStat] / 100;
     }
     return Math.floor(ownedEsper[baseStat] * statBonusCoef / 100);
 }
 
 function addStatsOfSelectedNodes(node, ownedEsper) {
-    var posString = getPositionString(node.position[0], node.position[1]);
+    var posString = getEsperBoardPositionString(node.position[0], node.position[1]);
     if (ownedEsper.selectedSkills.includes(posString)) {
         for (var index = 0; index < baseStats.length; index++) {
             if (node[baseStats[index]]) {
@@ -348,7 +372,7 @@ function calculateSp(level, star, esperName)
 
 function calculateUsedSpNode(node, skills) {
     var cost = 0;
-    var posString = getPositionString(node.position[0], node.position[1]);
+    var posString = getEsperBoardPositionString(node.position[0], node.position[1]);
     if (skills.includes(posString)) {
         cost += node.cost;
         for(var i = 0; i < node.children.length; i++) {
@@ -371,7 +395,7 @@ function getCenterY(node, scale=1) {
 }
 
 function showNode(node, parentNodeHtml, star, scale=1) {
-    var posString = getPositionString(node.position[0], node.position[1]);
+    var posString = getEsperBoardPositionString(node.position[0], node.position[1]);
     var nodeHtml = $("#grid li." + posString + " .hexagon");
     for (var statIndex = 0; statIndex < baseStats.length; statIndex++) {
         if (node[baseStats[statIndex]]) {
@@ -399,18 +423,8 @@ function showNode(node, parentNodeHtml, star, scale=1) {
     if (node.killers) {
         var killer = node.killers[0];
         var html = '<span class="iconHolder">';
-        if (killer.physical) {
-            html+= '<i class="img img-equipment-sword miniIcon physical"></i>';
-        }
-        if (killer.magical) {
-            html+= '<i class="img img-equipment-rod miniIcon magical"></i>';
-        }
-        html += '<img class="icon" src="/img/items/ability_79.png"></img></span><span class="text"><span class="capitalize">' + killer.name + '</span> ';
-        if (killer.physical) {
-            html+= killer.physical + '%';
-        } else {
-            html+= killer.magical + '%';
-        }
+        let killers = getKillerHtml(node.killers);
+        html += killers.physical + killers.magical;
         html+='</span><span class="cost">' + node.cost + ' SP</span>';
         nodeHtml.html(html);
         nodeHtml.addClass("killer");
@@ -512,7 +526,7 @@ function prepareSave() {
 }
 
 function selectNode(x,y) {
-    var posString = getPositionString(x, y);
+    var posString = getEsperBoardPositionString(x, y);
     var path = findPathTo(x,y,esperBoards[currentEsper]);
     if (ownedEspers[currentEsper].selectedSkills.includes(posString)) {
         var node = path[path.length - 1];
@@ -520,7 +534,7 @@ function selectNode(x,y) {
     } else {
         if (path) {
             for (var index = 0; index < path.length; index++) {
-                var posString = getPositionString(path[index].position[0], path[index].position[1]);
+                var posString = getEsperBoardPositionString(path[index].position[0], path[index].position[1]);
                 if (!ownedEspers[currentEsper].selectedSkills.includes(posString)) {
                     ownedEspers[currentEsper].selectedSkills.push(posString);
                     addNodeStatToEsper(ownedEspers[currentEsper], path[index]);
@@ -532,7 +546,8 @@ function selectNode(x,y) {
     updateSp();
     updateStats();
     $("#esperResist").html(getResistHtml(ownedEspers[currentEsper]));
-    $("#esperSkills").html(getKillersHtml(ownedEspers[currentEsper]));
+    let killers = getKillerHtml(ownedEspers[currentEsper].killers)
+    $("#esperSkills").html('<div>' + killers.physical + '</div><div>' + killers.magical + '</div>');
     prepareSave();
 }
 
@@ -574,7 +589,7 @@ function addNodeStatToEsper(esper, node) {
 }
 
 function unselectNodeAndChildren(esper, node) {
-    var posString = getPositionString(node.position[0], node.position[1]);
+    var posString = getEsperBoardPositionString(node.position[0], node.position[1]);
     var index = ownedEspers[currentEsper].selectedSkills.indexOf(posString)
     if (index >= 0) {
         ownedEspers[currentEsper].selectedSkills.splice(index, 1);
@@ -724,18 +739,18 @@ function removeElementalResist(item, resist) {
 
 function addEsperStatsBonus(item, bonus) {
     if (!item.esperStatsBonus) {
-        item.esperStatsBonus = {"hp":0, "mp":0, "atk":0, "def":0, "mag":0, "spr":0};
+        item.esperStatsBonus = {"all":{"hp":0, "mp":0, "atk":0, "def":0, "mag":0, "spr":0}};
     }
     for (var i = 0; i < baseStats.length; i++) {
-        item.esperStatsBonus[baseStats[i]] += bonus[baseStats[i]];
+        item.esperStatsBonus.all[baseStats[i]] += bonus[baseStats[i]];
     }
 }
 function removeEsperStatsBonus(item, bonus) {
     for (var i = 0; i < baseStats.length; i++) {
-        item.esperStatsBonus[baseStats[i]] -= bonus[baseStats[i]];
+        item.esperStatsBonus.all[baseStats[i]] -= bonus[baseStats[i]];
     }
-    if (item.esperStatsBonus.hp == 0 && item.esperStatsBonus.mp == 0 && item.esperStatsBonus.atk == 0 && 
-        item.esperStatsBonus.def == 0 && item.esperStatsBonus.mag == 0 && item.esperStatsBonus.spr == 0) 
+    if (item.esperStatsBonus.all.hp == 0 && item.esperStatsBonus.all.mp == 0 && item.esperStatsBonus.all.atk == 0 && 
+        item.esperStatsBonus.all.def == 0 && item.esperStatsBonus.all.mag == 0 && item.esperStatsBonus.all.spr == 0) 
     {
         delete item.esperStatsBonus;
     }
@@ -781,7 +796,7 @@ function onMouseOverNode(x,y) {
     var path = findPathTo(x,y,esperBoards[currentEsper]);
     if (path) {
         for (var index = 0; index < path.length; index++) {
-            var posString = getPositionString(path[index].position[0], path[index].position[1]);
+            var posString = getEsperBoardPositionString(path[index].position[0], path[index].position[1]);
             $("#grid li." + posString + " .hexagon").addClass("hover");
         }
     }
@@ -865,7 +880,7 @@ function displayEspers() {
             var escapedName = escapeName(espers[index].name);
             console.log(escapedName);
             var owned = ownedEspers[espers[index].name] ? true : false;
-            tabs += "<li class=\"" + escapedName + " " + (!owned ? 'notOwned' : '') +"\" "+
+            tabs += "<li class=\"esper " + escapedName + " " + (!owned ? 'notOwned' : '') +"\" "+
                     "data-esper=\"" + espers[index].name + "\" "+
                     "title=\"" + espers[index].name + (owned ? " (owned)" : " (not owned)") + "\"><a>";
             tabs += "<i class='img img-esper-" + escapedName +"'></i>";
@@ -878,7 +893,7 @@ function displayEspers() {
         var y = Math.trunc(i/9) - 4;
         var x = i % 9 - 4;
         x = x + Math.round(y/2)
-        var posString = getPositionString(x, y);
+        var posString = getEsperBoardPositionString(x, y);
         boardHtml += '<li class="' + posString + '"><div class="hexagon ';
         var dist = distance(x, y);
         if (dist > 4) {
@@ -913,22 +928,6 @@ function distance(x1, y1) {
     return (Math.abs(x1) + Math.abs(x1 - y1) + Math.abs(y1)) / 2;
 }
 
-function getPositionString(x, y) {
-    var posString = "";
-    if (x < 0) {
-        posString += "m" + -x;
-    } else {
-        posString += x;
-    }
-    posString += "_"
-    if (y < 0) {
-        posString += "m" + -y;
-    } else {
-        posString += y;
-    }
-    return posString;
-}
-
 function getPositionFromString(posString) {
     var result = {};
     var tokens = posString.split("_");
@@ -945,43 +944,42 @@ function getPositionFromString(posString) {
     return result;
 }
 
-function notLoaded() {
-    console.log("entering notLoaded function");
-    console.trace();
-    ownedEspers = {};
-    loadLink();
-    
-    if (esperBoards) {
-        displayEspers();
-    }
-    $("#pleaseWaitMessage").addClass("hidden");
-    if (!linkMode) {
-        $("#loginMessage").removeClass("hidden");
-    }
-    $("#inventory").addClass("hidden");
-    console.log("exiting notLoaded function");
-}
-
-function inventoryLoaded() {
-    console.log("entering inventoryLoaded function");
-    console.trace();
-    logged = true;
-    loadLink();
-    if (esperBoards) {
-        displayEspers();
-    }
-    console.log("exiting inventoryLoaded function");
-}
-
 function loadLink() {
     if (window.location.hash.length > 1) {
         console.log("Loading esper link");
         var hashValue = window.location.hash.substr(1);
         
-        try {
-            ownedEspers = JSON.parse(atob(hashValue));
-        } catch (e) {
-            ownedEspers = hashValue;
+        if (decodeURI(hashValue).includes('|')) {
+            let tokens = decodeURI(hashValue).split('|');
+            let esperName = tokens[0].replace('_', ' ');
+            let rarity = parseInt(tokens[1]);
+            let level = parseInt(tokens[2]);
+            let board = tokens[3];
+            let esper = espers.find(esper => esper.id.toUpperCase() == esperName.toUpperCase());
+            if (esper) {
+                ownedEspers = {};
+                ownedEspers[esperName] = JSON.parse(JSON.stringify(esper));
+                ownedEspers[esperName].rarity = rarity;
+                ownedEspers[esperName].level = level; 
+                ownedEspers[esperName].selectedSkills = [];
+                let binary = hex2bin(board);
+                [...binary].forEach((char, index) => {
+                    if (char == '1') {
+                        let coordinate = importBoardConversion[index];
+                        if (coordinate) {
+                            let positionString = getEsperBoardPositionString(coordinate[0], coordinate[1]);
+                            ownedEspers[esperName].selectedSkills.push(positionString);
+                        }
+                    }
+                });
+                ownedEspers[esperName].board = board;
+            }
+        } else {
+            try {
+                ownedEspers = JSON.parse(atob(hashValue));
+            } catch (e) {
+                ownedEspers = hashValue;
+            }    
         }
         
         $('.navbar').addClass("hidden");
@@ -1007,16 +1005,132 @@ function onLevelChange() {
 }
 
 function getPublicEsperLink() {
-    var esperToExport = {};
-    esperToExport[currentEsper] = {
-        "name":ownedEspers[currentEsper].name,
-        "rarity":ownedEspers[currentEsper].rarity,
-        "level":ownedEspers[currentEsper].level,
-        "selectedSkills":ownedEspers[currentEsper].selectedSkills,
+    Modal.showWithBuildLink("Esper build", getEsperLink(ownedEspers[currentEsper]));
+
+}
+
+function importEsper(esperName, rarity, level, board) {
+    currentEsper = esperName;
+    show(esperName);
+    setEsperRarity(rarity);
+    setEsperLevel(level);
+    let binary = hex2bin(board);
+    [...binary].forEach((char, index) => {
+        let coordinate = importBoardConversion[index];
+        if (coordinate) {
+            let positionString = getEsperBoardPositionString(coordinate[0], coordinate[1]);
+            if (char == '1' && !ownedEspers[currentEsper].selectedSkills.includes(positionString)) {
+                selectNode(coordinate[0], coordinate[1]);
+            }
+        }
+    });
+}
+
+function importEspers() {
+    importedEspers = null;
+    Modal.show({
+        title: "Import espers",
+        body: '<p class="label label-danger">This feature is a Work in Progress. It will override your inventory on FFBE Equip</p><br/><br/>' +
+            '<input type="file" id="importFile" name="importFile" onchange="treatImportFile"/><br/>'+
+            '<p><a class="link" href="https://www.reddit.com/r/FFBraveExvius/comments/dd8ljd/ffbe_sync_is_back/">Instructions to import your data directly from the game</a> (require login to FFBE with Facebook or Google)</p><br>' +
+            '<p id="importSummary"></p>',
+        buttons: [{
+            text: "Import",
+            onClick: function() {
+                if (importedEspers) {
+                    $('.glassPanel').removeClass("hidden");
+
+                    setTimeout(function() {
+                        ownedEspers = {};
+                        $("#tabs li.esper").addClass("notOwned");
+                        importedEspers.forEach(esperData => {
+                            importEsper(importIdConversion[esperData.id], parseInt(esperData.rarity), parseInt(esperData.level), esperData.board);
+                        });
+                        showAll();
+                        saveUserData(false, false, true);
+                        $('.glassPanel').addClass("hidden");
+                    }, 200);
+                } else {
+                    Modal.show("Please select a file to import");
+                }
+
+            }
+        }]
+    });
+    $('#importFile').change(treatImportFile);
+}
+
+let importedEspers = null;
+
+function treatImportFile(evt) {
+    var f = evt.target.files[0]; // FileList object
+
+    var reader = new FileReader();
+
+    reader.onload = function(){
+        try {
+            let temporaryResult = JSON.parse(reader.result);
+            var errors = importValidator.validate('espers', temporaryResult);
+
+            // validation was successful
+            if (errors) {
+                Modal.showMessage("imported file doesn't have the correct form : " + JSON.stringify(errors));
+                return;
+            }
+            importedEspers = temporaryResult;
+            $('#importSummary').text('Espers to import : ' + importedEspers.length);
+        } catch(e) {
+            Modal.showError('imported file is not in json format', e);
+        }
+
     };
+    reader.readAsText(f);
 
-    Modal.showWithBuildLink("Esper build", "espers.html?server=" + server + '&o#' + btoa(JSON.stringify(esperToExport)));
+}
 
+function setEsperRarity(rarity) {
+    $("#esper .levelLine").removeClass("hidden");
+    $("#esper .spLine").removeClass("hidden");
+    ownedEspers[currentEsper] = {"name":currentEsper, "id":currentEsper, "rarity":rarity,"selectedSkills":[]};
+    ownedEspers[currentEsper].resist = JSON.parse(JSON.stringify(esperBoards[currentEsper].resist[rarity]));
+    $("#esperResist").html(getResistHtml(ownedEspers[currentEsper]));
+    let killerHtml = getKillerHtml(ownedEspers[currentEsper].killers);
+    $("#esperSkills").html('<div>' + killerHtml.physical + '</div><div>' + killerHtml.magical + '</div>');
+    $("#esperStar").val(rarity);
+    setEsperLevel(maxLevelByStar[rarity]);
+    showBoard(currentEsper, rarity);
+    $(".stats").removeClass("invisible");
+    $(".esperOtherStats").removeClass("invisible");
+    $("#tabs li."+currentEsper).removeClass("notOwned");
+    $("#esper .shareLink").removeClass("hidden");
+}
+
+function inventoryLoaded() {
+    console.log("entering inventoryLoaded function");
+    console.trace();
+    logged = true;
+    if (esperBoards) {
+        $('#importLink').removeClass('hidden');
+        displayEspers();
+    }
+    console.log("exiting inventoryLoaded function");
+}
+
+function notLoaded() {
+    console.log("entering notLoaded function");
+    console.trace();
+    ownedEspers = {};
+
+    if (esperBoards) {
+        loadLink();
+        displayEspers();
+    }
+    $("#pleaseWaitMessage").addClass("hidden");
+    if (!linkMode) {
+        $("#loginMessage").removeClass("hidden");
+    }
+    $("#inventory").addClass("hidden");
+    console.log("exiting notLoaded function");
 }
 
 // will be called by common.js at page load
@@ -1035,6 +1149,7 @@ function startPage() {
         getStaticData("esperBoards", false, function(result) {
             esperBoards = result;
             if (ownedEspers) {
+                loadLink();
                 displayEspers();
             }
         });
@@ -1060,18 +1175,7 @@ function startPage() {
             $("#tabs li."+currentEsper).addClass("notOwned");
             $("#esper .shareLink").addClass("hidden");
         } else {
-            $("#esper .levelLine").removeClass("hidden");
-            $("#esper .spLine").removeClass("hidden");
-            ownedEspers[currentEsper] = {"name":currentEsper, "id":currentEsper, "rarity":parseInt(value),"selectedSkills":[]};
-            ownedEspers[currentEsper].resist = JSON.parse(JSON.stringify(esperBoards[currentEsper].resist[value]));
-            $("#esperResist").html(getResistHtml(ownedEspers[currentEsper]));
-            $("#esperSkills").html(getKillersHtml(ownedEspers[currentEsper]));
-            setEsperLevel(maxLevelByStar[value]);
-            showBoard(currentEsper, parseInt(value));
-            $(".stats").removeClass("invisible");
-            $(".esperOtherStats").removeClass("invisible");
-            $("#tabs li."+currentEsper).removeClass("notOwned");
-            $("#esper .shareLink").removeClass("hidden");
+            setEsperRarity(parseInt(value));
         }
         prepareSave();
     });
@@ -1177,3 +1281,32 @@ function startPage() {
         }
     }));
 }
+
+// create new JJV environment
+let importValidator = jjv();
+
+// Register a `user` schema
+importValidator.addSchema('espers', {
+    type: 'array',
+    maxItems: 20,
+    items: {
+        type: 'object',
+        properties: {
+            id: {
+                type: 'string',
+                maxLength: 2
+            },
+            rarity: {
+                type: 'number'
+            },
+            level: {
+                type: 'number'
+            },
+            board: {
+                type: 'string',
+                maxLength: 40
+            },
+        },
+        required: ['id', 'rarity', 'level', 'board']
+    }
+});

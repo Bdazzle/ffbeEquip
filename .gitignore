@@ -11,9 +11,11 @@ googleOAuth/
 /tools/units.json
 /tools/materia.json
 /tools/unitsWithPassives.json
+tools/GL/sources/
 tools/JP/sources/
 .config.json
 *.log
 static/GL/corrections.json
 static/JP/corrections.json
 static/ffbeEquipNG/
+.idea

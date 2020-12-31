@@ -54,6 +54,7 @@
 
 .skill {
     display: flex;
+    margin-bottom: 10px;
 }
 
 .skill .skillIcon {
@@ -74,12 +75,6 @@
     width: 40px;
 }
 
-.panel-heading .filters {
-    float: right;
-    display: flex;
-    align-items: center;
-}
-
 .nameAndEffects {
     display: flex;
     flex-direction: column;
@@ -90,6 +85,27 @@
 
 .nameAndEffects .name {
     font-weight: bold;
+    font-size: 1.1em;
+}
+
+.mpCostLabel {
+    font-style: italic;
+    opacity: 0.6;
+    margin-left: 2px;
+    font-size: 11px;
+}
+
+.lbCostImg {
+    margin-left: 2px;
+    margin-top: -2px;
+}
+
+.rarityAndLevel, .mpCost {
+    margin-left: 15px;
+}
+
+.spacer {
+    flex-grow: 1;
 }
 
 #results .selected {
@@ -132,7 +148,6 @@
 
 .nameLine {
     display: flex;
-    justify-content: space-between;
 }
 
 .unit .rarity {
@@ -145,6 +160,17 @@
 
 .passives {
     width: 100%;
+    border-radius: 20px;
+    border-left: 1px solid white;
+    margin-left: -20px;
+    padding-left: 20px;
+    position: relative;
+}
+.passives:before {
+    content: 'Passives';
+    position: sticky;
+    top:0;
+    left:0;
 }
 
 .actives {
@@ -162,4 +188,153 @@
 
 .rarity .baseRarity {
     margin-right: 15px;
+}
+
+.effect {
+    position: relative;
+    padding-left: 10px;
+    margin-bottom: 3px;
+    white-space: pre-wrap;
+}
+
+.effect:after {
+    content: '\f111';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    font-family: "Font Awesome 5 Pro";
+    font-weight: bold;
+    font-size: 0.5em;
+}
+
+#results .nameAndEffects .name i.img {
+    width: 28px;
+    height: 28px;
+    margin-top: -3px;
+    margin-right: 2px;
+    margin-left: 2px;
+}
+
+#results .chainFamily {
+    margin-left: 2px;
+    position: relative;
+    padding-left: 16px;
+    color: #333;
+}
+
+#results .chainFamily .bullet {
+    font-size: 1.3em;
+    position: absolute;
+    left: 0;
+    top: -4px;
+}
+
+.strangeStatsUsed {
+    position: relative;
+    padding-left: 12px;
+}
+
+.strangeStatsUsed i {
+    position: absolute;
+    left: -4px;
+    top: 2px;
+}
+
+.strangeStatsUsed .stat, .strangeStatsUsed .monsterStat {
+    font-weight: bold;
+    background-color: #777;
+    border-radius: 4px;
+    padding: 2px;
+    color: white;
+    text-transform: uppercase;
+}
+
+.chainFamily select {
+    width: initial;
+}
+
+.chainFamily .line {
+    display: flex;
+    align-items: center;
+}
+
+.chainFamily .line .title{
+    width: 110px;
+}
+
+.unlockedBy {
+    position: relative;
+    padding-left: 12px;
+}
+
+.unlockedBy i {
+    position: absolute;
+    left: -4px;
+    top: 2px;
+}
+
+.skillGroup {
+    border-radius: 20px;
+    border-left: 1px solid #aaa;
+    margin-left: -27px;
+    padding-left: 27px;
+    position: relative;
+    min-height: 150px;
+}
+
+
+.skillGroup:before {   
+    position: sticky;
+    top: 0;
+    left: 0;
+    text-orientation: upright;
+    writing-mode: tb;
+    text-transform: uppercase;
+    margin-left: -24px;
+    float: left;
+    margin-top: 6px;
+    background-color: lightgray;
+    color: gray;
+    border-radius: 20px;
+    padding: 5px 2px;
+    font-weight: bold;
+    margin-bottom: 7px;
+}
+
+.passives:before {
+    content: 'Passives';
+}
+
+.actives:before {
+    content: 'Actives';
+}
+
+.magics:before {
+    content: 'Magics';
+}
+
+.excludeUnlockedMulticast {
+    margin-left: 10px;
+}
+.excludeUnlockedMulticast label{
+    margin-bottom: 0;
+}
+
+.rarityAndLevel .level {
+    white-space: nowrap;
+}
+
+.threshold {
+    position: relative;
+}
+
+.threshold input {
+    width: 100px;
+    text-align: right;
+}
+
+.threshold i {
+    position: absolute;
+    left: 10px;
+    top: 10px;
 }

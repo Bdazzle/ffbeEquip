@@ -234,6 +234,10 @@
     "204001605" : {"type":"summon","name":"Atoning Dragoon Kain"},
     "204000704" : {"type":"summon","name":"Yang"},
     "204000603" : {"type":"summon","name":"Edward"},
+    "215002005" : {"type":"summon","name":"Crown Prince Noctis"},
+    "215002105" : {"type":"summon","name":"Lunafreya"},
+    "215002804" : {"type":"summon","name":"Kenny Crow"},
+    "207002105" : {"type":"summon","name":"Barret (FFVII REMAKE)"},
     
     "100009204" : {"type":"event","name":"Kupolkan"},
 	"100009304" : {"type":"event","name":"Ashteroze"},
@@ -295,5 +299,6 @@
 	"401002905" : {"type":"event","name":"Ray Jack"},
 	"401003004" : {"type":"event","name":"Barusa"},
 	"401003104" : {"type":"event","name":"Kaliva"},
-	"401003203" : {"type":"event","name":"Toby"}
+	"401003203" : {"type":"event","name":"Toby"},
+    "251000105" : {"type":"event","name":"Tyro"}
 }

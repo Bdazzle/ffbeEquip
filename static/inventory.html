@@ -15,12 +15,14 @@
         <link rel="stylesheet" type="text/css" href="css-img/ailments.css">
         <link rel="stylesheet" type="text/css" href="css-img/sorts.css">
         <link rel="stylesheet" type="text/css" href="css-img/tabs.css">
+        <link rel="stylesheet" type="text/css" href="css-img/killers.css">
 		<link rel="stylesheet" type="text/css" href="common.css">
         <link rel="stylesheet" type="text/css" href="inventory.css">
         <link rel="stylesheet" type="text/css" href="languages.css">
         <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+        <link rel="stylesheet" type="text/css" href="dark-mode.css"/>
     </head>
-    <body>
+    <body class="dark">
         <a href="#" id="scrollToTopButton" style="display: none;" title="Scroll back to the top"><span></span></a>
 
         <div id="header" class="headerJake">
@@ -106,6 +108,13 @@
                 </div>
             </div>
             <div class="headerTopButtons">
+                <div id="themeSelector">
+                    <span class="title">Theme :</span>
+                    <select class="form-control smallSelect">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
                 <div id="languages">
                     <span class="lang lang-sm" lang="en" onclick="switchToLanguage('en')"></span>
                     <span class="lang lang-sm" lang="zh" onclick="switchToLanguage('zh')"></span>
@@ -378,18 +387,33 @@
                 </div>
                 <div class="itemsContent">
                     <div id="inventory">
-                        <div id="exportLinks" class="dropdown">
-                            <a class="dropdown-toggle link" type="button" data-toggle="dropdown">
-                                <span class="glyphicon glyphicon-share-alt"></span>
+                        <div class="linkActions">
+                            <div id="exportLinks" class="dropdown action">
+                                <a class="dropdown-toggle link" type="button" data-toggle="dropdown">
+                                    <span class="glyphicon glyphicon-share-alt"></span>
+                                    <span class="text">
+                                        Export inventory<span class="caret"></span>
+                                    </span>
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="link" onclick="exportAsCsv()"><span class="glyphicon glyphicon-share-alt"></span>Export as CSV</a></li>
+                                    <li><a class="link" onclick="exportAsJson()"><span class="exportAsJson">{ }</span> Export as json</a></li>
+                                </ul>
+                            </div>
+                            <a id="importLink" class="link action" onclick="importInventory();">
+                                <span class="glyphicon glyphicon-save"></span>
                                 <span class="text hidden-xs hidden-sm">
-                                    Export inventory<span class="caret"></span>
+                                    Import inventory
                                 </span>
                             </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="link" onclick="exportAsCsv()"><span class="glyphicon glyphicon-share-alt"></span>Export as CSV</a></li>
-                                <li><a class="link" onclick="exportAsJson()"><span class="exportAsJson">{ }</span> Export as json</a></li>
-                            </ul>
+                            <a id="exportLink" class="link action" href="https://new.reddit.com/r/FFBraveExvius/comments/dd8ljd/ffbe_sync_is_back/" target="_blank">
+                                <span class="glyphicon glyphicon-export"></span>
+                                <span class="text hidden-xs hidden-sm">
+                                        Export your data from the game
+                                    </span>
+                            </a>
                         </div>
+                        
                         
                         <ul class="nav nav-tabs nav-tabs-img">
                             <li class="equipment"  onclick="showEquipments()" title="Show all equipments">
@@ -401,6 +425,12 @@
                             <li class="farmableStmr" onclick="showFarmableStmr()" title="Show obtainable STMR">
                                 <a><img src="/img/units/unit_ills_906000105.png"/></a>
                             </li>
+                            <li class="sellableItems" onclick="showSellableItems()" title="Show sellable items">
+                                <a><img src="/img/icons/gil.png"/></a>
+                            </li>
+                            <li class="enhancementCandidates" onclick="showEnhancementCandidates()" title="Show enhancement candidates">
+                                <a><img src="/img/icons/dwarf.png"/></a>
+                            </li>
                             <li class="history" onclick="showHistory()" title="Show inventory by events">
                                 <a><i class='img img-tab-history tab'></i></a>
                             </li>
@@ -408,18 +438,7 @@
                                 <a><i class='img img-tab-settings tab'></i></a>
                             </li>
                         </ul>
-                        <a id="importLink" class="link" onclick="importInventory();">
-                            <span class="glyphicon glyphicon-save"></span>
-                            <span class="text hidden-xs hidden-sm">
-                                Import inventory
-                            </span>
-                        </a>
-                        <a id="exportLink" class="link" href="https://www.reddit.com/r/FFBraveExvius/comments/asd3ps/ffbe_data_exporter_its_back/?st=jsc28fu2&sh=a61614c2" target="_blank">
-                            <span class="glyphicon glyphicon-export"></span>
-                            <span class="text hidden-xs hidden-sm">
-                                    Export your data from the game
-                                </span>
-                        </a>
+                        
                         <div id="tabsRightData" class='hidden-xs'>
                             <span id="sortType"></span>
                         </div>
@@ -432,11 +451,29 @@
                                             Available <div><img src="/img/units/unit_ills_906000105.png"></div>
                                             <input id="stmrMoogleAvailable" type="number" min="0" step="50" value="0" class="form-control" placeholder="0"/>
                                             %
+                                            
                                             <div class="additionalFilters">
-                                                <div class="checkboxGroup"><input id="onlyTimeLimited" type="checkbox"/><label>Only time limited units</label></div>
+                                                <label class="checkbox-label">
+                                                    <input id="onlyTimeLimited" type="checkbox" class="checkbox"><span></span>
+                                                    Only time limited units
+                                                </label>
                                             </div>
                                         </div>
-                                        
+                                        <div class="sellableItemsHeader" class="hidden">
+                                            <div><i class="fas fa-exclamation-triangle"></i> This is a work in progress</div>
+                                            <div>It displays the items you own, that either can be bought in a shop, or for which you own at least X strictly better items</div>
+                                            <div>Hover on the second number to display the list of better owned items</div>
+                                            <div id="betterItemsNumberDiv"><span>Number of strictly better items required:</span><input id="betterItemsNumber" type="number" min="1" class="form-control" value="4"/></div>
+                                            <label class="checkbox-label">
+                                                <input id="includeRecipeItems" type="checkbox" class="checkbox"><span></span>
+                                                Include recipe items
+                                            </label>
+                                        </div>
+                                        <div class="enhancementCandidatesHeader" class="hidden">
+                                            <div><i class="fas fa-exclamation-triangle"></i> This is a work in progress</div>
+                                            <div>It displays the items you own, not enhanced, that have at most X strictly better item you own, that is, good candidates for Item World</div>
+                                            <div id="enhancementCandidatesSearchDepthDiv"><span>Number max of strictly better items:</span><input id="enhancementCandidatesSearchDepth" type="number" min="0" class="form-control" value="0"/></div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="results" class="">
@@ -478,7 +515,7 @@
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <span class="title item"></span>
+                        <span class="title"></span>
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body">
@@ -487,6 +524,7 @@
                                 <div class="title">Rare</div>
                                 <div class="rareEnhancement value rare_3" onclick="toggleItemEnhancement('rare_3')">HP/ATK +15%</div>
                                 <div class="rareEnhancement value rare_4" onclick="toggleItemEnhancement('rare_4')">HP/ATK +20%</div>
+                                <div class="rareEnhancement value special_1" onclick="toggleItemEnhancement('special_1')">ATK/Fire resist +20%</div>
                             </div>
                             <div class="enhancementType">
                                 <div class="title">HP</div>
@@ -584,9 +622,8 @@
                 </div>
             </div>
         </div>
-
-        <script src="https://code.jquery.com/jquery-3.1.0.min.js"
-                integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
+        <script src="https://kit.fontawesome.com/a68d75f74a.js" crossorigin="anonymous"></script>
+        <script src="lib/jquery-3.1.0.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/mark.js/8.9.1/jquery.mark.min.js"
@@ -603,6 +640,8 @@
         <script src="constants.js"></script>
         <script src="common.js"></script>
         <script src="builder/common.js"></script>
+        <script src="builder/treeComparator.js"></script>
+        <script src="builder/itemPool.js"></script>
 		<script src="inventory.js"></script>
         <script src="googleAnalytics.js"></script>
     </body>

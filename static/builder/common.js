@@ -1,8 +1,4 @@
 const damageFormulaNames = ["physicalDamage","magicalDamage","hybridDamage","jumpDamage","magDamageWithPhysicalMecanism", "sprDamageWithPhysicalMecanism", "defDamageWithPhysicalMecanism", "magDamageWithPhysicalMecanismMultiCast", "sprDamageWithPhysicalMecanismMultiCast", "defDamageWithPhysicalMecanismMultiCast", "atkDamageWithMagicalMecanism", "atkDamageWithMagicalMecanismMulticast", "sprDamageWithMagicalMecanism", "atkDamageWithFixedMecanism", "physicalDamageMultiCast", "fixedDamageWithPhysicalMecanism","summonerSkill"];
-const statsBonusCap = {
-    "GL": 400,
-    "JP": 400
-}
 const operatorsInFormula = ["/","*","+","-","OR","AND",">"];
 const weaponBaseDamageVariance = {
     "dagger" : {"min":0.95,"avg":1,"max":1.05},
@@ -23,6 +19,8 @@ const weaponBaseDamageVariance = {
     "fist" : {"min":1,"avg":1,"max":1},
     "none" : {"min":1,"avg":1,"max":1}
 }
+
+const valuesToNotRoundDown = ["lbPerTurn"];
 
 function getValue(item, valuePath, notStackableSkillsAlreadyUsed) {
     var value = item[valuePath];
@@ -65,7 +63,7 @@ function getValueFromPath(item, valuePath) {
                     }
                 }
             } else {
-                return 0; 
+                return 0;
             }
         } else {
             return 0;
@@ -120,7 +118,8 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             "stack": {
                 "currentStack":unitBuild.baseValues.currentStack,
                 "lastStackingSkillId":"any"
-            }
+            },
+            "killerBuff":{}
         }
         for (var i = 0; i < itemAndPassives.length; i++) {
             if (itemAndPassives[i] && itemAndPassives[i].skillEnhancement) {
@@ -134,10 +133,22 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                 }
             }
         }
+        if (unitBuild.baseValues.killerBuffs && unitBuild.baseValues.killerBuffs.length) {
+            unitBuild.baseValues.killerBuffs.forEach(killerData => {
+                if (killerData.physical)  {
+                    if (!context.killerBuff.physical) context.killerBuff.physical = {};
+                    context.killerBuff.physical[killerData.name] = killerData.physical;
+                }
+                if (killerData.magical)  {
+                    if (!context.killerBuff.magical) context.killerBuff.magical = {};
+                    context.killerBuff.magical[killerData.name] = killerData.magical;
+                }
+            });
+        }
         // Level correction (1+(level/100)) and final multiplier (between 85% and 100%, so 92.5% mean)
         var level;
-        if (unitBuild._level) {
-            level = unitBuild._level;
+        if (unitBuild.level) {
+            level = unitBuild.level;
         } else {
             if (unitBuild.unit.sixStarForm) {
                 level = 100;
@@ -151,7 +162,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             "avg": levelCorrection * 0.925,
             "max": levelCorrection
         }
-        
+
         context.newJpDamageFormulaCoef = 1;
         if (useNewJpDamageFormula) {
             if (itemAndPassives[0] && weaponList.includes(itemAndPassives[0].type) && itemAndPassives[1] && weaponList.includes(itemAndPassives[1].type)) {
@@ -171,7 +182,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             "avg": 0,
             "max": 0,
             "switchWeapons": false
-        }    
+        }
         for (var i = 0, len = formula.skills.length; i < len; i++) {
             var skillValue = innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyStats, formula.skills[i], goalVariance, useNewJpDamageFormula, canSwitchWeapon, ignoreConditions, context);
             result.min += skillValue.min;
@@ -185,7 +196,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
         context.currentSkill = formula.id;
         context.isLb = !!formula.lb;
         var result = innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyStats, formula.value, goalVariance, useNewJpDamageFormula, canSwitchWeapon, ignoreConditions, context);
-        if (context.remainingLeftHandAttacks && context.remainingLeftHandAttacks.length > 0) {
+        if (!formula.preventDualCastWithDualWield && context.remainingLeftHandAttacks && context.remainingLeftHandAttacks.length > 0) {
             context.treatingLeftHandAttacks = true;
             for (var i = 0, len = context.remainingLeftHandAttacks.length; i < len; i++) {
                 var leftHandAttackResult = innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyStats, context.remainingLeftHandAttacks[i], goalVariance, useNewJpDamageFormula, canSwitchWeapon, ignoreConditions, context);
@@ -193,82 +204,83 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                 result.avg += leftHandAttackResult.avg;
                 result.max += leftHandAttackResult.max;
             }
-            context.treatingLeftHandAttacks = false;
-            context.remainingLeftHandAttacks = [];
         }
+        context.treatingLeftHandAttacks = false;
+        context.remainingLeftHandAttacks = [];
         context.currentSkill = null;
         context.isLb = false;
         return result;
     } else if (formula.type == "damage") {
-        
+
         var applicableKillerType = null;
-        
+
         if (!context.savedValues.hasOwnProperty("resistModifier")) {
             var elements = context.imbues;
             if (formula.value.elements) {
                 for (var elementIndex = formula.value.elements.length; elementIndex--;) {
                     if (!elements.includes(formula.value.elements[elementIndex])) {
-                        elements.push(formula.value.elements[elementIndex]);       
+                        elements.push(formula.value.elements[elementIndex]);
                     }
                 }
             };
         }
-        
+
         var variance = {
             "min": 1,
             "avg": 1,
             "max": 1
         }
-        
+
         var statValueToUse = 0;
         var defendingStat = 1;
-        
+
         var dualWielding = itemAndPassives[0] && weaponList.includes(itemAndPassives[0].type) && itemAndPassives[1] && weaponList.includes(itemAndPassives[1].type);
         let newJpDamageFormulaCoef = 1;
         var coef = formula.value.coef;
-        
+
         if (formula.value.mecanism == "physical" || formula.value.mecanism == "hybrid") {
             applicableKillerType = "physical";
-            newJpDamageFormulaCoef = context.newJpDamageFormulaCoef;
-            
+
             if (!context.savedValues.hasOwnProperty("resistModifier")) {
                 // Takes elements from weapons into account
                 if (itemAndPassives[0] && itemAndPassives[0].element) {
                     for (var elementIndex = itemAndPassives[0].element.length; elementIndex--;) {
                         if (!elements.includes(itemAndPassives[0].element[elementIndex])) {
-                            elements.push(itemAndPassives[0].element[elementIndex]);       
+                            elements.push(itemAndPassives[0].element[elementIndex]);
                         }
                     }
                 };
                 if (itemAndPassives[1] && itemAndPassives[1].element) {
                     for (var elementIndex = itemAndPassives[1].element.length; elementIndex--;) {
                         if (!elements.includes(itemAndPassives[1].element[elementIndex])) {
-                            elements.push(itemAndPassives[1].element[elementIndex]);       
+                            elements.push(itemAndPassives[1].element[elementIndex]);
                         }
                     }
                 };
             }
-            
+
             if (formula.value.damageType == "body" || formula.value.mecanism == "hybrid") {
                 defendingStat = "def";
-                
+
+                newJpDamageFormulaCoef = context.newJpDamageFormulaCoef;
+
                 var stat = "atk";
                 if (formula.value.use) {
                     stat = formula.value.use.stat;
                 }
-                
+
                 var calculatedValue = getStatCalculatedValue(context, itemAndPassives, stat, unitBuild);
-                
+
                 if (itemAndPassives[0] && weaponList.includes(itemAndPassives[0].type)) {
                     if (itemAndPassives[0].damageVariance) {
                         variance = itemAndPassives[0].damageVariance;
                     } else {
                         variance = weaponBaseDamageVariance[itemAndPassives[0].type];
-                    }    
+                    }
                 }  else {
                     variance = weaponBaseDamageVariance["none"];
                 }
-                
+
                 var switchWeapons = false;
                 if (canSwitchWeapon && goalVariance && dualWielding) {
                     var variance1;
@@ -277,7 +289,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                             variance1 = itemAndPassives[1].damageVariance;
                         } else {
                             variance1 = weaponBaseDamageVariance[itemAndPassives[1].type];
-                        }    
+                        }
                     }  else {
                         variance1 = weaponBaseDamageVariance["none"];
                     }
@@ -288,10 +300,10 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                         switchWeapons = !switchWeapons
                     }
                     if (switchWeapons) {
-                        variance = variance1;    
+                        variance = variance1;
                     }
                 }
-                
+
                 if (stat == "atk") {
                     if (switchWeapons ? !context.treatingLeftHandAttacks: context.treatingLeftHandAttacks) {
                         // if not switching weapon and treating second attack, or switching weapon and treating first attack, use left hand value
@@ -311,12 +323,12 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                     statValueToUse = getStatCalculatedValue(context, itemAndPassives, "mag", unitBuild).total;
                 }
             }
-            
+
             if (dualWielding && !context.isLb && !context.multicast && (!formula.value.delay || formula.value.jump)) {
                 // Plan for the left hand attack to be calculated later
                 context.remainingLeftHandAttacks.push(formula);
             }
-            
+
         } else if (formula.value.mecanism == "magical") {
             applicableKillerType = "magical";
             if (formula.value.damageType == "mind") {
@@ -333,11 +345,11 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                         }
                     }
                 } else {
-                    statValueToUse = getStatCalculatedValue(context, itemAndPassives, "mag", unitBuild).total;   
+                    statValueToUse = getStatCalculatedValue(context, itemAndPassives, "mag", unitBuild).total;
                 }
             } else {
                 defendingStat = "def";
-                statValueToUse = getStatCalculatedValue(context, itemAndPassives, "atk", unitBuild).right;   
+                statValueToUse = getStatCalculatedValue(context, itemAndPassives, "atk", unitBuild).right;
             }
         } else if(formula.value.mecanism == "summonerSkill"){
             defendingStat= "spr";
@@ -388,7 +400,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                 context.savedValues.killerMultiplicator[applicableKillerType] = killerMultiplicator;
             }
         }
-        
+
         // Element weakness/resistance
         var resistModifier;
         if (context.savedValues.hasOwnProperty("resistModifier")) {
@@ -397,13 +409,35 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             resistModifier = Math.max(1 - getElementCoef(elements, ennemyStats), 0);
             context.savedValues.resistModifier = resistModifier;
         }
-                
-        
+
+        let weaponImperilCoef;
+        if (context.savedValues.hasOwnProperty("weaponImperilCoef")) {
+            weaponImperilCoef = context.savedValues.weaponImperilCoef;
+        } else {
+            weaponImperilCoef = getWeaponImperilCoef(itemAndPassives[0], itemAndPassives[1], ennemyStats);
+            context.savedValues.weaponImperilCoef = weaponImperilCoef;
+        }
+
+
+        let elementBoostModifier;
+        if (context.savedValues.hasOwnProperty("elementBoostModifier")) {
+            elementBoostModifier = context.savedValues.hasOwnProperty("elementBoostModifier");
+        } else {
+            if (elements.length) {
+                elementBoostModifier = 1 + elements.map(e => unitBuild.baseValues.elementBuffs[e] || 0).reduce((acc, value) => acc + value, 0)/ 100 / elements.length;
+            } else {
+                elementBoostModifier = 1;
+            }
+            context.savedValues.elementBoostModifier = elementBoostModifier;
+        }
+
+
+
         var jumpMultiplier = 1;
         if (formula.value.jump) {
             jumpMultiplier += getStatCalculatedValue(context, itemAndPassives, "jumpDamage", unitBuild).total/100;
         }
-        
+
 
         if (formula.value.ifUsedAgain && ennemyStats.races.includes(formula.value.ifUsedAgain.race)) {
             coef = formula.value.ifUsedAgain.coef;
@@ -422,38 +456,42 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                 context.stack.lastStackingSkillId = context.currentSkill;
             }
         }
-        
+
         var lbMultiplier = 1;
         if (context.isLb) {
             lbMultiplier += getStatCalculatedValue(context, itemAndPassives, "lbDamage", unitBuild).total/100;
         }
-        
+
         var evoMagMultiplier = 1;
         if (unitBuild.involvedStats.includes("evoMag")) {
             evoMagMultiplier += getStatCalculatedValue(context, itemAndPassives, "evoMag", unitBuild).total/100;
         }
-        
+        var evokeDamageBoostMultiplier = 1;
+        if (unitBuild.involvedStats.includes("evokeDamageBoost.all")) {
+            evokeDamageBoostMultiplier += getStatCalculatedValue(context, itemAndPassives, "evokeDamageBoost.all", unitBuild).total/100;
+        }
+
         var defendingStatValue = ennemyStats[defendingStat];
         if (formula.value.ignore && formula.value.ignore[defendingStat]) {
             defendingStatValue = defendingStatValue * (1 - formula.value.ignore[defendingStat]/100);
         }
-        
-        var baseDamage = coef * (statValueToUse * statValueToUse) * evoMagMultiplier * resistModifier * killerMultiplicator * jumpMultiplier * lbMultiplier * newJpDamageFormulaCoef / (defendingStatValue  * (1 + (ennemyStats.buffs[defendingStat] - ennemyStats.breaks[defendingStat]) / 100));
+
+        var baseDamage = coef * (statValueToUse * statValueToUse) * evoMagMultiplier * evokeDamageBoostMultiplier * resistModifier * weaponImperilCoef * elementBoostModifier * killerMultiplicator * jumpMultiplier * lbMultiplier * newJpDamageFormulaCoef / (defendingStatValue  * (1 + (ennemyStats.buffs[defendingStat] - ennemyStats.breaks[defendingStat]) / 100));
         if (formula.value.mecanism == "hybrid") {
             var magStat = getStatCalculatedValue(context, itemAndPassives, "mag", unitBuild).total;
-            var magDamage = coef * (magStat * magStat) * resistModifier * killerMultiplicator * newJpDamageFormulaCoef / (ennemyStats.spr * (1 + (ennemyStats.buffs.spr - ennemyStats.breaks.spr) / 100));
-            
+            var magDamage = coef * (magStat * magStat) * resistModifier * weaponImperilCoef * elementBoostModifier * killerMultiplicator / (ennemyStats.spr * (1 + (ennemyStats.buffs.spr - ennemyStats.breaks.spr) / 100));
+
             result = {
                 "min": (baseDamage * variance.min + magDamage) * context.damageMultiplier.min / 2,
                 "avg": (baseDamage * variance.avg + magDamage) * context.damageMultiplier.avg / 2,
                 "max": (baseDamage * variance.max + magDamage) * context.damageMultiplier.max / 2,
                 "switchWeapons": switchWeapons
-            }   
+            }
         } else if(formula.value.mecanism == "summonerSkill"){
             if (formula.value.sprSplit > 0) {
                 var sprStat = getStatCalculatedValue(context, itemAndPassives, "spr", unitBuild).total;
                 let coefIncrease = coef - formula.value.magCoef;
-                var sprDamage = (formula.value.sprCoef + coefIncrease) * (sprStat * sprStat) * evoMagMultiplier * resistModifier * newJpDamageFormulaCoef / (ennemyStats.spr * (1 + (ennemyStats.buffs.spr - ennemyStats.breaks.spr) / 100));
+                var sprDamage = (formula.value.sprCoef + coefIncrease) * (sprStat * sprStat) * evoMagMultiplier * evokeDamageBoostMultiplier * weaponImperilCoef * resistModifier * elementBoostModifier / (ennemyStats.spr * (1 + (ennemyStats.buffs.spr - ennemyStats.breaks.spr) / 100));
             } else {
                 sprDamage = 0;
             }
@@ -469,18 +507,29 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                 "avg": baseDamage * context.damageMultiplier.avg * variance.avg,
                 "max": baseDamage * context.damageMultiplier.max * variance.max,
                 "switchWeapons": switchWeapons
-            }    
+            }
         }
-        
-
         return result
-               
+
     } else if (formula.type == "value") {
         if (context.alreadyCalculatedValues[formula.name]) {
             return context.alreadyCalculatedValues[formula.name];
         }
         if (damageFormulaNames.includes(formula.name)) {
-            var cumulatedKillerByRace = {'aquatic':0,'beast':0,'bird':0,'bug':0,'demon':0,'dragon':0,'human':0,'machine':0,'plant':0,'undead':0,'stone':0,'spirit':0};
+            var cumulatedKillerByRace = {
+                'aquatic': 0,
+                'beast': 0,
+                'bird': 0,
+                'bug': 0,
+                'demon': 0,
+                'dragon': 0,
+                'human': 0,
+                'machine': 0,
+                'plant': 0,
+                'undead': 0,
+                'stone': 0,
+                'spirit': 0
+            };
             var cumulatedKiller = 0;
             var applicableKillerType = null;
             if (unitBuild.involvedStats.includes("physicalKiller")) {
@@ -495,7 +544,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                             var killer = itemAndPassives[equipedIndex].killers[killerIndex];
                             if (ennemyStats.races.includes(killer.name) && killer[applicableKillerType]) {
                                 cumulatedKillerByRace[killer.name] = Math.min(300, cumulatedKillerByRace[killer.name] + killer[applicableKillerType]);
-                                
+
                             }
                         }
                     }
@@ -513,45 +562,58 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                 if (itemAndPassives[0] && itemAndPassives[0].element) {
                     for (var elementIndex = itemAndPassives[0].element.length; elementIndex--;) {
                         if (!elements.includes(itemAndPassives[0].element[elementIndex])) {
-                            elements.push(itemAndPassives[0].element[elementIndex]);       
+                            elements.push(itemAndPassives[0].element[elementIndex]);
                         }
                     }
-                };
+                }
+                ;
                 if (itemAndPassives[1] && itemAndPassives[1].element) {
                     for (var elementIndex = itemAndPassives[1].element.length; elementIndex--;) {
                         if (!elements.includes(itemAndPassives[1].element[elementIndex])) {
-                            elements.push(itemAndPassives[1].element[elementIndex]);       
+                            elements.push(itemAndPassives[1].element[elementIndex]);
                         }
                     }
-                };
+                }
+                ;
             }
             var resistModifier = getElementCoef(elements, ennemyStats);
+
+            let elementBoostModifier;
+            if (elements.length) {
+                elementBoostModifier = 1 + elements.map(e => unitBuild.baseValues.elementBuffs[e] || 0).reduce((acc, value) => acc + value, 0) / elements.length;
+            } else {
+                elementBoostModifier = 1;
+            }
 
             // Killers
             var killerMultiplicator = 1;
             if (ennemyStats.races.length > 0) {
                 killerMultiplicator += (cumulatedKiller / 100) / ennemyStats.races.length;
             }
-            
+
             var jumpMultiplier = 1;
             if (unitBuild.involvedStats.includes("jumpDamage")) {
-                jumpMultiplier += calculateStatValue(itemAndPassives, "jumpDamage", unitBuild).total/100;
+                jumpMultiplier += calculateStatValue(itemAndPassives, "jumpDamage", unitBuild).total / 100;
             }
-            
+
             var evoMagMultiplier = 1;
             if (unitBuild.involvedStats.includes("evoMag")) {
-                evoMagMultiplier += calculateStatValue(itemAndPassives, "evoMag", unitBuild).total/100;
+                evoMagMultiplier += calculateStatValue(itemAndPassives, "evoMag", unitBuild).total / 100;
+            }
+            var evokeDamageBoostMultiplier = 1;
+            if (unitBuild.involvedStats.includes("evokeDamageBoost.all")) {
+                evokeDamageBoostMultiplier += getStatCalculatedValue(context, itemAndPassives, "evokeDamageBoost.all", unitBuild).total / 100;
             }
 
             let lbMultiplier = 1;
             if (formula.lb) {
-                lbMultiplier += getStatCalculatedValue(context, itemAndPassives, "lbDamage", unitBuild).total/100;
+                lbMultiplier += getStatCalculatedValue(context, itemAndPassives, "lbDamage", unitBuild).total / 100;
             }
 
             // Level correction (1+(level/100)) and final multiplier (between 85% and 100%, so 92.5% mean)
             var level;
-            if (unitBuild._level) {
-                level = unitBuild._level;
+            if (unitBuild.level) {
+                level = unitBuild.level;
             } else {
                 if (unitBuild.unit.sixStarForm) {
                     level = 100;
@@ -559,17 +621,17 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                     level = (unitBuild.unit.max_rarity - 1) * 20;
                 }
             }
-            var levelCorrection = (1 + (level/100));
+            var levelCorrection = (1 + (level / 100));
             var damageMultiplier = {
                 "min": levelCorrection * 0.85,
                 "avg": levelCorrection * 0.925,
                 "max": levelCorrection
             }
-            
+
             var total = {
-                "min":0,
-                "avg":0,
-                "max":0,
+                "min": 0,
+                "avg": 0,
+                "max": 0,
                 "switchWeapons": false
             };
             var value;
@@ -584,7 +646,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             } else {
                 for (var statIndex = goalValuesCaract[formula.name].statsToMaximize.length; statIndex--;) {
                     var stat = goalValuesCaract[formula.name].statsToMaximize[statIndex];
-                    var calculatedValue = calculateStatValue(itemAndPassives, stat, unitBuild);
+                    var calculatedValue = calculateStatValue(itemAndPassives, stat, unitBuild, context.berserk);
 
                     if ("atk" == stat || "def" == stat) {
                         var variance;
@@ -594,12 +656,12 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                                 variance = itemAndPassives[0].damageVariance;
                             } else {
                                 variance = weaponBaseDamageVariance[itemAndPassives[0].type];
-                            }    
-                        }  else {
+                            }
+                        } else {
                             variance = weaponBaseDamageVariance["none"];
                         }
 
-                        if (goalVariance && 
+                        if (goalVariance &&
                             itemAndPassives[0] && weaponList.includes(itemAndPassives[0].type) &&
                             itemAndPassives[1] && weaponList.includes(itemAndPassives[1].type)) {
                             var variance1;
@@ -608,8 +670,8 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                                     variance1 = itemAndPassives[1].damageVariance;
                                 } else {
                                     variance1 = weaponBaseDamageVariance[itemAndPassives[1].type];
-                                }    
-                            }  else {
+                                }
+                            } else {
                                 variance1 = weaponBaseDamageVariance["none"];
                             }
 
@@ -621,20 +683,20 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                                 }
                                 calculatedValue.left = 0;
                             } else {
-                                switchWeapons = canSwitchWeapon && ((variance[goalVariance] < variance1[goalVariance]) || (stat == "atk" && (variance[goalVariance] == variance1[goalVariance]) && itemAndPassives[0].atk > itemAndPassives[1].atk)) ;
+                                switchWeapons = canSwitchWeapon && ((variance[goalVariance] < variance1[goalVariance]) || (stat == "atk" && (variance[goalVariance] == variance1[goalVariance]) && itemAndPassives[0].atk > itemAndPassives[1].atk));
                                 if (switchWeapons) {
                                     variance = variance1;
                                     var tmp = calculatedValue.left;
                                     calculatedValue.left = calculatedValue.right;
                                     calculatedValue.right = tmp;
-                                }    
+                                }
                             }
                         } else {
                             if (goalValuesCaract[formula.name].type == "none" || formula.name == "physicalDamageMultiCast") {
                                 calculatedValue.left = 0;
                             }
                         }
-                        
+
                         newJpDamageFormulaCoef = 1;
                         if (useNewJpDamageFormula) {
                             if (itemAndPassives[0] && weaponList.includes(itemAndPassives[0].type) && itemAndPassives[1] && weaponList.includes(itemAndPassives[1].type)) {
@@ -647,7 +709,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                             }
                         }
                         var ennemyResistanceStat = ennemyStats.def * (1 - ennemyStats.breaks.def / 100);
-                        let base = (calculatedValue.right * calculatedValue.right + calculatedValue.left * calculatedValue.left) * (1 - resistModifier) * killerMultiplicator * jumpMultiplier * lbMultiplier  * newJpDamageFormulaCoef / ennemyResistanceStat;
+                        let base = (calculatedValue.right * calculatedValue.right + calculatedValue.left * calculatedValue.left) * (1 - resistModifier) * killerMultiplicator * jumpMultiplier * lbMultiplier * newJpDamageFormulaCoef / ennemyResistanceStat;
                         total.min += base * damageMultiplier.min * variance.min;
                         total.avg += base * damageMultiplier.avg * variance.avg;
                         total.max += base * damageMultiplier.max * variance.max;
@@ -658,7 +720,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
                         if (goalValuesCaract[formula.name].type == "physical" && !goalValuesCaract[formula.name].multicast && itemAndPassives[0] && itemAndPassives[1] && weaponList.includes(itemAndPassives[0].type) && weaponList.includes(itemAndPassives[1].type)) {
                             dualWieldCoef = 2;
                         }
-                        var base = (calculatedValue.total * calculatedValue.total) * (1 - resistModifier) * killerMultiplicator * dualWieldCoef * jumpMultiplier * evoMagMultiplier * lbMultiplier / ennemyResistanceStat;
+                        var base = (calculatedValue.total * calculatedValue.total) * (1 - resistModifier) * elementBoostModifier * killerMultiplicator * dualWieldCoef * jumpMultiplier * evoMagMultiplier * evokeDamageBoostMultiplier * lbMultiplier / ennemyResistanceStat;
                         total.min += base * damageMultiplier.min;
                         total.avg += base * damageMultiplier.avg;
                         total.max += base * damageMultiplier.max;
@@ -673,8 +735,10 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             }
             context.alreadyCalculatedValues[formula.name] = value;
             return value
+        } else if (formula.name === 'monsterDamage') {
+            return calculateMonsterDamage(ennemyStats.monsterAttack, itemAndPassives, unitBuild, ennemyStats, context)
         } else {
-            var value = calculateStatValue(itemAndPassives, formula.name, unitBuild).total;
+            var value = calculateStatValue(itemAndPassives, formula.name, unitBuild, context.berserk).total;
             if (formula.name == "mpRefresh") {
                 value /= 100;
             }
@@ -686,7 +750,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             }
             context.alreadyCalculatedValues[formula.name] = result;
             return result;
-        }   
+        }
     } else if(formula.type=="heal"){
         var sprStat=getStatCalculatedValue(context, itemAndPassives,"spr", unitBuild).total/2;
         var magStat = getStatCalculatedValue(context, itemAndPassives, "mag", unitBuild).total/10;
@@ -709,14 +773,27 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             "avg": formula.value,
             "max": formula.value,
             "switchWeapons": false
-        };  
+        };
     } else if (formula.type == "chainMultiplier") {
-        return {
-            "min": formula.value,
-            "avg": formula.value,
-            "max": formula.value,
-            "switchWeapons": false
-        };  
+        if (formula.value === 'MAX') {
+            let chainMult = 4;
+            if (unitBuild.hasDualWieldMastery() && itemAndPassives[0] && itemAndPassives[1] && weaponList.includes(itemAndPassives[1].type)) {
+                chainMult = 6;
+            }
+            return {
+                "min": chainMult,
+                "avg": chainMult,
+                "max": chainMult,
+                "switchWeapons": false
+            };
+        } else {
+            return {
+                "min": formula.value,
+                "avg": formula.value,
+                "max": formula.value,
+                "switchWeapons": false
+            };
+        }
     } else if (operatorsInFormula.includes(formula.type)) {
         var result1 = innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyStats, formula.value1, goalVariance, useNewJpDamageFormula, canSwitchWeapon, ignoreConditions, context);
         if (formula.type == "OR") {
@@ -817,6 +894,17 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             "max": 0,
             "switchWeapons": false
         };
+    } else if (formula.type == "berserk") {
+        if (!context.berserk || context.berserk < formula.value) {
+            context.berserk = formula.value;
+            delete context.savedValues.atk;
+        }
+        return {
+            "min": 0,
+            "avg": 0,
+            "max": 0,
+            "switchWeapons": false
+        };
     } else if (formula.type == "break") {
         if (formula.value.def && ennemyStats.breakability.def) {
             if (ennemyStats.breaks.def < formula.value.def) {
@@ -857,7 +945,7 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
             }
         }
         context.savedValues.killerMultiplicator = {};
-        
+
         return {
             "min": 0,
             "avg": 0,
@@ -897,19 +985,19 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
         if (itemAndPassives[0] && itemAndPassives[0].element) {
             for (var elementIndex = itemAndPassives[0].element.length; elementIndex--;) {
                 if (!elements.includes(itemAndPassives[0].element[elementIndex])) {
-                    elements.push(itemAndPassives[0].element[elementIndex]);       
+                    elements.push(itemAndPassives[0].element[elementIndex]);
                 }
             }
         };
         if (itemAndPassives[1] && itemAndPassives[1].element) {
             for (var elementIndex = itemAndPassives[1].element.length; elementIndex--;) {
                 if (!elements.includes(itemAndPassives[1].element[elementIndex])) {
-                    elements.push(itemAndPassives[1].element[elementIndex]);       
+                    elements.push(itemAndPassives[1].element[elementIndex]);
                 }
             }
         };
         if (formula.element == "none") {
-            return elements.length == 0; 
+            return elements.length == 0;
         } else {
             if (elements.length == 0 || !elements.includes(formula.element)) {
                 return false;
@@ -927,18 +1015,157 @@ function innerCalculateBuildValueWithFormula(itemAndPassives, unitBuild, ennemyS
     }
 }
 
+function calculateMonsterDamage(monsterAttackFormula, itemAndPassives, unitBuild, ennemyStats, context = {}) {
+    let result1, result2, atk, mag, def, spr, baseValue, mitigation;
+    switch (monsterAttackFormula.type) {
+        case '+':
+            result1 = calculateMonsterDamage(monsterAttackFormula.value1, itemAndPassives, unitBuild, ennemyStats, context);
+            result2 = calculateMonsterDamage(monsterAttackFormula.value2, itemAndPassives, unitBuild, ennemyStats, context);
+            return {
+                "min": result1.min + result2.min,
+                "avg": result1.avg + result2.avg,
+                "max": result1.max + result2.max,
+                "switchWeapons": result1.switchWeapons || result2.switchWeapons
+            };
+        case '*':
+            result1 = calculateMonsterDamage(monsterAttackFormula.value1, itemAndPassives, unitBuild, ennemyStats, context);
+            result2 = calculateMonsterDamage(monsterAttackFormula.value2, itemAndPassives, unitBuild, ennemyStats, context);
+            return {
+                "min": result1.min * result2.min,
+                "avg": result1.avg * result2.avg,
+                "max": result1.max * result2.max,
+                "switchWeapons": result1.switchWeapons || result2.switchWeapons
+            };
+        case 'constant':
+            return {
+                "min": monsterAttackFormula.value,
+                "avg": monsterAttackFormula.value,
+                "max": monsterAttackFormula.value,
+                "switchWeapons": false
+            };
+        case 'skill':
+            switch (monsterAttackFormula.formulaName) {
+                case 'physicalDamage':
+                    if (context.alreadyCalculatedValues && context.alreadyCalculatedValues['def']) {
+                        def = context.alreadyCalculatedValues['def'];
+                    } else {
+                        def = calculateStatValue(itemAndPassives, 'def', unitBuild, context.berserk).total
+                    }
+                    atk = ennemyStats.atk * (1 + ennemyStats.buffs.atk/100 - ennemyStats.breaks.atk/100);
+                    mitigation = 1;
+                    if (unitBuild.unit.mitigation && unitBuild.unit.mitigation.physical) {
+                        mitigation = (1 - (unitBuild.unit.mitigation.physical / 100));
+                    }
+                    if (unitBuild.baseValues["mitigation"]) {
+                        mitigation = mitigation * (1 - (unitBuild.baseValues["mitigation"].global / 100)) * (1 - (unitBuild.baseValues["mitigation"].physical / 100));
+                    }
+                    baseValue = atk * atk / def * mitigation;
+                    return {
+                        "min": baseValue,
+                        "avg": baseValue,
+                        "max": baseValue,
+                        "switchWeapons": false
+                    };
+                case 'magicalDamage':
+                    if (context.alreadyCalculatedValues && context.alreadyCalculatedValues['spr']) {
+                        spr = context.alreadyCalculatedValues['spr'];
+                    } else {
+                        spr = calculateStatValue(itemAndPassives, 'spr', unitBuild, context.berserk).total
+                    }
+                    mag = ennemyStats.mag * (1 + ennemyStats.buffs.mag/100 - ennemyStats.breaks.mag/100);
+                    mitigation = 1;
+                    if (unitBuild.unit.mitigation && unitBuild.unit.mitigation.magical) {
+                        mitigation = (1 - (unitBuild.unit.mitigation.magical / 100));
+                    }
+                    if (unitBuild.baseValues["mitigation"]) {
+                        mitigation = mitigation * (1 - (unitBuild.baseValues["mitigation"].global / 100)) * (1 - (unitBuild.baseValues["mitigation"].magical / 100));
+                    }
+                    baseValue = mag * mag / spr * mitigation;
+                    return {
+                        "min": baseValue,
+                        "avg": baseValue,
+                        "max": baseValue,
+                        "switchWeapons": false
+                    };
+                case 'hybridDamage':
+                    if (context.alreadyCalculatedValues && context.alreadyCalculatedValues['def']) {
+                        def = context.alreadyCalculatedValues['def'];
+                    } else {
+                        def = calculateStatValue(itemAndPassives, 'def', unitBuild, context.berserk).total
+                    }
+                    atk = ennemyStats.atk * (1 + ennemyStats.buffs.atk/100 - ennemyStats.breaks.atk/100);
+                    mitigation = 1;
+                    if (unitBuild.unit.mitigation && unitBuild.unit.mitigation.physical) {
+                        mitigation = (1 - (unitBuild.unit.mitigation.physical / 100));
+                    }
+                    if (unitBuild.baseValues["mitigation"]) {
+                        mitigation = mitigation * (1 - (unitBuild.baseValues["mitigation"].global / 100)) * (1 - (unitBuild.baseValues["mitigation"].physical / 100));
+                    }
+                    baseValue = atk * atk / def * mitigation;
+                    if (context.alreadyCalculatedValues && context.alreadyCalculatedValues['spr']) {
+                        spr = context.alreadyCalculatedValues['spr'];
+                    } else {
+                        spr = calculateStatValue(itemAndPassives, 'spr', unitBuild, context.berserk).total
+                    }
+                    mag = ennemyStats.mag * (1 + ennemyStats.buffs.mag/100 - ennemyStats.breaks.mag/100);
+                    mitigation = 1;
+                    if (unitBuild.unit.mitigation && unitBuild.unit.mitigation.magical) {
+                        mitigation = (1 - (unitBuild.unit.mitigation.magical / 100));
+                    }
+                    if (unitBuild.baseValues["mitigation"]) {
+                        mitigation = mitigation * (1 - (unitBuild.baseValues["mitigation"].global / 100)) * (1 - (unitBuild.baseValues["mitigation"].magical / 100));
+                    }
+                    baseValue += mag * mag / spr * mitigation;
+
+                    baseValue = baseValue/2;
+                    return {
+                        "min": baseValue,
+                        "avg": baseValue,
+                        "max": baseValue,
+                        "switchWeapons": false
+                    };
+                case 'fixedDamageWithPhysicalMecanism':
+                    baseValue = 1;
+                    return {
+                        "min": baseValue,
+                        "avg": baseValue,
+                        "max": baseValue,
+                        "switchWeapons": false
+                    };
+                case 'atkDamageWithFixedMecanism':
+                    if (context.alreadyCalculatedValues['def']) {
+                        def = context.alreadyCalculatedValues['def'];
+                    } else {
+                        def = calculateStatValue(itemAndPassives, 'def', unitBuild, context.berserk).total
+                    }
+                    atk = ennemyStats.atk * (1 + ennemyStats.buffs.atk/100 - ennemyStats.breaks.atk/100);
+                    mitigation = 1;
+                    if (unitBuild.baseValues["mitigation"]) {
+                        mitigation = mitigation * (1 - (unitBuild.baseValues["mitigation"].global / 100));
+                    }
+                    baseValue = atk * atk / def * mitigation;
+                    return {
+                        "min": baseValue,
+                        "avg": baseValue,
+                        "max": baseValue,
+                        "switchWeapons": false
+                    };
+            }
+    }
+}
+
 function getStatCalculatedValue(context, itemAndPassives, stat, unitBuild) {
     if (context.savedValues[stat]) {
         return context.savedValues[stat];
     } else {
-        var result = calculateStatValue(itemAndPassives, stat, unitBuild);
+        var result = calculateStatValue(itemAndPassives, stat, unitBuild, context.berserk);
         context.savedValues[stat] = result;
         return result;
     }
 }
-    
 
-function getEquipmentStatBonus(itemAndPassives, stat, doCap = true, tdwCap = 2) {
+
+function getEquipmentStatBonus(itemAndPassives, stat, doCap = true) {
     if ((baseStats.includes(stat) || stat == "accuracy") && itemAndPassives[0] && weaponList.includes(itemAndPassives[0].type)) {
         let normalStack = 0;
         let twoHanded = isTwoHanded(itemAndPassives[0]);
@@ -954,7 +1181,7 @@ function getEquipmentStatBonus(itemAndPassives, stat, doCap = true, tdwCap = 2) 
                 }
                 if (dualWield && item.dualWielding && item.dualWielding[stat]) {
                     if (doCap) {
-                        normalStack = Math.min(normalStack  + item.dualWielding[stat] / 100, tdwCap);
+                        normalStack = Math.min(normalStack  + item.dualWielding[stat] / 100, getStatBonusCap('tdw')/100);
                     } else {
                         normalStack += item.dualWielding[stat] / 100;
                     }
@@ -962,7 +1189,7 @@ function getEquipmentStatBonus(itemAndPassives, stat, doCap = true, tdwCap = 2) 
             }
         }
         if (doCap) {
-            return 1 + Math.min(3, normalStack);
+            return 1 + Math.min(getStatBonusCap('tdh')/100, normalStack);
         } else {
             return 1 + normalStack;
         }
@@ -971,69 +1198,79 @@ function getEquipmentStatBonus(itemAndPassives, stat, doCap = true, tdwCap = 2) 
     }
 }
 
-function getEsperStatBonus(itemAndPassives, stat) {
+function getEsperStatBonus(itemAndPassives, stat, esper) {
     var statsBonus = 100;
     if (baseStats.includes(stat)) {
         for (var index = itemAndPassives.length; index--;) {
             var item = itemAndPassives[index];
-            if (item && item.esperStatsBonus && item.esperStatsBonus[stat]) {
-                statsBonus += item.esperStatsBonus[stat];
+            if (item && item.esperStatsBonus) {
+                if (item.esperStatsBonus.all && item.esperStatsBonus.all[stat]) {
+                    statsBonus += item.esperStatsBonus.all[stat];
+                }
+                if (esper && item.esperStatsBonus[esper.id] && item.esperStatsBonus[esper.id][stat]) {
+                    statsBonus += item.esperStatsBonus[esper.id][stat];
+                }
             }
         }
     }
     return Math.min(3, statsBonus / 100);
 }
 
-function calculateStatValue(itemAndPassives, stat, unitBuild) {
+function calculateStatValue(itemAndPassives, stat, unitBuild, berserk = 0, ignoreBuffs = false) {
     var equipmentStatBonus = getEquipmentStatBonus(itemAndPassives, stat, true);
     var esperStatBonus = 1;
-    if (itemAndPassives[10]) {
-        esperStatBonus = getEsperStatBonus(itemAndPassives, stat);
+    if (itemAndPassives[11]) {
+        esperStatBonus = getEsperStatBonus(itemAndPassives, stat, itemAndPassives[11]);
     }
-    var calculatedValue = 0   
+    var calculatedValue = 0
     var currentPercentIncrease = {"value":0};
     var baseValue = 0;
     var buffValue = 0
     if (baseStats.includes(stat)) {
         baseValue = unitBuild.baseValues[stat].total;
-        if (stat === 'hp') {
-            buffValue = unitBuild.baseValues[stat].buff;   
-        } else {
-            buffValue = unitBuild.baseValues[stat].buff * baseValue / 100;
+        if (itemAndPassives[10] && itemAndPassives[10][stat]) {
+            baseValue += itemAndPassives[10][stat];
+        }
+        if (!ignoreBuffs) {
+            if (stat === 'hp') {
+                buffValue = unitBuild.baseValues[stat].buff;
+            } else if (stat === 'atk' && berserk) {
+                buffValue = (unitBuild.baseValues[stat].buff + berserk) * baseValue / 100;
+            } else {
+                buffValue = unitBuild.baseValues[stat].buff * baseValue / 100;
+            }
         }
     } else if (stat == "lbPerTurn") {
         baseValue = unitBuild.baseValues["lbFillRate"].total;
         buffValue = unitBuild.baseValues["lbFillRate"].buff * baseValue / 100;
     } else if (stat == 'drawAttacks') {
         baseValue = unitBuild.baseValues["drawAttacks"];
-    } else if (stat == 'lbDamage') {
-        baseValue = unitBuild.baseValues["lbDamage"];
     }
     var calculatedValue = baseValue + buffValue;
-    
+
     if (stat == "accuracy") {
         calculatedValue += (equipmentStatBonus - 1)*100;
         equipmentStatBonus = 1;
     }
-    
+
     var notStackableSkillsAlreadyUsed = [];
-    
+
     for (var equipedIndex = itemAndPassives.length; equipedIndex--;) {
         if (itemAndPassives[equipedIndex]) {
             var equipmentStatBonusToApply = 1;
-            if (equipedIndex < 10) {
+            if (equipedIndex < 11) {
                 equipmentStatBonusToApply = equipmentStatBonus;
             }
-            if (equipedIndex == 10) {
+            if (equipedIndex == 11) {
                 equipmentStatBonusToApply = esperStatBonus;
             }
             if ("evade.magical" == stat) {
-                calculatedValue = Math.max(calculatedValue, calculateStateValueForIndex(itemAndPassives[equipedIndex], baseValue, currentPercentIncrease, equipmentStatBonusToApply, stat, notStackableSkillsAlreadyUsed));
+                calculatedValue = Math.max(calculatedValue, calculateStateValueForIndex(itemAndPassives, equipedIndex, baseValue, currentPercentIncrease, equipmentStatBonusToApply, stat, notStackableSkillsAlreadyUsed));
             } else if (equipedIndex < 2 && "atk" == stat) {
-                calculatedValue += calculatePercentStateValueForIndex(itemAndPassives[equipedIndex], baseValue, currentPercentIncrease, stat, notStackableSkillsAlreadyUsed);    
-                calculatedValue += calculateFlatStateValueForIndex(itemAndPassives[equipedIndex], equipmentStatBonus - 1, stat);
+                calculatedValue += calculatePercentStateValueForIndex(itemAndPassives[equipedIndex], baseValue, currentPercentIncrease, stat, notStackableSkillsAlreadyUsed);
+                calculatedValue += calculateFlatStateValueForIndex(itemAndPassives, equipedIndex, equipmentStatBonus - 1, stat);
             } else {
-                calculatedValue += calculateStateValueForIndex(itemAndPassives[equipedIndex], baseValue, currentPercentIncrease, equipmentStatBonusToApply, stat, notStackableSkillsAlreadyUsed);    
+                calculatedValue += calculateStateValueForIndex(itemAndPassives, equipedIndex, baseValue, currentPercentIncrease, equipmentStatBonusToApply, stat, notStackableSkillsAlreadyUsed);
             }
             if (itemAndPassives[equipedIndex].notStackableSkills) {
                 for (var skillId in itemAndPassives[equipedIndex].notStackableSkills) {
@@ -1044,23 +1281,35 @@ function calculateStatValue(itemAndPassives, stat, unitBuild) {
             }
         }
     }
-    
+
+    if (stat === "lbDamage" || stat === "jumpDamage" || stat === "evoMag") {
+        calculatedValue = Math.min(getStatBonusCap(stat), calculatedValue);
+        if (stat === 'lbDamage') {
+            calculatedValue += unitBuild.baseValues["lbDamage"];
+        }
+    }
+
+
+
     if ("atk" == stat) {
-        var result = {"right":0,"left":0,"total":0,"bonusPercent":currentPercentIncrease.value}; 
-        var right = calculateFlatStateValueForIndex(itemAndPassives[0], 1, stat);
-        var left = calculateFlatStateValueForIndex(itemAndPassives[1], 1, stat);
+        var result = {"right":0,"left":0,"total":0,"bonusPercent":currentPercentIncrease.value};
+        var right = calculateFlatStateValueForIndex(itemAndPassives, 0, 1, stat);
+        var left = calculateFlatStateValueForIndex(itemAndPassives, 1, 1, stat);
         if (itemAndPassives[1] && weaponList.includes(itemAndPassives[1].type)) {
             result.right = Math.floor(calculatedValue + right);
             result.left = Math.floor(calculatedValue + left);
-            result.total = Math.floor(calculatedValue + right + left);    
+            result.total = Math.floor(calculatedValue + right + left);
         } else {
             result.right = Math.floor(calculatedValue + right + left);
             result.left = 0;
             result.total = result.right;
         }
-        return result;   
+        return result;
     } else {
-        var result = {"right":0,"left":0,"total":Math.floor(calculatedValue),"bonusPercent":currentPercentIncrease.value}; 
+        if (!valuesToNotRoundDown.includes(stat)) {
+            calculatedValue = Math.floor(calculatedValue);
+        }
+        var result = {"right":0,"left":0,"total":calculatedValue,"bonusPercent":currentPercentIncrease.value};
         if (itemAndPassives[0] && weaponList.includes(itemAndPassives[0].type)) {
             result.right = result.total;
         }
@@ -1070,8 +1319,9 @@ function calculateStatValue(itemAndPassives, stat, unitBuild) {
         return result;
     }
 }
- 
-function calculateStateValueForIndex(item, baseValue, currentPercentIncrease, equipmentStatBonus, stat, notStackableSkillsAlreadyUsed) {
+
+function calculateStateValueForIndex(items, index, baseValue, currentPercentIncrease, equipmentStatBonus, stat, notStackableSkillsAlreadyUsed) {
+    let item = items[index];
     if (item) {
         if (stat == "lbPerTurn") {
             var value = 0;
@@ -1086,10 +1336,15 @@ function calculateStateValueForIndex(item, baseValue, currentPercentIncrease, eq
             }
             return value;
         } else {
-            var value = getValue(item, stat, notStackableSkillsAlreadyUsed);
+            let value;
+            if (index === 10 && baseStats.includes(stat)) {
+                value = 0; // Vision Card flat stats are added to the base value directly earlier in the calculation
+            } else {
+                value = getValue(item, stat, notStackableSkillsAlreadyUsed);
+            }
             if (item[percentValues[stat]]) {
                 var itemPercentValue = getValue(item, percentValues[stat], notStackableSkillsAlreadyUsed);
-                var percentTakenIntoAccount = Math.min(itemPercentValue, Math.max(statsBonusCap[server] - currentPercentIncrease.value, 0));
+                var percentTakenIntoAccount = Math.min(itemPercentValue, Math.max(getStatBonusCap(stat) - currentPercentIncrease.value, 0));
                 currentPercentIncrease.value += itemPercentValue;
                 return value * equipmentStatBonus + percentTakenIntoAccount * baseValue / 100;
             } else {
@@ -1100,9 +1355,34 @@ function calculateStateValueForIndex(item, baseValue, currentPercentIncrease, eq
     return 0;
 }
 
-function calculateFlatStateValueForIndex(item, equipmentStatBonus, stat) {
-    if (item && item[stat]) {
-        return item[stat] * equipmentStatBonus;
+function getStatBonusCap(stat) {
+    switch(stat) {
+        case 'lbDamage':
+            return 300;
+        case 'lbPerTurn':
+            return 12;
+        case 'tdh':
+            return 400;
+        case 'tdw':
+            return 200;
+        case 'jumpDamage':
+            return 800;
+        case 'evoMag':
+            return 300;
+        case 'evokeDamageBoost':
+            return 300;
+        default:
+            return 400;
+    }
+}
+
+
+function calculateFlatStateValueForIndex(items, index, equipmentStatBonus, stat) {
+    if (index === 10) {
+        return 0; // Vision Card flat stats are added to the base value directly earlier in the calculation
+    }
+    if (items[index] && items[index][stat]) {
+        return items[index][stat] * equipmentStatBonus;
     }
     return 0;
 }
@@ -1110,7 +1390,7 @@ function calculateFlatStateValueForIndex(item, equipmentStatBonus, stat) {
 function calculatePercentStateValueForIndex(item, baseValue, currentPercentIncrease, stat) {
     if (item && item[percentValues[stat]]) {
         var itemPercentValue = item[percentValues[stat]];
-        var percentTakenIntoAccount = Math.min(itemPercentValue, Math.max(statsBonusCap[server] - currentPercentIncrease.value, 0));
+        var percentTakenIntoAccount = Math.min(itemPercentValue, Math.max(getStatBonusCap(stat) - currentPercentIncrease.value, 0));
         currentPercentIncrease.value += itemPercentValue;
         return percentTakenIntoAccount * baseValue / 100;
     }
@@ -1128,6 +1408,21 @@ function getElementCoef(elements, ennemyStats) {
         resistModifier = resistModifier / elements.length;
     }
     return resistModifier;
+}
+
+function getWeaponImperilCoef(weapon1, weapon2, ennemyStats) {
+    let weaponTypes = [];
+    if (weapon1 && weaponList.includes(weapon1.type)) {
+        weaponTypes.push(weapon1.type);
+    }
+    if (weapon2 && weaponList.includes(weapon2.type) && !weaponTypes.includes(weapon2.type)) {
+        weaponTypes.push(weapon2.type);
+    }
+    let weaponImperil = 1;
+    if (weaponTypes.length) {
+        weaponImperil += Math.floor(weaponTypes.map(weaponType => ennemyStats.imperils[weaponType] || 0).reduce((acc, value) => acc + value, 0) / weaponTypes.length) / 100;
+    }
+    return weaponImperil;
 }
 
 function isApplicable(item, unit) {
@@ -1163,7 +1458,7 @@ function isEquipedConditionOK(equiped, condition) {
                 return true;
             }
         } else if (typeList.includes(condition)) {
-            for (var equipedIndex = 0; equipedIndex < 10; equipedIndex++) {
+            for (var equipedIndex = 0; equipedIndex < 11; equipedIndex++) {
                 if (equiped[equipedIndex] && equiped[equipedIndex].type == condition) {
                     return true;
                 }
@@ -1173,7 +1468,7 @@ function isEquipedConditionOK(equiped, condition) {
                 return true;
             }
         } else {
-            for (var equipedIndex = 0; equipedIndex < 10; equipedIndex++) {
+            for (var equipedIndex = 0; equipedIndex < 11; equipedIndex++) {
                 if (equiped[equipedIndex] && equiped[equipedIndex].id == condition) {
                     return true;
                 }
@@ -1187,7 +1482,7 @@ function findBestItemVersion(build, item, itemWithVariation, unit) {
     var itemVersions = itemWithVariation[item.id];
     if (!itemVersions) {
         if (isApplicable(item, unit) && (!item.equipedConditions || areConditionOK(item, build))) {
-            return item;    
+            return item;
         } else {
             var result = {"id":item.id, "name":item.name, "jpname":item.jpname, "icon":item.icon, "type":item.type,"access":["Conditions not met"], "enhancements":item.enhancements};
             if (item.special && item.special.includes("notStackable")) {
@@ -1197,7 +1492,7 @@ function findBestItemVersion(build, item, itemWithVariation, unit) {
         }
     } else {
         itemVersions.sort(function (item1, item2) {
-            var conditionNumber1 = 0; 
+            var conditionNumber1 = 0;
             var conditionNumber2 = 0;
             if (item1.equipedConditions) {
                 conditionNumber1 = item1.equipedConditions.length;
@@ -1205,10 +1500,16 @@ function findBestItemVersion(build, item, itemWithVariation, unit) {
             if (item1.exclusiveUnits) {
                 conditionNumber1++;
             }
+            if (item1.exclusiveSex) {
+                conditionNumber1++;
+            }
             if (item2.equipedConditions) {
                 conditionNumber2 = item2.equipedConditions.length;
             }
             if (item2.exclusiveUnits) {
+                conditionNumber2++;
+            }
+            if (item2.exclusiveSex) {
                 conditionNumber2++;
             }
             return conditionNumber2 - conditionNumber1;
@@ -1262,6 +1563,12 @@ function getEsperItem(esper) {
     if (esper.lbPerTurn) {
         item.lbPerTurn = esper.lbPerTurn;
     }
+    if (esper.lbFillRate) {
+        item.lbFillRate = esper.lbFillRate;
+    }
+    if (esper.lbDamage) {
+        item.lbDamage = esper.lbDamage;
+    }
     if (esper.evade) {
         item.evade = esper.evade;
     }
@@ -1276,10 +1583,11 @@ function getEsperItem(esper) {
             item[percentValues[baseStats[i]]] = esper[percentValues[baseStats[i]]];
         }
     }
+    item.originalEsper = esper;
     return item;
 }
 
-var simpleAddCombineProperties = ["hp","hp%","mp","mp%","atk","atk%","def","def%","mag","mag%","spr","spr%","evoMag","accuracy","jumpDamage","lbFillRate","mpRefresh"];
+var simpleAddCombineProperties = ["hp","hp%","mp","mp%","atk","atk%","def","def%","mag","mag%","spr","spr%","evoMag","accuracy","jumpDamage","lbFillRate","mpRefresh", "lbDamage"];
 
 function combineTwoItems(item1, item2) {
     var sum = JSON.parse(JSON.stringify(item1));
@@ -1312,6 +1620,14 @@ function combineTwoItems(item1, item2) {
             addKiller(sum, item2.killers[index].name, item2.killers[index].physical, item2.killers[index].magical);
         }
     }
+    if (item2.evokeDamageBoost) {
+        if (!sum.evokeDamageBoost) {
+            sum.evokeDamageBoost = {};
+        }
+        Object.keys(item2.evokeDamageBoost).forEach(esperName => {
+            addToStat(sum.evokeDamageBoost, esperName, item2.evokeDamageBoost[esperName]);
+        });
+    }
     if (item2.special) {
         if (!sum.special) {
             sum.special = [];
@@ -1328,7 +1644,7 @@ function addToStat(skill, stat, value) {
         skill[stat] += value;
     }
 }
-    
+
 function addToList(skill, listName, value) {
     if (!skill[listName]) {
         skill[listName] = [value];
@@ -1350,7 +1666,7 @@ function addKiller(skill, race, physicalPercent, magicalPercent) {
             break;
         }
     }
-    
+
     if (!killerData) {
         killerData = {"name":race};
         skill.killers.push(killerData);
@@ -1439,6 +1755,8 @@ function applyEnhancements(item, enhancements) {
             var enhancementValue;
             if (enhancement == "rare_3" || enhancement == "rare_4") {
                 enhancementValue = itemEnhancementAbilities[enhancement][item.type];
+            } else if (enhancement === 'special_1') {
+                enhancementValue = itemEnhancementAbilities[enhancement][item.id];
             } else {
                 enhancementValue = itemEnhancementAbilities[enhancement];
             }
@@ -1446,6 +1764,7 @@ function applyEnhancements(item, enhancements) {
                 result = combineTwoItems(result, enhancementValue);
             }
         }
+        result.originalItem = item;
         return result;
     } else {
         return item;

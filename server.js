@@ -14,6 +14,7 @@ const links = require('./server/routes/links.js');
 const oauth = require('./server/routes/oauth.js');
 const clientConfig = require('./server/routes/clientConfig.js');
 const corrections = require('./server/routes/corrections.js');
+const unitSkills = require('./server/routes/unitSkills.js');
 const errorHandler = require('./server/middlewares/boom.js');
 const authRequired = require('./server/middlewares/oauth.js');
 
@@ -22,7 +23,9 @@ const app = express();
 console.log(`Environment is: ${config.env}`);
 
 // Helmet Middleware
-app.use(helmet());
+app.use(helmet({
+    frameguard: false
+}));
 
 app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }));
 app.use(helmet.hsts({
@@ -45,18 +48,17 @@ app.use(cors(corsOptions));
 var cspDirectives = {
   defaultSrc: ["'none'"],
   scriptSrc: ["'self'", "'unsafe-inline'",
-    'code.jquery.com', 'maxcdn.bootstrapcdn.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'gitcdn.github.io', 'www.google-analytics.com'],
+    'code.jquery.com', 'maxcdn.bootstrapcdn.com', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'gitcdn.github.io', 'www.google-analytics.com', 'kit.fontawesome.com'],
   styleSrc: ["'self'", "'unsafe-inline'",
-    'code.jquery.com', 'maxcdn.bootstrapcdn.com', 'gitcdn.github.io', 'cdnjs.cloudflare.com'],
-  imgSrc: ["'self'", 'data:', 'www.google-analytics.com', 'code.jquery.com'],
-  fontSrc: ["'self'", 'maxcdn.bootstrapcdn.com', 'fonts.gstatic.com'],
-  connectSrc: ["'self'", 'www.google-analytics.com', 'firebasestorage.googleapis.com', 'https://api.github.com', 'https://discordapp.com'],
+    'code.jquery.com', 'maxcdn.bootstrapcdn.com', 'gitcdn.github.io', 'cdnjs.cloudflare.com', 'kit-free.fontawesome.com'],
+  imgSrc: ["'self'", 'data:', 'www.google-analytics.com', 'code.jquery.com', 'ffbeequip.com'],
+  fontSrc: ["'self'", 'maxcdn.bootstrapcdn.com', 'fonts.gstatic.com', 'kit-free.fontawesome.com'],
+  connectSrc: ["'self'", 'www.google-analytics.com', 'firebasestorage.googleapis.com', 'https://api.github.com', 'https://discordapp.com', 'https://api.imgur.com/3/image'],
   mediaSrc: ["'none'"],
   objectSrc: ["'none'"],
   childSrc: ["'self'"],
   workerSrc: ["'self'"],
-  frameSrc: ["'none'"],
-  frameAncestors: ["'none'"],
+  frameSrc: ["'self'"],
   formAction: ["'self'"],
   blockAllMixedContent: !config.isDev,
   upgradeInsecureRequests: !config.isDev,
@@ -122,7 +124,7 @@ app.use(bodyParser.json({'limit':'1mb'}));
 app.use('/', oauth);
 app.use('/clientConfig', clientConfig);
 app.use('/links', links);
-app.use('/', corrections);
+app.use('/', corrections, unitSkills);
 app.use('/', firebase.unAuthenticatedRoute);
 app.use('/', authRequired, firebase.authenticatedRoute, drive);
 
@@ -138,6 +140,10 @@ app.use((req, res) => {
 });
 
 app.use(errorHandler);
+
+if (process.env.PORT) {
+    config.port = process.env.PORT;
+}
 
 if (module === require.main) {
   app.listen(config.port, () => {

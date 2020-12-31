@@ -52,7 +52,7 @@ class BuildOptimizer {
         for (var index = 0, len = combinationsNumber; index < len; index++) {
 
             var dataWithdConditionItems = {}
-            for (var slotIndex = 0; slotIndex < 10; slotIndex++) {
+            for (var slotIndex = 0; slotIndex < 11; slotIndex++) {
                 if (typeCombinations[index].combination[slotIndex] && !dataWithdConditionItems[typeCombinations[index].combination[slotIndex]]) {
                     dataWithdConditionItems[typeCombinations[index].combination[slotIndex]] = this.selectItems(typeCombinations[index].combination[slotIndex], typeCombinations[index].combination, typeCombinations[index].fixedItems, typeCombinations[index].forcedItems, this.dataWithCondition);
                 }
@@ -60,7 +60,7 @@ class BuildOptimizer {
             var applicableSkills = [];
             for (var skillIndex = this._unitBuild.unit.skills.length; skillIndex--;) {
                 var skill = this._unitBuild.unit.skills[skillIndex];
-                if (this.areConditionOKBasedOnTypeCombination(skill, typeCombinations[index].combination, this._unitBuild._level)) {
+                if (this.areConditionOKBasedOnTypeCombination(skill, typeCombinations[index].combination, this._unitBuild.level)) {
                     applicableSkills.push(skill);
                 }
             }
@@ -71,7 +71,7 @@ class BuildOptimizer {
                 this.selectedEspers = [];
             }
             
-            var build = [null, null, null, null, null, null, null, null, null, null,null].concat(applicableSkills);
+            var build = [null, null, null, null, null, null, null, null, null, null,null, null].concat(applicableSkills);
             this.findBestBuildForCombination(0, build, typeCombinations[index].combination, dataWithdConditionItems, typeCombinations[index].fixedItems, this.getElementBasedSkills(), this.getItemBasedSkills());
         }
         this.buildCounterUpdateCallback(this.buildCounter);
@@ -100,6 +100,16 @@ class BuildOptimizer {
                 selectedEspers.push(keptEsperRoot.children[index].esper);
             }
         }
+        this._unitBuild.unit.skills.filter(skill => skill.esperStatsBonus && Object.keys(skill.esperStatsBonus).some(esper => esper != 'all')).forEach(skill => {
+            Object.keys(skill.esperStatsBonus)
+                .filter(esper => esper != 'all')
+                .filter(esperName => !alreadyUsedEspers.includes(esperName))
+                .forEach(esperName => {
+                if (!selectedEspers.includes(espersToUse[esperName])) {
+                    selectedEspers.push(espersToUse[esperName]);
+                }
+            });
+        });
         return selectedEspers;
     }
     
@@ -239,7 +249,7 @@ class BuildOptimizer {
     
     
     
-    findBestBuildForCombination(index, build, typeCombination, dataWithConditionItems, fixedItems, elementBasedSkills, itemBasedSkills) {
+    findBestBuildForCombination(index, build, typeCombination, dataWithConditionItems, fixedItems, elementBasedSkills, itemBasedSkills, alreadyTriedGroupIds = []) {
         let restorePool;
         let savedItemPools;
         if (index == 2) {
@@ -304,28 +314,32 @@ class BuildOptimizer {
                 });
             }
         }
+        if (index == 0 || (index == 1 && typeCombination[0] !== typeCombination[1]) || index == 2 || index == 3 || index == 4 || index == 6) {
+            alreadyTriedGroupIds = [];
+        }
 
         if (fixedItems[index]) {
-            this.tryItem(index, build, typeCombination, dataWithConditionItems, fixedItems[index], fixedItems,elementBasedSkills, itemBasedSkills);
+            this.tryItem(index, build, typeCombination, dataWithConditionItems, fixedItems[index], fixedItems,elementBasedSkills, itemBasedSkills, alreadyTriedGroupIds);
         } else {
             if (typeCombination[index]) {
                 let itemPool = dataWithConditionItems[typeCombination[index]];
                 var foundAnItem = false;
                 for (var i = itemPool.keptItems.length; i--;) {
-                    if (itemPool.keptItems[i].active) {
+                    if (itemPool.keptItems[i].active && !alreadyTriedGroupIds.includes(itemPool.keptItems[i].id)) {
                         var item = itemPool.take(i);
-                        this.tryItem(index, build, typeCombination, dataWithConditionItems, item, fixedItems, elementBasedSkills, itemBasedSkills);
+                        this.tryItem(index, build, typeCombination, dataWithConditionItems, item, fixedItems, elementBasedSkills, itemBasedSkills, alreadyTriedGroupIds.slice());
                         itemPool.putBack(i);
                         foundAnItem = true;
+                        alreadyTriedGroupIds.push(itemPool.keptItems[i].id);
                     }
                 }
             
                 if (!foundAnItem) {
-                    this.tryItem(index, build, typeCombination, dataWithConditionItems, {"name":"Any " + typeCombination[index],"type":typeCombination[index], "placeHolder":true}, fixedItems, elementBasedSkills, itemBasedSkills);
+                    this.tryItem(index, build, typeCombination, dataWithConditionItems, {"name":"Any " + typeCombination[index],"type":typeCombination[index], "placeHolder":true}, fixedItems, elementBasedSkills, itemBasedSkills, alreadyTriedGroupIds);
                 }
                 build[index] == null;
             } else {
-                this.tryItem(index, build, typeCombination, dataWithConditionItems, null, fixedItems, elementBasedSkills, itemBasedSkills);
+                this.tryItem(index, build, typeCombination, dataWithConditionItems, null, fixedItems, elementBasedSkills, itemBasedSkills, alreadyTriedGroupIds);
             }
         }
         if (restorePool) {
@@ -337,7 +351,7 @@ class BuildOptimizer {
         }
     }
 
-    tryItem(index, build, typeCombination, dataWithConditionItems, item, fixedItems, elementBasedSkills, itemBasedSkills) {
+    tryItem(index, build, typeCombination, dataWithConditionItems, item, fixedItems, elementBasedSkills, itemBasedSkills, alreadyTriedGroupIds) {
         if (index == 0 && item && isTwoHanded(item) && typeCombination[1]) {
             return; // Two handed weapon only accepted on DH builds
         }
@@ -345,9 +359,9 @@ class BuildOptimizer {
             return; // don't accept null second hand in DW builds
         }
         build[index] = item;
-        if (index == 9) {
-            for (var fixedItemIndex = 0; fixedItemIndex < 10; fixedItemIndex++) {
-                if (fixedItems[fixedItemIndex] && (!this.allItemVersions[fixedItems[fixedItemIndex].id] || this.allItemVersions[fixedItems[fixedItemIndex].id].length > 1 || fixedItems[fixedItemIndex].access.includes("Conditions not met"))) {
+        if (index == 10) {
+            for (var fixedItemIndex = 0; fixedItemIndex < 11; fixedItemIndex++) {
+                if (fixedItems[fixedItemIndex] && fixedItems[fixedItemIndex].type != "unavailable" && (!this.allItemVersions[fixedItems[fixedItemIndex].id] || this.allItemVersions[fixedItems[fixedItemIndex].id].length > 1 || fixedItems[fixedItemIndex].access.includes("Conditions not met"))) {
                     build[fixedItemIndex] = findBestItemVersion(build, fixedItems[fixedItemIndex], this.allItemVersions, this._unitBuild.unit);
                 }
             }
@@ -369,8 +383,8 @@ class BuildOptimizer {
                     }
                 }
             }
-            if (fixedItems[10]) {
-                this.tryEsper(build, fixedItems[10], fixedItems);
+            if (fixedItems[11]) {
+                this.tryEsper(build, fixedItems[11], fixedItems);
             } else {
                 if (this.selectedEspers.length > 0) {
                     for (var esperIndex = 0, len = this.selectedEspers.length; esperIndex < len; esperIndex++) {
@@ -381,12 +395,13 @@ class BuildOptimizer {
                 }
             }
         } else {
-            this.findBestBuildForCombination(index + 1, build, typeCombination, dataWithConditionItems, fixedItems, elementBasedSkills, itemBasedSkills);
+            this.findBestBuildForCombination(index + 1, build, typeCombination, dataWithConditionItems, fixedItems, elementBasedSkills, itemBasedSkills, alreadyTriedGroupIds);
         }
     }
 
     tryEsper(build, esper, fixedItems) {
-        build[10] = esper;
+        build[11] = esper;
+        
         var value = calculateBuildValueWithFormula(build, this._unitBuild, this.ennemyStats, this._unitBuild.formula, this.goalVariation, this.useNewJpDamageFormula);
         if ((value != -1 && this._unitBuild.buildValue[this.goalVariation] == -1) || value[this.goalVariation] > this._unitBuild.buildValue[this.goalVariation]) {
             

@@ -5,6 +5,9 @@ var PNG = require('pngjs').PNG;
 var stats = ["HP","MP","ATK","DEF","MAG","SPR"];
 var elements = ["fire", "ice", "lightning", "water", "wind", "earth", "light", "dark"];
 var ailments = ["poison", "blind", "sleep", "silence", "paralysis", "confuse", "disease", "petrification"];
+const shieldList = ["lightShield", "heavyShield"];
+const headList = ["hat", "helm"];
+const bodyList = ["clothes", "robe", "lightArmor", "heavyArmor"];
 
 var typeMap = {
     1: 'dagger',
@@ -72,6 +75,51 @@ var elementsMap = {
     "Dark": "dark"
 }
 
+let espersById = {
+    "1":"Siren",
+    "2":"Ifrit",
+    "3":"Shiva",
+    "4":"Carbuncle",
+    "5":"Diabolos",
+    "6":"Golem",
+    "7":"Ramuh",
+    "8":"Titan",
+    "9":"Tetra Sylphid",
+    "10":"Odin",
+    "11":"Lakshmi",
+    "12":"Leviathan",
+    "13":"Alexander",
+    "14":"Phoenix",
+    "15":"Bahamut",
+    "16":"Fenrir",
+    "17":"Anima",
+    "18":"Asura",
+    "19":"Black Dragon"
+}
+
+const visionCardStatPatterns = {
+    "1": {
+        "1": [0]
+    },
+    "100": {
+        "10": [0, 10, 20, 30, 40, 50, 60, 70, 80, 100]
+    }
+}
+
+const unitRules = {
+    4008: (item) => item.exclusiveUnits = nvUnitIdsByGameId[10007], // FF7 units
+    7102: (item) => item.exclusiveSex = 'male',// Male units
+    7103: (item) => item.exclusiveSex = 'female',// Female units,
+    7202: (item) => item.exclusiveUnits = nvUnitIdsByGameId[10002], // FF2
+    7203: (item) => item.exclusiveUnits = nvUnitIdsByGameId[10003], // FF3
+    7206: (item) => item.exclusiveUnits = nvUnitIdsByGameId[10006], // FF6
+    7212: (item) => item.exclusiveUnits = nvUnitIdsByGameId[10012], // FF12
+    7216: (item) => item.exclusiveUnits = nvUnitIdsByGameId[11001], // FFBE units
+    7271: (item) => item.exclusiveUnits = nvUnitIdsByGameId[20032], // Fullmetal Alchemist units
+    7272: (item) => item.exclusiveUnits = nvUnitIdsByGameId[20033], // KH units
+    7273: (item) => item.exclusiveUnits = (nvUnitIdsByGameId[10013] || []).concat(nvUnitIdsByGameId[11006] || []).concat(nvUnitIdsByGameId[11007] || []), // FF13, FF13-2 and LR FF13 units
+}
+
 var unitNamesById = {};
 var unitIdByTmrId = {};
 var unitIdBySTmrId = {};
@@ -79,9 +127,10 @@ var oldItemsAccessById = {};
 var oldItemsEventById = {};
 var oldItemsMaxNumberById = {};
 var releasedUnits;
-var skillNotIdentifiedNumber = 0;
 var glNameById = {};
 var dev = false;
+var nvUnitIdsByGameId = {};
+var jpUnits;
 
 
 function getData(filename, callback) {
@@ -114,64 +163,84 @@ getData('equipment.json', function (items) {
         getData('skills_ability.json', function (skills) {
             getData('skills_passive.json', function (passives) {
                 getData('skills_magic.json', function (magics) {
-                    Object.keys(skills).forEach(skillId => {
-                        skills[skillId].active = true;
-                        skills[skillId].type = "ABILITY";
-                    });
-                    Object.keys(passives).forEach(skillId => {
-                        skills[skillId] = passives[skillId];
-                        skills[skillId].active = false;
-                        skills[skillId].type = "PASSIVE";
-                    });
-                    Object.keys(magics).forEach(skillId => {
-                        skills[skillId] = magics[skillId];
-                        skills[skillId].active = true;
-                        skills[skillId].type = "MAGIC";
-                    });
-                    getData('units.json', function (units) {
-                        fs.readFile('../../static/GL/data.json', function (err, glDatacontent) {
-                            var glData = JSON.parse(glDatacontent);
-                            for (var glIndex = glData.length; glIndex--;) {
-                                glNameById[glData[glIndex].id] = glData[glIndex].name;
-                            }
-                            for (var unitIndex in units) {
-                                var unit = units[unitIndex];
-                                unitNamesById[unitIndex] = {"name":unit.name, "minRarity":unit.rarity_min};
+                    getData('vision_cards.json', function (visionCards) {
+                        Object.keys(skills).forEach(skillId => {
+                            skills[skillId].active = true;
+                            skills[skillId].type = "ABILITY";
+                        });
+                        Object.keys(passives).forEach(skillId => {
+                            skills[skillId] = passives[skillId];
+                            skills[skillId].active = false;
+                            skills[skillId].type = "PASSIVE";
+                        });
+                        Object.keys(magics).forEach(skillId => {
+                            skills[skillId] = magics[skillId];
+                            skills[skillId].active = true;
+                            skills[skillId].type = "MAGIC";
+                        });
+                        getData('units.json', function (units) {
+                            fs.readFile('../../static/GL/data.json', function (err, glDatacontent) {
+                                var glData = JSON.parse(glDatacontent);
+                                for (var glIndex = glData.length; glIndex--;) {
+                                    glNameById[glData[glIndex].id] = glData[glIndex].name;
+                                }
+                                for (var unitIndex in units) {
+                                    var unit = units[unitIndex];
+                                    unitNamesById[unitIndex] = {"name":unit.name, "minRarity":unit.rarity_min};
 
-                                if (unit.TMR) {
-                                    unitIdByTmrId[unit.TMR[1]] = unitIndex;
-                                    if (unit.rarity_min > 3 && !unit.is_summonable) {
-                                        unitNamesById[unitIndex].event = true;
+                                    if (unit.TMR && (!unit.base_id ||unit.base_id == unitIndex)) {
+                                        unitIdByTmrId[unit.TMR[1]] = unitIndex;
+                                        if (unit.rarity_min > 3 && !unit.is_summonable) {
+                                            unitNamesById[unitIndex].event = true;
+                                        }
                                     }
-                                }
-                                if (unit.sTMR) {
-                                    unitIdBySTmrId[unit.sTMR[1]] = unitIndex;
-                                }
-                            }
-
-
-
-                            fs.readFile('../../static/JP/data.json', function (err, content) {
-                                var oldItems = JSON.parse(content);
-                                for (var index in oldItems) {
-                                    oldItemsAccessById[oldItems[index].id] = oldItems[index].access;
-                                    oldItemsEventById[oldItems[index].id] = oldItems[index].eventName;
-                                    if (oldItems[index].maxNumber) {
-                                        oldItemsMaxNumberById[oldItems[index].id] = oldItems[index].maxNumber;
+                                    if (unit.sTMR && (!unit.base_id ||unit.base_id == unitIndex)) {
+                                        unitIdBySTmrId[unit.sTMR[1]] = unitIndex;
                                     }
                                 }
 
-                                fs.readFile('../../static/JP/releasedUnits.json', function (err, content) {
-                                    releasedUnits = JSON.parse(content);
+                                Object.keys(units).forEach(unitId => {
+                                    let unit = units[unitId];
+                                    if (unit.game_id && unit.skills && unit.skills.some(s => s.brave_ability)) {
+                                        if (!nvUnitIdsByGameId[unit.game_id]) nvUnitIdsByGameId[unit.game_id] = [];
+                                        nvUnitIdsByGameId[unit.game_id].push(unitId);
+                                    }
+                                });
 
-                                    var result = {"items":[]};
-                                    for (var itemId in items) {
-                                        treatItem(items,itemId, result, skills);
+                                fs.readFile('../../static/JP/data.json', function (err, content) {
+                                    var oldItems = JSON.parse(content);
+                                    for (var index in oldItems) {
+                                        oldItemsAccessById[oldItems[index].id] = oldItems[index].access;
+                                        if (oldItems[index].eventName) {
+                                            oldItemsEventById[oldItems[index].id] = oldItems[index].eventName;
+                                        } else if (oldItems[index].eventNames) {
+                                            oldItemsEventById[oldItems[index].id] = oldItems[index].eventNames;
+                                        }
+                                        if (oldItems[index].maxNumber) {
+                                            oldItemsMaxNumberById[oldItems[index].id] = oldItems[index].maxNumber;
+                                        }
                                     }
-                                    for (var materiaId in materias) {
-                                        treatItem(materias,materiaId, result, skills);
-                                    }
-                                    fs.writeFileSync('data.json', formatOutput(result.items));
+
+                                    fs.readFile('../../static/JP/releasedUnits.json', function (err, content) {
+                                        releasedUnits = JSON.parse(content);
+                                        fs.readFile('../../static/JP/units.json', function (err, content) {
+                                            jpUnits = JSON.parse(content);
+
+                                            var result = {"items":[]};
+                                            for (var itemId in items) {
+                                                treatItem(items,itemId, result, skills);
+                                            }
+                                            for (var materiaId in materias) {
+                                                treatItem(materias,materiaId, result, skills);
+                                            }
+                                            fs.writeFileSync('data.json', formatOutput(result.items));
+                                            cards = [];
+                                            for (visionCardId in visionCards) {
+                                                cards.push(treatVisionCard(visionCards[visionCardId], visionCardId, skills));
+                                            }
+                                            fs.writeFileSync('visionCards.json', formatVisionCards(cards));
+                                        });
+                                    });
                                 });
                             });
                         });
@@ -264,8 +333,11 @@ function treatItem(items, itemId, result, skills) {
             }
         }
     }
-    if (!itemOut.eventName && oldItemsEventById[itemOut.id]) {
-        itemOut.eventName = oldItemsEventById[itemOut.id];
+    if (!itemOut.eventNames && oldItemsEventById[itemOut.id]) {
+        itemOut.eventNames = oldItemsEventById[itemOut.id];
+        if (!Array.isArray(itemOut.eventNames)) {
+            itemOut.eventNames = [itemOut.eventNames];
+        }
     }
     if (!itemOut.maxNumber && oldItemsMaxNumberById[itemOut.id]) {
         itemOut.maxNumber = oldItemsMaxNumberById[itemOut.id];
@@ -278,6 +350,71 @@ function treatItem(items, itemId, result, skills) {
     }
     
     result.items = result.items.concat(readSkills(itemIn, itemOut,skills));
+}
+
+function treatVisionCard(visionCard, visionCardId, skills) {
+    let card = {};
+    card.id = visionCardId;
+    card.name = visionCard.name;
+    card.type = 'visionCard';
+    card.icon = 'vc_vignette_item_icon_' + visionCardId + '.png';
+    verifyImage(card.icon);
+    if (visionCard.compendium_id) {
+        card.sortId = visionCard.compendium_id;
+    }
+    card.access = ["unknown"];
+    card.levels = [];
+    for (let level = 1; level <= visionCard.max_level; level++) {
+        let levelData = {};
+        card.levels.push(levelData);
+        stats.forEach(stat => {
+            value = visionCard.stats[stat][0] + (visionCard.stats[stat][1] - visionCard.stats[stat][0]) * visionCardStatPatterns[visionCard.stat_pattern][visionCard.max_level][level - 1] / 100;
+            addStat(levelData, stat.toLowerCase(), Math.floor(value));
+        });
+        for (let i = 1; i <= level; i++) {
+            if (visionCard.skills && visionCard.skills[i]) {
+                let skill = skills[visionCard.skills[i].toString()];
+                skill.effects_raw.forEach((rawEffect, index) => {
+                    if (!skill.active && (rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 6) {
+                        // mastery skill
+                        let conditional = {};
+                        addMastery(conditional, rawEffect);
+                        if (!levelData.conditional) levelData.conditional = [];
+                        const sameCondition = levelData.conditional.filter(cond => arrayEquivalents(cond.equipedConditions, conditional.equipedConditions));
+                        if (sameCondition.length === 0) {
+                            levelData.conditional.push(conditional);
+                        } else {
+                            stats.forEach(stat => {
+                                if (conditional[stat.toLowerCase() + '%']) {
+                                    addStat(sameCondition[0], stat.toLowerCase() + '%', conditional[stat.toLowerCase() + '%']);
+                                }
+                            });
+                        }
+                    } else {
+                        if (visionCard.restriction && visionCard.restriction[visionCard.skills[i].toString()]) {
+                            let ruleId = visionCard.restriction[visionCard.skills[i].toString()][0];
+                            let conditional = {};
+                            addEffectToItem(conditional, skill, index, skills);
+                            if (!levelData.conditional) levelData.conditional = [];
+                            if (!Object.keys(unitRules).includes(ruleId.toString())) {
+                                console.log('Missing rule ' + ruleId + ' for vision card ' + visionCard.name);
+                            }
+                            unitRules[ruleId](conditional);
+                            levelData.conditional.push(conditional);
+                        } else {
+                            addEffectToItem(levelData, skill, index, skills);
+                        }
+                    }
+                });
+            }
+        }
+        // TODO restriction
+    }
+    return card;
+}
+
+function arrayEquivalents(a1, a2) {
+    return a1.length === a2.length && a1.every(item => a2.includes(item));
 }
 
 function readStats(itemIn, itemOut) {
@@ -437,15 +574,18 @@ function addMasterySkills(item, masterySkills, result) {
     for (var masteryIndex in masterySkills) {
         var lenght = treatedItems.length;
         var copy = JSON.parse(JSON.stringify(item));
-        addMastery(copy, masterySkills[masteryIndex]);
-        result.push(copy);
-        treatedItems.push(copy);
-        for (var itemIndex = 0; itemIndex < lenght; itemIndex++) {
-            if (!treatedItems[itemIndex].equipedConditions || treatedItems[itemIndex].equipedConditions.length < 2) {
-                var copy = JSON.parse(JSON.stringify(treatedItems[itemIndex]));
-                addMastery(copy, masterySkills[masteryIndex]);
-                result.push(copy);
-                treatedItems.push(copy);
+        
+        if (addMastery(copy, masterySkills[masteryIndex])) {
+            result.push(copy);
+            treatedItems.push(copy);
+            for (var itemIndex = 0; itemIndex < lenght; itemIndex++) {
+                if (!treatedItems[itemIndex].equipedConditions || treatedItems[itemIndex].equipedConditions.length < 2) {
+                    var copy = JSON.parse(JSON.stringify(treatedItems[itemIndex]));
+                    if (addMastery(copy, masterySkills[masteryIndex])) {
+                        result.push(copy);
+                        treatedItems.push(copy);
+                    }
+                }
             }
         }
     }
@@ -509,8 +649,12 @@ function addEffectToItem(item, skill, rawEffectIndex, skills) {
         
         if (!Array.isArray(killerRaces)) {
             killerRaces = [killerRaces];
-            physicalPercents = [physicalPercents];
-            magicalPercents = [magicalPercents];
+        }
+        if (!Array.isArray(physicalPercents)) {
+            physicalPercents = new Array(killerRaces.length).fill(physicalPercents);
+        }
+        if (!Array.isArray(magicalPercents)) {
+            magicalPercents = new Array(killerRaces.length).fill(magicalPercents);
         }
         
         for (var raceIndex = 0; raceIndex < killerRaces.length; raceIndex++) {
@@ -640,6 +784,22 @@ function addEffectToItem(item, skill, rawEffectIndex, skills) {
     } else if ((rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 17) {
         var jumpDamage = rawEffect[3][0];
         addStat(item, "jumpDamage", jumpDamage);
+        
+        // boost evoke damage
+    } else if (rawEffect[2] == 64) {
+        let esperName;
+        if (rawEffect[3][1] === 0) {
+            esperName = 'all';
+        } else {
+            esperName = espersById[rawEffect[3][1]];
+        }
+        if (!item.evokeDamageBoost) {
+            item.evokeDamageBoost = {};
+        }
+        if (!item.evokeDamageBoost[esperName]) {
+            item.evokeDamageBoost[esperName] = 0;
+        }
+        item.evokeDamageBoost[esperName] += rawEffect[3][0];
     
     // +EVO Mag
     } else if ((rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 21) {
@@ -649,26 +809,75 @@ function addEffectToItem(item, skill, rawEffectIndex, skills) {
         // +Stats from espers boost
     } else if ((rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 63) {
         var esperStatsBonus = rawEffect[3];
+        var esper;
+        if (esperStatsBonus.length == 6 || esperStatsBonus[6] == 0) {
+            esper = 'all';
+        } else {
+            esper = espersById[esperStatsBonus[6]];
+        }
         if (!item.esperStatsBonus) {
             item.esperStatsBonus = {};
         }
-        addStat(item.esperStatsBonus, "hp", esperStatsBonus[0]);
-        addStat(item.esperStatsBonus, "mp", esperStatsBonus[1]);
-        addStat(item.esperStatsBonus, "atk", esperStatsBonus[2]);
-        addStat(item.esperStatsBonus, "def", esperStatsBonus[3]);
-        addStat(item.esperStatsBonus, "mag", esperStatsBonus[4]);
-        addStat(item.esperStatsBonus, "spr", esperStatsBonus[5]);
+        if (!item.esperStatsBonus[esper]) {
+            item.esperStatsBonus[esper] = {};
+        }
+        addStat(item.esperStatsBonus[esper], "hp", esperStatsBonus[0]);
+        addStat(item.esperStatsBonus[esper], "mp", esperStatsBonus[1]);
+        addStat(item.esperStatsBonus[esper], "atk", esperStatsBonus[2]);
+        addStat(item.esperStatsBonus[esper], "def", esperStatsBonus[3]);
+        addStat(item.esperStatsBonus[esper], "mag", esperStatsBonus[4]);
+        addStat(item.esperStatsBonus[esper], "spr", esperStatsBonus[5]);
         
     // +LB damage
     } else if ((rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 68) {
         var lbDamage = rawEffect[3][0];
         addStat(item, "lbDamage", lbDamage);
 
+    // boost evoke damage
+    } else if (rawEffect[2] == 64) {
+        let esperName;
+        if (rawEffect[3][1] === 0) {
+            esperName = 'all';
+        } else {
+            esperName = espersById[rawEffect[3][1]];
+        }
+        if (!item.evokeDamageBoost) {
+            item.evokeDamageBoost = {};
+        }
+        if (!item.evokeDamageBoost[esperName]) {
+            item.evokeDamageBoost[esperName] = 0;
+        }
+        item.evokeDamageBoost[esperName] += rawEffect[3][0];
+        
     // Draw attacks
     } else if ((rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 24) {
         var drawAttacks = rawEffect[3][0];
         addStat(item, "drawAttacks", drawAttacks);
 
+    // Break, stop and charm resistance with turn number
+    } else if (rawEffect[2] == 89 || rawEffect[2] == 55) {
+        if (!item.resist) {
+            item.resist = [];
+        }
+        if (rawEffect[3][0]) {
+            item.resist.push({"name":"break_atk","percent":rawEffect[3][0]});
+        }
+        if (rawEffect[3][1]) {
+            item.resist.push({"name":"break_def","percent":rawEffect[3][1]});
+        }
+        if (rawEffect[3][2]) {
+            item.resist.push({"name":"break_mag","percent":rawEffect[3][2]});
+        }
+        if (rawEffect[3][3]) {
+            item.resist.push({"name":"break_spr","percent":rawEffect[3][3]});
+        }
+        if (rawEffect[3][4]) {
+            item.resist.push({"name":"stop","percent":rawEffect[3][4]});
+        }
+        if (rawEffect[3][5]) {
+            item.resist.push({"name":"charm","percent":rawEffect[3][5]});
+        }
+        
 
     } else {
         return false;
@@ -780,7 +989,13 @@ function addMastery(item, mastery) {
             addStat(item, "mp%", masteryEffect[2]);
         }
     } else {
-        item.equipedConditions.push(typeMap[mastery[3][0]]);
+        let type = typeMap[mastery[3][0]];
+        if (!item.equipedConditions.includes(type)) {
+            if (shieldList.includes(type) && item.equipedConditions.some(c => shieldList.includes(c))) return false;
+            if (headList.includes(type) && item.equipedConditions.some(c => headList.includes(c))) return false;
+            if (bodyList.includes(type) && item.equipedConditions.some(c => bodyList.includes(c))) return false;
+            item.equipedConditions.push(typeMap[mastery[3][0]]);
+        }
         addStat(item, "atk%", mastery[3][1]);
         addStat(item, "def%", mastery[3][2]);
         addStat(item, "mag%", mastery[3][3]);
@@ -792,6 +1007,7 @@ function addMastery(item, mastery) {
             addStat(item, "mp%", mastery[3][6]);
         }
     }
+    return true;
 }
 
 function addExclusiveUnit(item, unitId) {
@@ -841,10 +1057,10 @@ function addLbPerTurn(item, min, max) {
     }
     item.lbPerTurn.min += min;
     item.lbPerTurn.max += max;
-} 
+}
 
+const itemProperties = ["id","name","jpname","type","hp","hp%","mp","mp%","atk","atk%","def","def%","mag","mag%","spr","spr%","evoMag","evade","singleWieldingOneHanded","singleWielding","dualWielding","accuracy","damageVariance","jumpDamage","lbFillRate", "lbPerTurn","element","partialDualWield","resist","ailments","killers","mpRefresh","esperStatsBonus","lbDamage","drawAttacks", "evokeDamageBoost","special","allowUseOf","exclusiveSex","exclusiveUnits","equipedConditions","tmrUnit","stmrUnit","access","maxNumber","eventNames","icon","sortId","notStackableSkills","rarity", "conditional"];
 function formatOutput(items) {
-    var properties = ["id","name","jpname","type","hp","hp%","mp","mp%","atk","atk%","def","def%","mag","mag%","spr","spr%","evoMag","evade","singleWieldingOneHanded","singleWielding","dualWielding","accuracy","damageVariance","jumpDamage","lbFillRate", "lbPerTurn","element","partialDualWield","resist","ailments","killers","mpRefresh","esperStatsBonus","lbDamage","drawAttacks","special","allowUseOf","exclusiveSex","exclusiveUnits","equipedConditions","tmrUnit","stmrUnit","access","maxNumber","eventName","icon","sortId","notStackableSkills","rarity"];
     var result = "[\n";
     var first = true;
     for (var index in items) {
@@ -854,20 +1070,58 @@ function formatOutput(items) {
         } else {
             result += ",";
         }
-        result += "\n\t{";
+        result += "\n\t"
+        result += formatItem(item);
+    }
+    result += "\n]";
+    return result;
+}
+
+function formatItem(item) {
+    result = "{";
+    var firstProperty = true;
+    for (var propertyIndex in itemProperties) {
+        var property = itemProperties[propertyIndex];
+        if (item[property]) {
+            if (firstProperty) {
+                firstProperty = false;
+            } else {
+                result += ", ";
+            }
+            result+= "\"" + property + "\":" + JSON.stringify(item[property]);
+        }
+    }
+    result += "}";
+    return result;
+}
+
+function formatVisionCards(cards) {
+    var baseProperties = ["id","name","jpname","type","access","maxNumber","eventNames","icon","sortId"];
+    var result = "[\n";
+    var first = true;
+    for (var index in cards) {
+        var card = cards[index]
+        if (first) {
+            first = false;
+        } else {
+            result += ",";
+        }
+        result += "\n{";
         var firstProperty = true;
-        for (var propertyIndex in properties) {
-            var property = properties[propertyIndex];
-            if (item[property]) {
+        for (var propertyIndex in baseProperties) {
+            var property = baseProperties[propertyIndex];
+            if (card[property]) {
                 if (firstProperty) {
                     firstProperty = false;
                 } else {
                     result += ", ";
                 }
-                result+= "\"" + property + "\":" + JSON.stringify(item[property]);
+                result+= "\"" + property + "\":" + JSON.stringify(card[property]);
             }
         }
-        result += "}";
+        result += ", \"levels\":[\n\t";
+        result += card.levels.map(level => formatItem(level)).join(',\n\t')
+        result += "\n]}";
     }
     result += "\n]";
     return result;

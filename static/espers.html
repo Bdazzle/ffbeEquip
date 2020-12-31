@@ -13,11 +13,13 @@
         <link rel="stylesheet" type="text/css" href="css-img/equipments.css">
         <link rel="stylesheet" type="text/css" href="css-img/elements.css">
         <link rel="stylesheet" type="text/css" href="css-img/ailments.css">
+        <link rel="stylesheet" type="text/css" href="css-img/killers.css">
 		<link rel="stylesheet" type="text/css" href="common.css">
         <link rel="stylesheet" type="text/css" href="espers.css">
         <link rel="stylesheet" type="text/css" href="languages.css">
+        <link rel="stylesheet" type="text/css" href="dark-mode.css"/>
     </head>
-    <body>
+    <body class="dark">
         <span id="toggleGrid" class="hidden" title="Toggle Esper training grid">
             <span class="glyphicon glyphicon-th"></span>
             <span class="glyphicon glyphicon-list hidden"></span>
@@ -106,6 +108,13 @@
                 </div>
             </div>
             <div class="headerTopButtons">
+                <div id="themeSelector">
+                    <span class="title">Theme :</span>
+                    <select class="form-control smallSelect">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
                 <div id="languages">
                     <span class="lang lang-sm" lang="en" onclick="switchToLanguage('en')"></span>
                     <span class="lang lang-sm" lang="zh" onclick="switchToLanguage('zh')"></span>
@@ -124,6 +133,7 @@
             <div class="bannerPicturePerson"></div>
         </div>
         <div class="container-fluid">
+            <span class="glassPanel hidden"></span>
             <div style="text-align: center">
                 <div id="pleaseWaitMessage" class="alert alert-info alert-inline" role="alert">
                     <span class="glyphicon glyphicon-info-sign"></span>
@@ -142,6 +152,12 @@
                     <ul id="tabs" class="nav nav-tabs"></ul>
                 </div>
                 <div id="allEspers">
+                    <a id="importLink" class="link hidden" onclick="importEspers();">
+                        <span class="glyphicon glyphicon-save"></span>
+                        <span class="text hidden-xs hidden-sm">
+                            Import Espers
+                        </span>
+                    </a>
 
                     <div id="noEsperMessage" class="alert alert-info" role="alert">
                         <span class="glyphicon glyphicon-info-sign"></span>
@@ -228,7 +244,7 @@
                         </div>
                     </div>
                     <div class="formLine shareLink">
-                        <a onclick="getPublicEsperLink()">
+                        <a class="btn btn-default" onclick="getPublicEsperLink()">
                             <span class="glyphicon glyphicon-link"></span>
                             Get a link to this Esper build
                         </a>
@@ -262,8 +278,7 @@
                 <a class="buttonLink" data-server="JP" href='https://exviusdb.com/' target="_blank" rel="noreferrer">JP units and items images are a courtesy of EXVIUS DB</a>
             </div>
         </div>
-        <script src="https://code.jquery.com/jquery-3.1.0.min.js"
-                integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
+        <script src="lib/jquery-3.1.0.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/mark.js/8.9.1/jquery.mark.min.js"
@@ -274,6 +289,7 @@
         <script src="lib/notify.min.js"></script>
         <script src="lib/FileSaver.min.js"></script>
         <script src="lib/html2canvas.min.js"></script>
+        <script src="lib/jjv.js"></script>
         <script src="constants.js"></script>
         <script src="common.js"></script>
 		<script src="espers.js"></script>

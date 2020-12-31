@@ -232,23 +232,32 @@ class TreeComparator {
     }
 
     static compareByElementCoef(item1, item2) {
-        if (item1.elementType == item2.elementType) {
-            return "equivalent";
-        } else {
-            if (item1.elementType == "neutral") {
-                if (item2.elementType == "element_0") {
-                    return "strictlyWorse";
-                } else {
-                    return "sameLevel";
-                }
-            } else if (item1.elementType == "element_0") {
-                if (item2.elementType == "neutral") {
+        if (item1.elementType === "neutral") {
+            if (item2.elementType === "neutral") {
+                return "equivalent";
+            } else {
+                if (item2.elementCoef > 0) {
                     return "strictlyBetter";
                 } else {
-                    return "sameLevel";
+                    return "strictlyWorse";
                 }
-            }
-            return "sameLevel";
+            }    
+        } else {
+            if (item2.elementType === "neutral") {
+                if (item1.elementCoef > 0) {
+                    return "strictlyWorse";
+                } else {
+                    return "strictlyBetter";
+                }
+            } else {
+                if (item1.elementCoef > item2.elementCoef) {
+                    return "strictlyWorse";
+                } else if (item1.elementCoef === item2.elementCoef) {
+                    return "equivalent";
+                } else {
+                    return "strictlyBetter";
+                }
+            }    
         }
     }
 
@@ -256,15 +265,17 @@ class TreeComparator {
         if (desirableElements.length == 0) {
             return "equivalent";
         } else {
-            if (item1.element && TreeComparator.matches(desirableElements, item1.element)) {
-                if (item2.element && TreeComparator.matches(desirableElements, item2.element)) {
+            let elements1 = item1.element || ["none"];
+            let elements2 = item2.element || ["none"];
+            if (elements1 && TreeComparator.matches(desirableElements, elements1)) {
+                if (elements2 && TreeComparator.matches(desirableElements, elements2)) {
                     var desirableElementsFromItem1 = [];
                     var desirableElementsFromItem2 = [];
                     for (var index = desirableElements.length; index--;) {
-                        if(item1.element.includes(desirableElements[index])) {
+                        if(elements1.includes(desirableElements[index])) {
                             desirableElementsFromItem1.push(desirableElements[index]);
                         }
-                        if(item2.element.includes(desirableElements[index])) {
+                        if(elements2.includes(desirableElements[index])) {
                             desirableElementsFromItem2.push(desirableElements[index]);
                         }
                     }
@@ -285,7 +296,7 @@ class TreeComparator {
                     return "strictlyWorse";
                 }    
             } else {
-                if (item2.element && TreeComparator.matches(desirableElements, item2.element)) {
+                if (elements2 && TreeComparator.matches(desirableElements, elements2)) {
                     return "strictlyBetter";
                 } else {
                     return "equivalent";

@@ -193,6 +193,8 @@ class ItemPool {
                     comparisionStatus.push(TreeComparator.compareByValue(entry1.item, entry2.item, "singleWielding.accuracy"));
                     comparisionStatus.push(TreeComparator.compareByValue(entry1.item, entry2.item, "singleWieldingOneHanded.accuracy"));
                 }
+            } else if (stat === 'newDamageFormula' && weaponList.includes(entry1.item.type)) {
+                comparisionStatus.push(TreeComparator.compareByValue(entry1.item, entry2.item, 'atk'));    
             } else {
                 if (!baseStats.includes(stat) || getValue(entry1.item, stat) >= 5 ||  getValue(entry2.item, stat) >= 5) {
                     if (!simplifiedAilments) {
@@ -202,7 +204,7 @@ class ItemPool {
                 }
                 if (baseStats.includes(stat)) {
                     comparisionStatus.push(TreeComparator.compareByValue(entry1.item, entry2.item, "total_" + stat));
-                    comparisionStatus.push(TreeComparator.compareByValue(entry1.item, entry2.item, "esperStatsBonus." + stat));
+                    comparisionStatus.push(TreeComparator.compareByValue(entry1.item, entry2.item, "esperStatsBonus.all." + stat));
                     if (includeSingleWielding) {
                         comparisionStatus.push(TreeComparator.compareByDoublehand(entry1.item, entry2.item, stat));
                     }

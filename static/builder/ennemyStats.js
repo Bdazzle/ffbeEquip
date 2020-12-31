@@ -1,6 +1,8 @@
 class EnnemyStats {
-    constructor(races, def, spr, elementalResists, breaks, buffs, breakability, imperils) {
+    constructor(races, atk, mag, def, spr, elementalResists, breaks, buffs, breakability, imperils, monsterAttack) {
         this.races = races;
+        this.atk = atk;
+        this.mag = mag;
         this.def = def;
         this.spr = spr;
         this.elementalResists = elementalResists;
@@ -8,11 +10,14 @@ class EnnemyStats {
         this.buffs = buffs;
         this.breakability = breakability;
         this.imperils = imperils;
+        this.monsterAttack = monsterAttack;
     }
     
     static copy(ennemyStats) {
         return new EnnemyStats(
             ennemyStats.races,
+            ennemyStats.atk,
+            ennemyStats.mag,
             ennemyStats.def,
             ennemyStats.spr,
             ennemyStats.elementalResists,
@@ -42,8 +47,25 @@ class EnnemyStats {
                 'earth':ennemyStats.imperils.earth, 
                 'wind':ennemyStats.imperils.wind, 
                 'light':ennemyStats.imperils.light, 
-                'dark':ennemyStats.imperils.dark
-            }
+                'dark':ennemyStats.imperils.dark,
+                "dagger":ennemyStats.imperils.dagger,
+                "sword":ennemyStats.imperils.sword,
+                'greatSword':ennemyStats.imperils.greatSword,
+                'katana':ennemyStats.imperils.katana,
+                'staff':ennemyStats.imperils.staff,
+                'rod':ennemyStats.imperils.rod,
+                'bow':ennemyStats.imperils.bow,
+                'axe':ennemyStats.imperils.axe,
+                "hammer":ennemyStats.imperils.hammer,
+                "spear":ennemyStats.imperils.spear,
+                'harp':ennemyStats.imperils.harp,
+                'whip':ennemyStats.imperils.whip,
+                'throwing':ennemyStats.imperils.throwing,
+                'gun':ennemyStats.imperils.gun,
+                'mace':ennemyStats.imperils.mace,
+                'fist':ennemyStats.imperils.fist,
+            },
+            ennemyStats.monsterAttack
         );
     }
 }

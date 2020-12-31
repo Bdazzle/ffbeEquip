@@ -105,6 +105,10 @@
     display: none;
 }
 
+.onlyTmrMoogles .unit:not(.tmrMoogles) {
+    display: none;
+}
+
 .sevenStars .numberDiv .glyphicon {
     color: #F9D2DA;
 }
@@ -117,7 +121,7 @@
     background-color: #ff8888;
 }
 
-.unit.notOwned {
+.unit.notOwned .ownedNumberDiv,.unit.notOwned .secondColumn, .unit.notOwned .thirdColumn {
     opacity: 0.3;
 }
 .unit .glyphicon-time {
@@ -193,7 +197,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: white;
 }
 
 #results.hackForImage {
@@ -205,6 +208,7 @@
 
 .raritySeparator {
     margin-top: 30px;
+    font-size: 2em;
 }
 
 .rarityJumpList {
@@ -309,6 +313,8 @@
     display: flex;
     flex-direction: column;
     padding-top: 6px;
+    flex-wrap: wrap;
+    max-height: 64px;
 }
 
 .checkboxGroup {
@@ -344,29 +350,6 @@
     line-height: 58px;
     padding-left: 15px;
 }
-
-#exportLinks {
-    position: absolute;
-    top: 20px;
-    left: 320px;
-    z-index: 1;
-}
-
-#exportLinks a.dropdown-toggle {
-    margin-left: 10px;
-    padding: 4px 6px;
-    border: 1px solid #c8c8c8;
-    background: #f7f7f7;
-    border-radius: 4px;
-    white-space: nowrap;
-}
-
-#exportLinks a.dropdown-toggle:hover {
-    border: 1px solid #808080;
-    background: #f0f0f0;
-    text-decoration: none;
-}
-
 
 .readOnly #header, .readOnly #loginMessage, .readOnly .navbar, .readOnly #exportLinks, .readOnly .notOwned .numberDiv {
     display: none;
@@ -422,10 +405,6 @@
     padding: 3px;
     height: 24px;
     width: 24px;
-}
-
-.unit.notOwned .actions > .glyphicon.glyphicon-pencil {
-    display: none;
 }
 
 .unit.notOwned .awakenButton {
@@ -525,11 +504,50 @@
     margin-left: 3px;
 }
 
-.ownedNumbers .sevenStarNumber {
+.ownedNumbers .sevenStarNumber, .ownedNumbers .NVNumber {
     display: none;
 }
 
-.sevenStars .ownedNumbers .sevenStarNumber {
+.sevenStars .ownedNumbers .sevenStarNumber,
+.NV .ownedNumbers .NVNumber,
+.NVA .ownedNumbers .NVNumber
+{
+    display: block;
+}
+
+.NV .ownedNumbers .ownedNumberDiv {
+    display: none;
+}
+
+.ownedNumbers .tmrMoogles, .ownedNumbers .fragments  {
+    display: none;
+    position: relative;
+    padding-left: 22px;
+}
+
+.NV .ownedNumbers .fragments, .NVA .ownedNumbers .fragments {
+    display: block;
+}
+
+.ownedNumbers .tmrMoogles img {
+    width: 32px;
+    position: absolute;
+    top: -10px;
+    left: -6px;
+}
+
+.ownedNumbers .fragments img {
+    width: 36px;
+    position: absolute;
+    top: -7px;
+    left: -7px;
+}
+
+.ownedNumbers .tmrMoogles .ownedNumber {
+    cursor: help;
+}
+
+.tmrMoogles .ownedNumbers .tmrMoogles {
     display: block;
 }
 
@@ -545,8 +563,27 @@
     cursor: help;
 }
 
-#importLink {
-    margin-left: 10px;
+.linkActions {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.linkActions .action {
+    margin-right: 15px;
+}
+
+#exportLinks {
+    padding: 4px 6px;
+    border: 1px solid #c8c8c8;
+    border-top-color: rgb(200, 200, 200);
+    border-right-color: rgb(200, 200, 200);
+    border-bottom-color: rgb(200, 200, 200);
+    border-left-color: rgb(200, 200, 200);
+    background: #f7f7f7;
+    background-color: rgb(247, 247, 247);
+    border-radius: 4px;
+    white-space: nowrap;
 }
 
 /* For small screen, show stats in line and mode fixed lower right */
@@ -672,13 +709,6 @@
 
     .explanation {
         display: none;
-    }
-    
-    #exportLinks {
-        position: relative;
-        top: 0;
-        left: 0;
-        margin-bottom:10px;
     }
     
     #exportLinks .text {

@@ -14,21 +14,25 @@ class DataStorage {
         this.onlyUseOwnedItemsAvailableForExpeditions = false;
         this.includeTrialRewards = false;
         this.includeTMROfOwnedUnits = false;
+        this.includeTmrMoogles = false;
         this.includeEasilyObtainableItems = false;
         this.includeChocoboItems = false;
         this.alreadyUsedItems = {};
         this.unstackablePinnedItems = [];
         this.alreadyUsedEspers = [];
-        this.itemInventory;
-        this.availableTmr;
-        this.availableStmr;
+        this.itemInventory = null;
+        this.availableTmr = null;
+        this.availableStmr = null;
         this.defaultWeaponEnhancement = null;
+        this.defaultVisionCardLevel = 10;
+        this.useElementConditionedMateria = false;
     }
     
     setData(data) {
         this.data = data ? data : [];
         this.prepareAllItemsVersion();
     }
+
     
     setDefaultWeaponEnhancement(defaultWeaponEnhancement) {
         this.defaultWeaponEnhancement = defaultWeaponEnhancement;
@@ -46,7 +50,7 @@ class DataStorage {
                 item.damageVariance.avg = (item.damageVariance.min + item.damageVariance.max) / 2;
                 item.meanDamageVariance = item.damageVariance.avg;
             }
-            if (item.id != currentId) {
+            if (item.id !== currentId) {
                 if (currentItemVersions.length > 1 || (currentItemVersions.length == 1 && currentItemVersions[0].equipedConditions)) {
                     this.itemWithVariation[currentId] = currentItemVersions;
                 }
@@ -92,8 +96,7 @@ class DataStorage {
     }
     
     addDesirableElementsFromFormula(formula) {
-        var elements = [];
-        if (builds[currentUnitIndex].formula.type == "condition" && builds[currentUnitIndex].formula.elements) {
+        if (builds[currentUnitIndex].formula.type === "condition" && builds[currentUnitIndex].formula.elements) {
             for (var i = builds[currentUnitIndex].formula.elements.length; i--;) {
                 if (!this.desirableElements.includes(builds[currentUnitIndex].formula.elements[i])) {
                     this.desirableElements.push(builds[currentUnitIndex].formula.elements[i]);
@@ -104,15 +107,15 @@ class DataStorage {
     }
     
     addDesirableElementsFromImperilInFormula(formula) {
-        if (formula.type == "multicast") {
+        if (formula.type === "multicast") {
             for (var i = formula.skills.length; i--;) {
                 this.addDesirableElementsFromImperilInFormula(formula.skills[i]);
             }
-        } else if (formula.type == "skill") {
+        } else if (formula.type === "skill") {
             this.addDesirableElementsFromImperilInFormula(formula.value);
-        } else if (formula.type == "imperil") {
+        } else if (formula.type === "imperil") {
             var elements = Object.keys(formula.value);
-            if (elements.length == 8) {
+            if (elements.length === 8) {
                 // Full imperil, ignore it
             } else {
                 for (var i = elements.length; i--;) {
@@ -121,10 +124,10 @@ class DataStorage {
                     }
                 }
             }
-        } else if (formula.type == "condition") {
+        } else if (formula.type === "condition") {
             this.addDesirableElementsFromImperilInFormula(formula.formula);    
             this.addDesirableElementsFromImperilInFormula(formula.condition);
-        } else if (formula.type != "elementCondition" &&  formula.type != "constant" && formula.type != "chainMultiplier" && formula.type != "break" && formula.type != "imbue" && formula.type != "statsBuff" && formula.type != "value" && formula.type != "damage" && formula.type != "heal" && formula.type != "killers" && formula.type != "skillEnhancement" && formula.type != "mitigation") {
+        } else if (formula.type !== "elementCondition" &&  formula.type !== "constant" && formula.type !== "chainMultiplier" && formula.type !== "break" && formula.type !== "imbue" && formula.type !== "statsBuff" && formula.type !== "value" && formula.type !== "damage" && formula.type !== "heal" && formula.type !== "killers" && formula.type !== "skillEnhancement" && formula.type !== "mitigation" && formula.type !== "berserk") {
             this.addDesirableElementsFromImperilInFormula(formula.value1);
             this.addDesirableElementsFromImperilInFormula(formula.value2);
         }
@@ -142,7 +145,7 @@ class DataStorage {
         });
     }
     
-    prepareData(itemsToExclude, ennemyStats) {
+    prepareData(itemsToExclude, ennemyStats, elementBuffs) {
         this.dataByType = {};
         this.dataWithCondition = [];
         this.dualWieldSources = [];
@@ -170,7 +173,9 @@ class DataStorage {
             }
         }
 
-        this.addDesirableElementsFromItems(ennemyStats);
+        if (useElementConditionedMateria) {
+            this.addDesirableElementsFromItems(ennemyStats);
+        }
         
         for (var index = 0; index < itemNumber; index++) {
             var item = this.data[this.data.length - 1 - index];
@@ -184,10 +189,18 @@ class DataStorage {
             var addedToItems = false;
             
             if (availableNumber > 0 && this.unitBuild != null && this.unitBuild.unit != null && item.tmrUnit && item.tmrUnit == this.unitBuild.unit.id) {
-                this.availableTmr = item;
+                if (this.defaultWeaponEnhancement && this.defaultWeaponEnhancement.length > 0 && weaponList.includes(item.type) && !item.enhancements) {
+                    this.availableTmr = applyEnhancements(item, this.defaultWeaponEnhancement);
+                } else {
+                    this.availableTmr = item;
+                }
             }
             if (availableNumber > 0 && this.unitBuild != null && this.unitBuild.unit != null && item.stmrUnit && item.stmrUnit == this.unitBuild.unit.id) {
-                this.availableStmr = item;
+                if (this.defaultWeaponEnhancement && this.defaultWeaponEnhancement.length > 0 && weaponList.includes(item.type) && !item.enhancements) {
+                    this.availableStmr = applyEnhancements(item, this.defaultWeaponEnhancement);
+                } else {
+                    this.availableStmr = item;
+                }
             }
             
             if (availableNumber > 0 && this.onlyUseOwnedItems && this.itemInventory && this.itemInventory.enchantments && this.itemInventory.enchantments[item.id]) {
@@ -204,7 +217,7 @@ class DataStorage {
                     }
                 }
                 for (var i = enhancementsAvailables.length; i--;) {
-                    addedToItems = this.prepareItem(applyEnhancements(item, enhancementsAvailables[i]), this.unitBuild.baseValues, ennemyStats, 1, ownedAvailableNumber, adventurersAvailable, alreadyAddedIds, equipable, pinnedItemIds, true) || addedToItems;
+                    addedToItems = this.prepareItem(applyEnhancements(item, enhancementsAvailables[i]), this.unitBuild.baseValues, ennemyStats, elementBuffs, 1, ownedAvailableNumber, adventurersAvailable, alreadyAddedIds, equipable, pinnedItemIds, true) || addedToItems;
                     availableNumber--;
                     if (ownedAvailableNumber > 0) {
                         ownedAvailableNumber--;
@@ -213,7 +226,7 @@ class DataStorage {
             }
             
             if (availableNumber > 0) {
-                addedToItems = this.prepareItem(item, this.unitBuild.baseValues, ennemyStats, availableNumber, ownedAvailableNumber, adventurersAvailable, alreadyAddedIds, equipable, pinnedItemIds) || addedToItems;  
+                addedToItems = this.prepareItem(item, this.unitBuild.baseValues, ennemyStats, elementBuffs, availableNumber, ownedAvailableNumber, adventurersAvailable, alreadyAddedIds, equipable, pinnedItemIds) || addedToItems;
             }
             if (addedToItems && !alreadyAddedIds.includes(item.id)) {
                 alreadyAddedIds.push(item.id);
@@ -360,7 +373,7 @@ class DataStorage {
         return result;
     }
 
-    prepareItem(item, baseValues, ennemyStats, availableNumber, ownedAvailableNumber, adventurersAvailable, alreadyAddedIds, equipable, pinnedItemIds, tmrAbilityEnhancedItem = false) {
+    prepareItem(item, baseValues, ennemyStats, elementBuffs, availableNumber, ownedAvailableNumber, adventurersAvailable, alreadyAddedIds, equipable, pinnedItemIds, tmrAbilityEnhancedItem = false) {
         var added = false;
         if (this.defaultWeaponEnhancement && this.defaultWeaponEnhancement.length > 0 && weaponList.includes(item.type) && !item.enhancements) {
             item = applyEnhancements(item, this.defaultWeaponEnhancement)
@@ -369,7 +382,8 @@ class DataStorage {
             item['total_' + baseStats[index]] = this.getStatValueIfExists(item, baseStats[index], baseValues[baseStats[index]].total);
         }
         if (item.element && !includeAll(this.unitBuild.innateElements, item.element)) {
-            item.elementType = "element_" + getElementCoef(item.element, ennemyStats);
+            item.elementType = "element";
+            item.elementCoef = getElementCoef(item.element, ennemyStats) * -1;
         } else {
             item.elementType = "neutral"
         }
@@ -386,8 +400,8 @@ class DataStorage {
                     this.equipSources.push(item);
                 }
             }
-            if (this.itemCanBeOfUseForGoal(item, ennemyStats)) {
-                if (this.itemWithUnstackableSkillOnlyUsefulInOne(item, ennemyStats)) {
+            if (this.itemCanBeOfUseForGoal(item, ennemyStats, elementBuffs)) {
+                if (this.itemWithUnstackableSkillOnlyUsefulInOne(item, ennemyStats, elementBuffs)) {
                     availableNumber = Math.min(1, availableNumber);
                     ownedAvailableNumber = Math.min(1, ownedAvailableNumber);
                 }
@@ -449,7 +463,7 @@ class DataStorage {
         }
     }
     
-    itemCanBeOfUseForGoal(item, ennemyStats) {
+    itemCanBeOfUseForGoal(item, ennemyStats, elementBuffs = {}) {
         if (builds[currentUnitIndex].formula.type == "condition" && builds[currentUnitIndex].formula.elements && item.element) {
             if (builds[currentUnitIndex].formula.elements.includes("none") ) {
                 return false;
@@ -465,22 +479,24 @@ class DataStorage {
 
         for (var index = 0, len = stats.length; index < len; index++) {
             if (stats[index] == "weaponElement") {
-                if (item.element && getElementCoef(item.element, ennemyStats) < 0) return true;
+                if (item.element && (getElementCoef(item.element, ennemyStats) < 0 || item.element.map(e => elementBuffs[e] || 0).reduce((acc, val) => acc + val, 0))) return true;
             } else if (stats[index] == "physicalKiller") {
                 if (this.getKillerCoef(item, "physical") > 0) return true;
             } else if (stats[index] == "magicalKiller") {
                 if (this.getKillerCoef(item, "magical") > 0) return true;
             } else if (stats[index] == "lbPerTurn") {
                 if (item.lbPerTurn || item.lbFillRate) return true;
+            } else if (stats[index] == "meanDamageVariance") {
+                if (item.meanDamageVariance && item.meanDamageVariance > 1) return true;
             } else {
                 if (getValue(item, stats[index]) > 0) return true;
-                if (item["total_" + stats[index]]) return true;
+                if (item[stats[index] + '%'] && item[stats[index] + '%'] > 0) return true;
                 if (item.singleWielding && item.singleWielding[stats[index]]) return true;
                 if (item.singleWieldingGL && item.singleWieldingGL[stats[index]]) return true;
                 if (item.singleWieldingOneHanded && item.singleWieldingOneHanded[stats[index]]) return true;
                 if (item.singleWieldingOneHandedGL && item.singleWieldingOneHandedGL[stats[index]]) return true;
                 if (item.dualWielding && item.dualWielding[stats[index]]) return true;
-                if (item.esperStatsBonus && item.esperStatsBonus[stats[index]]) return true;
+                if (item.esperStatsBonus && item.esperStatsBonus.all && item.esperStatsBonus.all[stats[index]]) return true;
             }
         }
         if (this.desirableElements.length != 0) {
@@ -497,7 +513,7 @@ class DataStorage {
         }
     }
     
-    itemWithUnstackableSkillOnlyUsefulInOne(item, ennemyStats) {
+    itemWithUnstackableSkillOnlyUsefulInOne(item, ennemyStats, elementBuffs) {
         if (item.notStackableSkills) {
             var itemWithoutUnstackableSkills = JSON.parse(JSON.stringify(item));
             Object.keys(itemWithoutUnstackableSkills.notStackableSkills).forEach(id => {
@@ -506,7 +522,7 @@ class DataStorage {
                     this.removeStat(itemWithoutUnstackableSkills, stat, skill[stat]);
                 })
             });
-            return this.itemCanBeOfUseForGoal(itemWithoutUnstackableSkills)
+            return this.itemCanBeOfUseForGoal(itemWithoutUnstackableSkills, ennemyStats, elementBuffs)
         }
         return false;
     }
@@ -544,7 +560,14 @@ class DataStorage {
     }
     
     getAvailableNumbers(item) {
-        if (this.onlyUseOwnedItems) {
+        if (this.itemsToInclude && this.itemsToInclude.includes(item.id)) {
+            var numbers = this.getOwnedNumber(item);
+            if (!numbers.available) {
+                numbers.available = 1;
+                numbers.total = numbers.total + 1;
+            }
+            return numbers;
+        } else if (this.onlyUseOwnedItems) {
             var numbers = this.getOwnedNumber(item);
             if (!isStackable(item)) {
                 numbers.available = Math.min(numbers.available,1);
@@ -580,12 +603,17 @@ class DataStorage {
                         var access = item.access[index];
                         if ((this.excludeNotReleasedYet && access == "not released yet")
                            || (this.excludeTMR5 && access.startsWith("TMR-5*") && item.tmrUnit != builds[currentUnitIndex].unit.id)
-                           || (this.exludeEventEquipment && access.endsWith("event"))
                            || (this.excludePremium && access == "premium")
                            || (this.excludeSTMR && access == "STMR")) {
                             return {"total":0,"available":0,"totalOwnedNumber":0};
                         }        
                     }
+                    if (this.exludeEventEquipment && item.access.every(a => a.endsWith("event"))) {
+                        return {"total":0,"available":0,"totalOwnedNumber":0};
+                    }
+                }
+                if (item.type === 'visionCard' && item.level != this.defaultVisionCardLevel) {
+                    return {"total":0,"available":0,"totalOwnedNumber":0};
                 }
                 number = 4;
                 if (item.maxNumber) {
@@ -617,16 +645,33 @@ class DataStorage {
         if (this.onlyUseOwnedItemsAvailableForExpeditions && this.itemInventory.excludeFromExpeditions.includes(item.id)) {
             return {"total":0,"available":0,"totalOwnedNumber":0}
         }
-        if (this.itemInventory[item.id]) {
-            totalNumber = this.itemInventory[item.id];
+        if (item.type == 'visionCard') {
+            let indexOfDash = item.id.indexOf('-');
+            let baseId = item.id.substr(0, indexOfDash);
+            let level = item.id.substr(indexOfDash + 1);
+            if (itemInventory.visionCardsLevels[baseId]) {
+                totalNumber = itemInventory.visionCardsLevels[baseId].filter(l => l == level).length;
+            } else if (itemInventory[baseId]) {
+                totalNumber = itemInventory[baseId];
+            }
+        } else {
+            if (this.itemInventory[item.id]) {
+                totalNumber = this.itemInventory[item.id];
+            }
         }
+
         totalOwnedNumber = totalNumber;
         if (this.includeTMROfOwnedUnits) {
             if (item.tmrUnit && ownedUnits[item.tmrUnit]) {
                 totalNumber += ownedUnits[item.tmrUnit].farmable;
             }
         }
-        if (this.includeTrialRewards && totalNumber == 0 && item.access.includes("trial")) {
+        if (this.includeTmrMoogles) {
+            if (item.tmrUnit && ownedUnits[item.tmrUnit] && ownedUnits[item.tmrUnit].tmrMoogles) {
+                totalNumber += ownedUnits[item.tmrUnit].tmrMoogles.length;
+            }
+        }
+        if (this.includeTrialRewards && totalNumber == 0 && item.access.includes("trial") && (!item.access.includes('not released yet') || !this.excludeNotReleasedYet )) {
             totalNumber += 1;
         }
         if (this.includeEasilyObtainableItems && totalNumber == 0 && item.access.some(type => DATA_STORAGE_EASILY_OBTAINABLE_ITEMS.includes(type))) {
@@ -657,25 +702,26 @@ class DataStorage {
         this.alreadyUsedEspers = [];
         for (var i = 0, len = builds.length; i < len; i++) {
             if (i != currentUnitIndex) {
-                var build = builds[i].build;
-                for (var j = 0, len2 = build.length; j < len2; j++) {
-                    var item = build[j];
-                    if (item) {
-                        if (this.alreadyUsedItems[item.id]) {
-                            this.alreadyUsedItems[item.id]++;
+                let unitItems = this.getUnitItems(builds[i]);
+
+                Object.keys(unitItems).forEach(id => {
+                    if (id !== 'enhancements') {
+                        if (this.alreadyUsedItems[id]) {
+                            this.alreadyUsedItems[id] += unitItems[id];
                         } else {
-                            this.alreadyUsedItems[item.id] = 1;
-                        }
-                        if (item.enhancements) {
-                            if (!this.alreadyUsedItems.enhancements[item.id]) {
-                                this.alreadyUsedItems.enhancements[item.id] = [];
-                            }
-                            this.alreadyUsedItems.enhancements[item.id].push(item.enhancements);
+                            this.alreadyUsedItems[id] = unitItems[id];
                         }
                     }
-                }
-                if (build[10]) {
-                    this.alreadyUsedEspers.push(build[10].id);
+                });
+                Object.keys(unitItems.enhancements).forEach(id => {
+                    if (!this.alreadyUsedItems.enhancements[id]) {
+                        this.alreadyUsedItems.enhancements[id] = [];
+                    }
+                    this.alreadyUsedItems.enhancements[id] = this.alreadyUsedItems.enhancements[id].concat(unitItems.enhancements[id]);
+                });
+
+                if (builds[i].build[11]) {
+                    this.alreadyUsedEspers.push(builds[i].build[11].id);
                 }
             } else {
                 for (var index = 0; index < 10; index++) {
@@ -699,10 +745,70 @@ class DataStorage {
                         }   
                     }
                 }
-                if (builds[i].build[10]) {
-                    this.alreadyUsedEspers.push(builds[i].build[10].id);
+                if (builds[i].fixedItems[11]) {
+                    this.alreadyUsedEspers.push(builds[i].build[11].id);
                 }
             }
         }
+    }
+
+    getUnitItems(unitBuild) {
+        let usedItems = {"enhancements":{}};
+        for (let i = 0; i <= 10; i++) {
+            if (unitBuild.build[i]) {
+                let item = unitBuild.build[i];
+                if (usedItems[item.id]) {
+                    usedItems[item.id]++;
+                } else {
+                    usedItems[item.id] = 1;
+                }
+                if (item.enhancements) {
+                    if (!usedItems.enhancements[item.id]) {
+                        usedItems.enhancements[item.id] = [];
+                    }
+                    usedItems.enhancements[item.id].push(item.enhancements);
+                }
+            }
+        }
+        if (unitBuild.hasBraveShift()) {
+            let build = unitBuild._braveShift.build;
+            let braveShiftUsedItems = {};
+            let braveShiftUsedItemsEnhancements = {};
+            for (let i = 0; i <= 10; i++) {
+                if (build[i]) {
+                    let item = build[i];
+
+                    if (braveShiftUsedItems[item.id]) {
+                        braveShiftUsedItems[item.id]++;
+                    } else {
+                        braveShiftUsedItems[item.id] = 1;
+                    }
+                    if (item.enhancements) {
+                        if (!braveShiftUsedItemsEnhancements[item.id]) {
+                            braveShiftUsedItemsEnhancements[item.id] = [];
+                        }
+                        braveShiftUsedItemsEnhancements[item.id].push(item.enhancements);
+                    }
+                }
+            }
+            Object.keys(braveShiftUsedItems).forEach(k => {
+                 usedItems[k] = Math.max(usedItems[k] | 0, braveShiftUsedItems[k] | 0);
+            });
+            Object.keys(braveShiftUsedItemsEnhancements).forEach(k => {
+                if (!usedItems.enhancements[k]) {
+                    usedItems.enhancements[k] = [];
+                }
+                let temp = usedItems.enhancements[k].map(e => JSON.stringify(e));
+                braveShiftUsedItemsEnhancements[k].forEach(e => {
+                    let foundIndex = temp.indexOf(JSON.stringify(e));
+                    if (foundIndex >= 0) {
+                        temp.splice(foundIndex, 1);
+                    } else {
+                        usedItems.enhancements[k].push(e);
+                    }
+                });
+            });
+        }
+        return usedItems;
     }
 }

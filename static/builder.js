@@ -10,7 +10,7 @@ const formulaByGoal = {
     "sprDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
     "defDamageWithPhysicalMecanism":    {"type":"skill", "id":"0","name":"1x physical DEF damage", "formulaName":"defDamageWithPhysicalMecanism", "value": {"type":"damage", "value":{"mecanism":"physical", "damageType":"body", "coef":1, "use":{"stat":"def"}}}},
     "atkDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x magical ATK damage", "formulaName":"atkDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"body", "coef":1}}},
-    "sprDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x physical SPR damage", "formulaName":"sprDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
+    "sprDamageWithMagicalMecanism":     {"type":"skill", "id":"0","name":"1x magical SPR damage", "formulaName":"sprDamageWithMagicalMecanism", "value": {"type":"damage", "value":{"mecanism":"magical", "damageType":"mind", "coef":1, "use":{"stat":"spr"}}}},
     "atkDamageWithFixedMecanism":       {"type":"value","name":"atkDamageWithFixedMecanism"},
     "physicalDamageMultiCast":          {"type":"value","name":"physicalDamageMultiCast"},
     "fixedDamageWithPhysicalMecanism":  {"type":"value","name":"fixedDamageWithPhysicalMecanism"},
@@ -58,8 +58,6 @@ const goalQuickSelectDefaultValues = [
     ["heal","Heal"]
 ]
 
-const statsToDisplay = baseStats.concat(["evade.physical","evade.magical"]);
-
 var customFormula;
 
 var espers;
@@ -67,7 +65,7 @@ var espersByName = {};
 
 var units;
 var ownedUnits;
-var unitsWithSkills;
+var unitsWithSkills = {};
 
 var ennemyStats;
 
@@ -79,7 +77,8 @@ var searchStat = "";
 var ClickBehaviors = {
     EQUIP: 0,
     IGNORE: 1,
-    EXCLUDE: 2
+    EXCLUDE: 2,
+    INCLUDE: 3,
 };
 var searchClickBehavior = ClickBehaviors.EQUIP;
 var currentItemSlot;
@@ -95,7 +94,7 @@ var progress;
 
 var defaultItemsToExclude = ["409009000"];
 var itemsToExclude = defaultItemsToExclude.slice(); // Ring of Dominion
-
+var itemsToInclude = [];
 
 var itemPool;
 
@@ -133,7 +132,19 @@ var currentBestParamChallengeBuild = {
 
 let buildCounter = 0;
 
+let displayOnly7StarsUnits = true;
+
+let fixItemList;
+
+let defaultMonsterAttackFormula = {"type":"*","value1":{"type":"constant","value":1},"value2":{"type":"skill","id":"0","name":"1x physical ATK damage","formulaName":"physicalDamage","value":{"type":"damage","value":{"mecanism":"physical","damageType":"body","coef":1}}}};
+let monsterAttackFormula;
+
 function onBuildClick() {
+    if (builds[currentUnitIndex] && builds[currentUnitIndex].unit.id === '777700004') {
+        Modal.showMessage("Hum ?", "Are you saying you want me to help you build my foe? I'm afraid not! You're on your own there !");
+        return;
+    }
+
     runningParamChallenge = false;
     currentUnitIdIndexForParamChallenge = -1;
     if (running || runningParamChallenge) {
@@ -151,25 +162,25 @@ function build() {
     buildCounter = 0;
     logBuildCounter();
     $(".buildCounterDiv").removeClass("hidden");
-    
+
     if (!builds[currentUnitIndex].unit) {
         Modal.showMessage("No unit selected", "Please select an unit");
         return;
-    }   
-    
+    }
+
     builds[currentUnitIndex].emptyBuild();
-    
+
     readEnnemyStats();
     readGoal();
-    
+
     dataStorage.calculateAlreadyUsedItems(builds, currentUnitIndex);
     readItemsExcludeInclude();
     readStatsValues();
-    
+
     running = true;
     $("body").addClass("building");
     updateBuildButtonDisplay();
-    
+
     try {
         optimize();
     } catch(error) {
@@ -180,7 +191,7 @@ function build() {
 function stopBuild() {
     for (var index = workers.length; index--; index) {
         workers[index].terminate();
-    }   
+    }
     console.timeEnd("optimize");
     initWorkers();
     workerWorkingCount = 0;
@@ -210,14 +221,14 @@ function optimize() {
     progressElement.width("0%");
     progressElement.text("0%");
     progressElement.removeClass("finished");
-    
-    var forceDoubleHand = $("#forceDoublehand input").prop('checked');
-    var forceDualWield = $("#forceDualWield input").prop('checked');
-    var tryEquipSources = $("#tryEquipsources input").prop('checked');
+
+    var forceDoubleHand = $("#forceDoublehand").prop('checked');
+    var forceDualWield = $("#forceDualWield").prop('checked');
+    var tryEquipSources = $("#tryEquipsources").prop('checked');
     var useNewJpDamageFormula = $("#useNewJpDamageFormula").prop('checked');
-    
+
     prepareDataStorage();
-    
+
     var espersToSend = {};
     var esperNames = Object.keys(espersByName);
     for (var esperNameIndex in esperNames) {
@@ -226,20 +237,22 @@ function optimize() {
             espersToSend[esperName] = espersByName[esperName];
         }
     }
-    
+
     itemPool = new ItemPool(4, builds[0].involvedStats, ennemyStats);
-    
+
     for (var index = workers.length; index--; index) {
         workers[index].postMessage(JSON.stringify({
-            "type":"setData", 
+            "type":"setData",
             "server": server,
             "espers":espersToSend,
             "unit":builds[currentUnitIndex].unit,
-            "level":builds[currentUnitIndex]._level,
-            "fixedItems":builds[currentUnitIndex].fixedItems, 
+            "level":builds[currentUnitIndex].level,
+            "exAwakeningLevel": builds[currentUnitIndex]._exAwakeningLevel,
+            "fixedItems":builds[currentUnitIndex].fixedItems,
             "baseValues":builds[currentUnitIndex].baseValues,
             "innateElements":builds[currentUnitIndex].innateElements,
             "formula":builds[currentUnitIndex].formula,
+            "monsterAttackFormula": monsterAttackFormula,
             "dataByType":dataStorage.dataByType,
             "dataWithCondition":dataStorage.dataWithCondition,
             "dualWieldSources":dataStorage.dualWieldSources,
@@ -251,7 +264,7 @@ function optimize() {
             "useNewJpDamageFormula": useNewJpDamageFormula,
         }));
     }
-    let forceTmrAbility = $("#forceTmrAbility input").prop('checked');
+    let forceTmrAbility = $("#forceTmrAbility").prop('checked');
 
     var typeCombinationGenerator = new TypeCombinationGenerator(forceDoubleHand, forceDualWield, tryEquipSources, builds[currentUnitIndex], dataStorage.dualWieldSources, dataStorage.equipSources, dataStorage.dataByType, dataStorage.weaponsByTypeAndHands, forceTmrAbility);
     remainingTypeCombinations = typeCombinationGenerator.generateTypeCombinations();
@@ -261,24 +274,26 @@ function optimize() {
         alert("The build rules chosen are not compatible with available equipments");
         return;
     }
-    
+
     typeCombinationChunckSize = Math.min(typeCombinationChunckSize, Math.ceil(remainingTypeCombinations.length/20));
-    
+
     initialPinnedWeapons = [builds[currentUnitIndex].fixedItems[0], builds[currentUnitIndex].fixedItems[1]];
-    
+
     document.title = "0% - FFBE Equip - Builder";
-    
+
     processedCount = 0
     typeCombinationsCount = remainingTypeCombinations.length;
     for (var index = workers.length; index--; index) {
         processTypeCombinations(index);
-    }   
+    }
 }
 
 function prepareDataStorage() {
     dataStorage.setUnitBuild(builds[currentUnitIndex]);
     dataStorage.itemsToExclude = itemsToExclude;
-    dataStorage.prepareData(itemsToExclude, ennemyStats);
+    dataStorage.itemsToInclude = itemsToInclude;
+    dataStorage.useElementConditionedMateria = $("#useElementConditionedMateria").prop('checked');
+    dataStorage.prepareData(itemsToExclude, ennemyStats, builds[currentUnitIndex].baseValues.elementBuffs);
 }
 
 function processTypeCombinations(workerIndex) {
@@ -294,7 +309,7 @@ function processTypeCombinations(workerIndex) {
         remainingTypeCombinations = remainingTypeCombinations.slice(typeCombinationChunckSize);
     }
     workers[workerIndex].postMessage(JSON.stringify({
-        "type":"optimize", 
+        "type":"optimize",
         "typeCombinations":combinationsToProcess
     }));
     workerWorkingCount++;
@@ -304,79 +319,79 @@ function readGoal(index = currentUnitIndex) {
     var goal;
     var formula;
     if (customFormula) {
-        builds[currentUnitIndex].goal = "custom";
+        builds[index].goal = "custom";
         formula = customFormula;
     } else {
         var goalValue = $(".goal #normalGoalChoice").val();
         if (goalValue) {
-            if (goalValue == "LB" && builds[currentUnitIndex].unit) {
-                builds[currentUnitIndex].goal = "custom";
-                var skill = unitsWithSkills[builds[currentUnitIndex].unit.id].lb;
-                formula = formulaFromSkill(skill);
-            } else if (goalValue == "LB_REPLACED" && builds[currentUnitIndex].unit) {
-                let unitWithSkills = unitsWithSkills[builds[currentUnitIndex].unit.id];
-                skillLoop: for (var skillIndex = unitWithSkills.passives.length; skillIndex--;) {
-                    var passive = unitWithSkills.passives[skillIndex];
-                    for (var effectIndex = passive.effects.length; effectIndex--;) {
-                        var effect = passive.effects[effectIndex].effect;
-                        if (effect && effect.replaceLb) {
-                            builds[currentUnitIndex].goal = "custom";
-                            var formula = formulaFromSkill(effect.replaceLb);
-                            formula.lb = true;
-                            formula.replacedLb = true;
-                            break skillLoop;
+            if (builds[index].unit) {
+                let unitWithSkills = unitsWithSkills[builds[index].unit.id];
+                if (goalValue == "LB") {
+                    builds[index].goal = "custom";
+                    var skill = unitWithSkills.lb;
+                    formula = formulaFromSkill(skill);
+                } else if (goalValue == "LB_REPLACED") {
+                    skillLoop: for (var skillIndex = unitWithSkills.passives.length; skillIndex--;) {
+                        var passive = unitWithSkills.passives[skillIndex];
+                        for (var effectIndex = passive.effects.length; effectIndex--;) {
+                            var effect = passive.effects[effectIndex].effect;
+                            if (effect && effect.replaceLb) {
+                                builds[index].goal = "custom";
+                                var formula = formulaFromSkill(effect.replaceLb);
+                                formula.lb = true;
+                                formula.replacedLb = true;
+                                break skillLoop;
+                            }
                         }
                     }
-                }
 
-            } else if (goalValue.startsWith("SKILL_") && builds[currentUnitIndex].unit) {
-                builds[currentUnitIndex].goal = "custom";
-                var skillId = goalValue.substr(6);
-                var skill = getSkillFromId(skillId, unitsWithSkills[builds[currentUnitIndex].unit.id]);
-                formula = formulaFromSkill(skill);
+                } else if (goalValue.startsWith("SKILL_")) {
+                    builds[index].goal = "custom";
+                    var skillId = goalValue.substr(6);
+                    var skill = getSkillFromId(skillId, unitWithSkills);
+                    formula = formulaFromSkill(skill);
 
-            } else if (goalValue.startsWith("MULTICAST_") && builds[currentUnitIndex].unit) {
-                builds[currentUnitIndex].goal = "custom";
-                var skillId = goalValue.substr(10);
-                var skill = getSkillFromId(skillId, unitsWithSkills[builds[currentUnitIndex].unit.id]);
-                var multicastEffect;
-                for (var i = skill.effects.length; i--;) {
-                    if (skill.effects[i].effect && skill.effects[i].effect.multicast) {
-                        multicastEffect = skill.effects[i].effect.multicast;
+                } else if (goalValue.startsWith("MULTICAST_")) {
+                    builds[index].goal = "custom";
+                    var skillId = goalValue.substr(10);
+                    var skill = getSkillFromId(skillId, unitWithSkills);
+                    var multicastEffect;
+                    for (var i = skill.effects.length; i--;) {
+                        if (skill.effects[i].effect && skill.effects[i].effect.multicast) {
+                            multicastEffect = skill.effects[i].effect.multicast;
+                        }
                     }
+                    var skillChoiceFormulas = [];
+                    for (var i = 0, len = multicastEffect.time; i < len; i++) {
+                        var skillChoiceValue = $("#multicastSelect" + i).val();
+                        var skillChoiceId = skillChoiceValue.substr(6);
+                        var skillChoice = getSkillFromId(skillChoiceId, unitWithSkills);
+                        skillChoiceFormulas.push(formulaFromSkill(skillChoice, true));
+                    }
+                    formula = {type:"multicast", skills: skillChoiceFormulas};
+                } else {
+                    builds[index].goal = goalValue;
+                    formula = formulaByGoal[goalValue];
                 }
-                var skillChoiceFormulas = [];
-                for (var i = 0, len = multicastEffect.time; i < len; i++) {
-                    var skillChoiceValue = $("#multicastSelect" + i).val();
-                    var skillChoiceId = skillChoiceValue.substr(6);
-                    var skillChoice = getSkillFromId(skillChoiceId, unitsWithSkills[builds[currentUnitIndex].unit.id]);
-                    skillChoiceFormulas.push(formulaFromSkill(skillChoice, true));
-                }
-                formula = {type:"multicast", skills: skillChoiceFormulas};
-            } else {
-                builds[currentUnitIndex].goal = goalValue;
-                formula = formulaByGoal[goalValue];
+                $(".goal .chainMultiplier").removeClass("hidden");
             }
-            $(".goal .chainMultiplier").removeClass("hidden");
         }
     }
     formula = readSimpleConditions(formula);
-    builds[currentUnitIndex].formula = formula;
-    
+    builds[index].formula = formula;
+
     goalVariation = $("#goalVariance").val();
-    
-    $(".unitStack").toggleClass("hidden", !hasStack(builds[currentUnitIndex].formula));
-        
-    $(".monster").addClass("hidden");
+
+    $(".unitStack").toggleClass("hidden", !hasStack(builds[index].formula));
+
     $(".unitAttackElement").addClass("hidden");
-    if (builds[currentUnitIndex].unit && 
-        (builds[currentUnitIndex].involvedStats.includes("physicalKiller") 
-            || builds[currentUnitIndex].involvedStats.includes("magicalKiller")
-            || builds[currentUnitIndex].involvedStats.includes("weaponElement"))) {
-        $(".monster").removeClass("hidden");
+    if (builds[index].unit &&
+        (builds[index].involvedStats.includes("physicalKiller")
+            || builds[index].involvedStats.includes("magicalKiller")
+            || builds[index].involvedStats.includes("weaponElement"))) {
         $(".unitAttackElement").removeClass("hidden");
     }
-    if (builds[currentUnitIndex].involvedStats.includes("weaponElement")) {
+    if (builds[index].involvedStats.includes("weaponElement")) {
         $(".unitAttackElement").removeClass("hidden");
     }
 }
@@ -395,7 +410,7 @@ function readSimpleConditions(formula) {
                 simpleConditions.elementalResist[elementList[i]] = value;
             }
         }
-        
+
         let chainMult = readChainMultiplier();
         if (chainMult != 1) {
             formula = {
@@ -415,7 +430,11 @@ function readChainMultiplier() {
     let stringValue = $(".goal .chainMultiplier input").val();
     if (stringValue) {
         stringValue = stringValue.replace(',', '.');
-        return parseFloat(stringValue) || 1;
+        if (stringValue.toUpperCase() === 'MAX') {
+            return 'MAX';
+        } else {
+            return parseFloat(stringValue) || 1;
+        }
     } else {
         return 1;
     }
@@ -430,7 +449,7 @@ function switchSimpleConditionAilments() {
     if (currentSelectedAilments.length == 8) {
         unselectAll("ailmentImunities");
         select("ailmentImunities", disablingAilmentList);
-        
+
     } else if (currentSelectedAilments.length == 4 && includeAll(currentSelectedAilments, disablingAilmentList)) {
         unselectAll("ailmentImunities");
     } else {
@@ -450,37 +469,63 @@ function readItemsExcludeInclude() {
     dataStorage.excludePremium = $("#excludePremium").prop("checked");
     dataStorage.excludeSTMR = $("#excludeSTMR").prop("checked");
     dataStorage.includeTMROfOwnedUnits = $("#includeTMROfOwnedUnits").prop("checked");
+    dataStorage.includeTmrMoogles = $("#includeTmrMoogles").prop("checked");
     dataStorage.includeTrialRewards = $("#includeTrialRewards").prop("checked");
     dataStorage.includeEasilyObtainableItems = $("#includeEasilyObtainableItems").prop("checked");
     dataStorage.includeChocoboItems = $("#includeChocoboItems").prop("checked");
 }
 
 function readStatsValues() {
+    let baseValues = {};
     for (var index = baseStats.length; index--;) {
-        builds[currentUnitIndex].baseValues[baseStats[index]] = {
+        baseValues[baseStats[index]] = {
             "base" : parseInt($(".unitStats .stat." + baseStats[index] + " .baseStat input").val()) || 0,
             "pots" : parseInt($(".unitStats .stat." + baseStats[index] + " .pots input").val()) || 0
         };
-        builds[currentUnitIndex].baseValues[baseStats[index]].total = builds[currentUnitIndex].baseValues[baseStats[index]].base + builds[currentUnitIndex].baseValues[baseStats[index]].pots;
-        builds[currentUnitIndex].baseValues[baseStats[index]].buff = parseInt($(".unitStats .stat." + baseStats[index] + " .buff input").val()) || 0;
+        baseValues[baseStats[index]].total = baseValues[baseStats[index]].base + baseValues[baseStats[index]].pots;
+        baseValues[baseStats[index]].buff = parseInt($(".unitStats .stat." + baseStats[index] + " .buff input").val()) || 0;
     }
-    var lbShardsPerTurn = parseInt($(".unitStats .stat.lbShardsPerTurn .buff input").val());
+    var lbShardsPerTurn = parseFloat($(".unitStats .stat.lbShardsPerTurn .buff input").val());
     if (isNaN(lbShardsPerTurn)) {
         lbShardsPerTurn = 0;
     }
-    builds[currentUnitIndex].baseValues["lbFillRate"] = {
+    baseValues["lbFillRate"] = {
         "total" : lbShardsPerTurn,
         "buff" : parseInt($(".unitStats .stat.lbFillRate .buff input").val()) || 0
     };
-    builds[currentUnitIndex].baseValues["mitigation"] = {
+    baseValues["mitigation"] = {
         "physical" : parseInt($(".unitStats .stat.pMitigation .buff input").val()) || 0,
         "magical" : parseInt($(".unitStats .stat.mMitigation .buff input").val()) || 0,
         "global" : parseInt($(".unitStats .stat.mitigation .buff input").val()) || 0
     };
-    builds[currentUnitIndex].baseValues["drawAttacks"] = parseInt($(".unitStats .stat.drawAttacks .buff input").val()) || 0;
-    builds[currentUnitIndex].baseValues["lbDamage"] = parseInt($(".unitStats .stat.lbDamage .buff input").val()) || 0;
+    baseValues["drawAttacks"] = parseInt($(".unitStats .stat.drawAttacks .buff input").val()) || 0;
+    baseValues["lbDamage"] = parseInt($(".unitStats .stat.lbDamage .buff input").val()) || 0;
     builds[currentUnitIndex].innateElements = getSelectedValuesFor("elements");
-    builds[currentUnitIndex].baseValues["currentStack"] = parseInt($(".unitStack input").val()) || 0;
+    baseValues["currentStack"] = parseInt($(".unitStack input").val()) || 0;
+    baseValues["killerBuffs"] = [];
+    killerList.forEach(killer => {
+        let physical = parseInt($(".killerBuffs.physical ." + killer + " input").val()) || 0;
+        let magical = parseInt($(".killerBuffs.magical ." + killer + " input").val()) || 0;
+
+        if (physical || magical) {
+            let killerData = {'name':killer};
+            if (physical) {
+                killerData.physical = physical;
+            }
+            if (magical) {
+                killerData.magical = magical;
+            }
+            baseValues["killerBuffs"].push(killerData);
+        }
+    });
+    baseValues.elementBuffs = {};
+    elementList.forEach(element => {
+        const elementBuff = parseInt($(".elementBuffs ." + element + " input").val()) || 0;
+        if (elementBuff) {
+            baseValues.elementBuffs[element] = elementBuff;
+        }
+    });
+    builds[currentUnitIndex].baseValues = baseValues;
 }
 
 
@@ -488,7 +533,7 @@ function readStatsValues() {
 function getPlaceHolder(type) {
     return {"name":"Any " + type,"type":type, "placeHolder":true};
 }
- 
+
 
 function readEnnemyStats() {
     var ennemyResist = {};
@@ -509,7 +554,7 @@ function readEnnemyStats() {
         } else {
             ennemyResist[element] = 0;
         }
-        
+
         var imperilInput = $("#elementalResists ." + element + " input.imperil");
         var imperilValue = imperilInput.val();
         imperilInput.removeClass("buff debuff");
@@ -526,45 +571,79 @@ function readEnnemyStats() {
         }
     }
     var ennemyRaces = getSelectedValuesFor("races");
+    var monsterAtk = 100;
+    var monsterMag = 100;
     var monsterDef = 100;
     var monsterSpr = 100;
-    if ($("#monsterDefensiveStats .def .stat").val()) {
-        monsterDef = parseInt($("#monsterDefensiveStats .def .stat").val());
+    if ($("#monsterStats .atk .stat").val()) {
+        monsterAtk = parseInt($("#monsterStats .atk .stat").val());
     }
-    if ($("#monsterDefensiveStats .spr .stat").val()) {
-        monsterSpr = parseInt($("#monsterDefensiveStats .spr .stat").val());
+    if ($("#monsterStats .mag .stat").val()) {
+        monsterMag = parseInt($("#monsterStats .mag .stat").val());
+    }
+    if ($("#monsterStats .def .stat").val()) {
+        monsterDef = parseInt($("#monsterStats .def .stat").val());
+    }
+    if ($("#monsterStats .spr .stat").val()) {
+        monsterSpr = parseInt($("#monsterStats .spr .stat").val());
     }
     var ennemyBreaks = {"atk":0, "def":0, "mag":0, "spr":0};
-    if ($("#monsterDefensiveStats .def .break").val()) {
-        ennemyBreaks.def = parseInt($("#monsterDefensiveStats .def .break").val());
+    if ($("#monsterStats .atk .break").val()) {
+        ennemyBreaks.atk = parseInt($("#monsterStats .atk .break").val());
     }
-    if ($("#monsterDefensiveStats .spr .break").val()) {
-        ennemyBreaks.spr = parseInt($("#monsterDefensiveStats .spr .break").val());
+    if ($("#monsterStats .mag .break").val()) {
+        ennemyBreaks.mag = parseInt($("#monsterStats .mag .break").val());
+    }
+    if ($("#monsterStats .def .break").val()) {
+        ennemyBreaks.def = parseInt($("#monsterStats .def .break").val());
+    }
+    if ($("#monsterStats .spr .break").val()) {
+        ennemyBreaks.spr = parseInt($("#monsterStats .spr .break").val());
     }
     var enemyBuffs = {"atk":0, "def":0, "mag":0, "spr":0};
-    if ($("#monsterDefensiveStats .def .buff").val()) {
-        enemyBuffs.def = parseInt($("#monsterDefensiveStats .def .buff").val());
+    if ($("#monsterStats .atk .buff").val()) {
+        enemyBuffs.atk = parseInt($("#monsterStats .atk .buff").val());
     }
-    if ($("#monsterDefensiveStats .spr .buff").val()) {
-        enemyBuffs.spr = parseInt($("#monsterDefensiveStats .spr .buff").val());
+    if ($("#monsterStats .mag .buff").val()) {
+        enemyBuffs.mag = parseInt($("#monsterStats .mag .buff").val());
+    }
+    if ($("#monsterStats .def .buff").val()) {
+        enemyBuffs.def = parseInt($("#monsterStats .def .buff").val());
+    }
+    if ($("#monsterStats .spr .buff").val()) {
+        enemyBuffs.spr = parseInt($("#monsterStats .spr .buff").val());
     }
     var enemyBreakabilities = {"atk":true, "def":true, "mag":true, "spr":true};
-    if ($("#monsterDefensiveStats .def .breakIcon").hasClass("glyphicon-ban-circle")) {
+    if ($("#monsterStats .atk .breakIcon").hasClass("glyphicon-ban-circle")) {
+        enemyBreakabilities.atk = false;
+    }
+    if ($("#monsterStats .mag .breakIcon").hasClass("glyphicon-ban-circle")) {
+        enemyBreakabilities.mag = false;
+    }
+    if ($("#monsterStats .def .breakIcon").hasClass("glyphicon-ban-circle")) {
         enemyBreakabilities.def = false;
     }
-    if ($("#monsterDefensiveStats .spr .breakIcon").hasClass("glyphicon-ban-circle")) {
+    if ($("#monsterStats .spr .breakIcon").hasClass("glyphicon-ban-circle")) {
         enemyBreakabilities.spr = false;
     }
-    ennemyStats = new EnnemyStats(getSelectedValuesFor("races"), monsterDef, monsterSpr, ennemyResist, ennemyBreaks, enemyBuffs, enemyBreakabilities, ennemyImperils);
-    
-    $("#negativeBreakImperilWarning").toggleClass("hidden", ennemyBreaks.atk >= 0 && ennemyBreaks.def >= 0 && ennemyBreaks.mag >= 0 && ennemyBreaks.spr >= 0 && !negativeImperil);
 
+    weaponList.forEach(weapon => {
+        const weaponImperil = parseInt($(".weaponImperils ." + weapon + " input").val()) || 0;
+        if (weaponImperil) {
+            ennemyImperils[weapon] = weaponImperil;
+        }
+    });
+
+    ennemyStats = new EnnemyStats(getSelectedValuesFor("races"), monsterAtk, monsterMag, monsterDef, monsterSpr, ennemyResist, ennemyBreaks, enemyBuffs, enemyBreakabilities, ennemyImperils, monsterAttackFormula);
+
+    $("#negativeBreakImperilWarning").toggleClass("hidden", ennemyBreaks.atk >= 0 && ennemyBreaks.def >= 0 && ennemyBreaks.mag >= 0 && ennemyBreaks.spr >= 0 && !negativeImperil);
+    updateWeaponImperilsSummary();
 }
 
-    
+
 function getFixedItemItemSlot(item, equipable, fixedItems) {
     var slot = -1;
-    var forceDoubleHand = $("#forceDoublehand input").prop('checked');
+    var forceDoubleHand = $("#forceDoublehand").prop('checked');
     if (weaponList.includes(item.type)) {
         if (fixedItems[0] && fixedItems[1]) {
             return -1;
@@ -578,17 +657,17 @@ function getFixedItemItemSlot(item, equipable, fixedItems) {
                 return -1;
             }
         }
-    } else if (shieldList.includes(item.type)) {    
+    } else if (shieldList.includes(item.type)) {
         if (fixedItems[1]) {
             return -1;
         }
         return 1;
-    } else if (headList.includes(item.type)) {    
+    } else if (headList.includes(item.type)) {
         if (fixedItems[2]) {
             return -1;
         }
         return 2;
-    } else if (bodyList.includes(item.type)) {    
+    } else if (bodyList.includes(item.type)) {
         if (fixedItems[3]) {
             return -1;
         }
@@ -615,8 +694,10 @@ function getFixedItemItemSlot(item, equipable, fixedItems) {
         } else {
             return 9;
         }
-    } else if (item.type == "esper") {
+    } else if (item.type == "visionCard") {
         return 10;
+    } else if (item.type == "esper") {
+        return 11;
     }
     return slot;
 }
@@ -632,8 +713,8 @@ function logBuild(build, value) {
     var html = "";
     readItemsExcludeInclude();
 
-    for (var index = 0; index < 11; index++) {
-        redrawBuildLine(index);          
+    for (var index = 0; index < 12; index++) {
+        redrawBuildLine(index);
     }
 
     if (conciseView) {
@@ -654,27 +735,27 @@ function logBuild(build, value) {
     $("#fixedItemsTitle").addClass("hidden");
     $("#resultStats").removeClass("hidden");
     var values = {};
-    for (var statIndex = 0, len = statsToDisplay.length; statIndex < len; statIndex++) {
-        var result = calculateStatValue(build, statsToDisplay[statIndex], builds[currentUnitIndex]);
-        values[statsToDisplay[statIndex]] = result.total;
-        
-        $("#resultStats ." + escapeDot(statsToDisplay[statIndex]) + " .value").html(Math.floor(result.total));
-        var bonusTextElement = $("#resultStats ." + escapeDot(statsToDisplay[statIndex]) + " .bonus");
+    for (var statIndex = 0, len = baseStats.length; statIndex < len; statIndex++) {
+        var result = calculateStatValue(build, baseStats[statIndex], builds[currentUnitIndex]);
+        values[baseStats[statIndex]] = result.total;
+
+        $("#resultStats ." + escapeDot(baseStats[statIndex]) + " .value").html(Math.floor(result.total));
+        var bonusTextElement = $("#resultStats ." + escapeDot(baseStats[statIndex]) + " .bonus");
 
         var bonusPercent;
-        if (result.bonusPercent > statsBonusCap[server]) {
-            bonusPercent = "<span style='color:red;' title='Only " + statsBonusCap[server] + "% taken into account'>" + result.bonusPercent + "%</span>";
+        if (result.bonusPercent > getStatBonusCap(baseStats[statIndex])) {
+            bonusPercent = "<span style='color:red;' title='Only " + getStatBonusCap(baseStats[statIndex]) + "% taken into account'>" + result.bonusPercent + "%</span>";
         } else {
             bonusPercent = result.bonusPercent + "%";
         }
-        
-        var upperCaseStat = statsToDisplay[statIndex].toUpperCase();
-        if (baseStats.includes(statsToDisplay[statIndex])) {
-            var equipmentFlatStatBonus = Math.round((getEquipmentStatBonus(build, statsToDisplay[statIndex], false) - 1) * 100);
+
+        var upperCaseStat = baseStats[statIndex].toUpperCase();
+        if (baseStats.includes(baseStats[statIndex])) {
+            var equipmentFlatStatBonus = Math.round((getEquipmentStatBonus(build, baseStats[statIndex], false) - 1) * 100);
             if (equipmentFlatStatBonus > 0) {
                 bonusTextElement.attr("title", `(${upperCaseStat} increase % - Equipped ${upperCaseStat} (DH) increase %) modifiers, capped individually.`);
                 bonusPercent += "&nbsp;-&nbsp;";
-                var cap = 300;
+                var cap = getStatBonusCap('tdh');
                 if (build[0] && build[1] && weaponList.includes(build[0].type) && weaponList.includes(build[1].type)) {
                     cap = builds[currentUnitIndex].tdwCap * 100;
                 }
@@ -687,7 +768,7 @@ function logBuild(build, value) {
                 bonusTextElement.attr("title", `${upperCaseStat} increase % modifier.`);
             }
         }
-        $("#resultStats ." + escapeDot(statsToDisplay[statIndex]) + " .bonus").html(bonusPercent);
+        $("#resultStats ." + escapeDot(baseStats[statIndex]) + " .bonus").html(bonusPercent);
     }
 
     var pMitigation = 1;
@@ -702,35 +783,21 @@ function logBuild(build, value) {
         pMitigation = pMitigation * (1 - (builds[currentUnitIndex].baseValues["mitigation"].global / 100)) * (1 - (builds[currentUnitIndex].baseValues["mitigation"].physical / 100));
         mMitigation = mMitigation * (1 - (builds[currentUnitIndex].baseValues["mitigation"].global / 100)) * (1 - (builds[currentUnitIndex].baseValues["mitigation"].magical / 100))
     }
-    $("#resultStats .physicaleHp .value").html(Math.floor(values["def"] * values["hp"] / pMitigation).toLocaleString());
-    $("#resultStats .magicaleHp .value").html(Math.floor(values["spr"] * values["hp"] / mMitigation).toLocaleString());
-    $("#resultStats .mpRefresh .value").html(Math.floor(values["mp"] * calculateStatValue(build, "mpRefresh", builds[currentUnitIndex]).total / 100));
-    $("#resultStats .lbPerTurn .value").html(calculateStatValue(build, "lbPerTurn", builds[currentUnitIndex]).total);
-    $("#resultStats .evoMag .value").html(calculateStatValue(build, "evoMag", builds[currentUnitIndex]).total);    
-    $("#resultStats .accuracy .value").html(calculateStatValue(build, "accuracy", builds[currentUnitIndex]).total + "%");
-    let drawAttacks = calculateStatValue(build, "drawAttacks", builds[currentUnitIndex]).total;
-    if (drawAttacks) {
-        $("#resultStats .drawAttacks").removeClass('hidden');
-        $("#resultStats .drawAttacks .value").html(drawAttacks + "%");
-    } else {
-        $("#resultStats .drawAttacks").addClass('hidden');
-    }
-    let jumpDamage = calculateStatValue(build, "jumpDamage", builds[currentUnitIndex]).total;
-    if (jumpDamage) {
-        $("#resultStats .jumpDamage").removeClass('hidden');
-        $("#resultStats .jumpDamage .value").html(jumpDamage + "%");
-    } else {
-        $("#resultStats .jumpDamage").addClass('hidden');
-    }
-    let lbDamage = calculateStatValue(build, "lbDamage", builds[currentUnitIndex]).total;
-    if (lbDamage) {
-        $("#resultStats .lbDamage").removeClass('hidden');
-        $("#resultStats .lbDamage .value").html(lbDamage + "%");
-    } else {
-        $("#resultStats .lbDamage").addClass('hidden');
-    }
+    displayStat("#resultStats .physicaleHp", Math.floor(values["def"] * values["hp"] / pMitigation).toLocaleString());
+    displayStat("#resultStats .magicaleHp", Math.floor(values["spr"] * values["hp"] / mMitigation).toLocaleString());
+    displayStat("#resultStats .evade_physical", calculateStatValue(build, "evade.physical", builds[currentUnitIndex]).total);
+    displayStat("#resultStats .evade_magical", calculateStatValue(build, "evade.magical", builds[currentUnitIndex]).total);
+    displayStat("#resultStats .mpRefresh", Math.floor(values["mp"] * calculateStatValue(build, "mpRefresh", builds[currentUnitIndex]).total / 100));
+    displayStat("#resultStats .lbPerTurn", calculateStatValue(build, "lbPerTurn", builds[currentUnitIndex]).total);
+    displayStat("#resultStats .lbFillRate", calculateStatValue(build, "lbFillRate", builds[currentUnitIndex]).total);
+    displayStat("#resultStats .evoMag", calculateStatValue(build, "evoMag", builds[currentUnitIndex]).total);
+    displayStat("#resultStats .evokeDamageBoost_all", calculateStatValue(build, "evokeDamageBoost.all", builds[currentUnitIndex]).total);
+    displayStat("#resultStats .accuracy", calculateStatValue(build, "accuracy", builds[currentUnitIndex]).total);
+    displayStat("#resultStats .drawAttacks", calculateStatValue(build, "drawAttacks", builds[currentUnitIndex]).total);
+    displayStat("#resultStats .jumpDamage", calculateStatValue(build, "jumpDamage", builds[currentUnitIndex]).total, 'jumpDamage');
+    displayStat("#resultStats .lbDamage", calculateStatValue(build, "lbDamage", builds[currentUnitIndex]).total, 'lbDamage');
 
-    
+
     for (var index in elementList) {
         $("#resultStats .resists .resist." + elementList[index] + " .value").text(calculateStatValue(build, "resist|" + elementList[index] + ".percent", builds[currentUnitIndex]).total + '%');
     }
@@ -743,13 +810,16 @@ function logBuild(build, value) {
 
     var importantStats = builds[currentUnitIndex].involvedStats;
     for (var index in importantStats) {
-        $("#resultStats ." + escapeDot(importantStats[index])).addClass("statToMaximize");    
+        $("#resultStats ." + escapeDot(importantStats[index])).addClass("statToMaximize");
+    }
+    if (importantStats.includes('lbPerTurn')) {
+        $("#resultStats .lbFillRate .value").addClass("statToMaximize");
     }
 
-    if (!value) {
+    if (!value && builds[currentUnitIndex].formula) {
         value = calculateBuildValueWithFormula(build, builds[currentUnitIndex], ennemyStats, builds[currentUnitIndex].formula, goalVariation, useNewJpDamageFormula, false, true);
     }
-    
+
     var killers = [];
     for (var i = build.length; i--;) {
         if (build[i] && build[i].killers) {
@@ -759,31 +829,33 @@ function logBuild(build, value) {
         }
     }
     var killersHtml = getKillerHtml(killers);
-    
+
     $("#resultStats .killers .physical").html(killersHtml.physical);
     $("#resultStats .killers .magical").html(killersHtml.magical);
-    
+
     var physicalDamageResult = 0;
     var magicalDamageResult = 0;
     var hybridDamageResult = 0;
     var healingResult = 0;
-    
+
     $("#resultStats .physicalDamageResult").addClass("hidden");
     $("#resultStats .magicalDamageResult").addClass("hidden");
     $("#resultStats .hybridDamageResult").addClass("hidden");
     $("#resultStats .healingResult").addClass("hidden");
     $("#resultStats .buildResult").addClass("hidden");
-    
+
     var formulaIsOneSkill = false;
     var skillName;
-    if (builds[currentUnitIndex].formula.type == "skill") {
-        formulaIsOneSkill = true;
-        skillName = builds[currentUnitIndex].formula.name;
-    } else if (builds[currentUnitIndex].formula.type == "condition" && builds[currentUnitIndex].formula.formula.type == "skill") {
-        formulaIsOneSkill = true;
-        skillName = builds[currentUnitIndex].formula.formula.name;
+    if (builds[currentUnitIndex].formula) {
+        if (builds[currentUnitIndex].formula) {
+            formulaIsOneSkill = true;
+            skillName = builds[currentUnitIndex].formula.name;
+        } else if (builds[currentUnitIndex].formula.type == "condition" && builds[currentUnitIndex].formula.formula.type == "skill") {
+            formulaIsOneSkill = true;
+            skillName = builds[currentUnitIndex].formula.formula.name;
+        }
     }
-    
+
     if (!formulaIsOneSkill) {
         if (importantStats.includes("atk")) {
             $("#resultStats .physicalDamageResult").removeClass("hidden");
@@ -806,7 +878,7 @@ function logBuild(build, value) {
             $("#resultStats .healingResult .calcValue").html(getValueWithVariationHtml(healingResult));
         }
     }
-    if (formulaIsOneSkill || (value[goalVariation] != physicalDamageResult[goalVariation] && value[goalVariation] != magicalDamageResult[goalVariation] && value[goalVariation] != hybridDamageResult[goalVariation] && value[goalVariation] != healingResult[goalVariation])) {
+    if (formulaIsOneSkill || (value && value[goalVariation] != physicalDamageResult[goalVariation] && value[goalVariation] != magicalDamageResult[goalVariation] && value[goalVariation] != hybridDamageResult[goalVariation] && value[goalVariation] != healingResult[goalVariation])) {
         $("#resultStats .buildResult").removeClass("hidden");
         $("#resultStats .buildResult .calcValue").html(getValueWithVariationHtml(value));
         if (formulaIsOneSkill) {
@@ -814,7 +886,7 @@ function logBuild(build, value) {
         } else {
             $("#resultStats .buildResult .resultLabel").text("Build goal calculated value: ");
         }
-        
+
         $("#resultStats .physicalDamageResult").addClass("secondary");
         $("#resultStats .magicalDamageResult").addClass("secondary");
         $("#resultStats .hybridDamageResult").addClass("secondary");
@@ -825,9 +897,20 @@ function logBuild(build, value) {
         $("#resultStats .hybridDamageResult").removeClass("secondary");
         $("#resultStats .healingResult").removeClass("secondary");
     }
+    $("#resultStats .damageTaken .calcValue").html(Math.floor(calculateMonsterDamage(monsterAttackFormula, build, builds[currentUnitIndex], ennemyStats).max).toLocaleString());
     $("#resultStats .monsterDefValue").text(" " + ennemyStats.def);
     $("#resultStats .monsterSprValue").text(" " + ennemyStats.spr);
     $("#resultStats .damageCoef").html("1x");
+}
+
+function displayStat(htmlClass, value) {
+    if (value === 0 || value === "0") {
+        $(htmlClass).addClass("hidden");
+    } else {
+        let div = $(htmlClass);
+        div.removeClass("hidden");
+        div.find('.value').html(value);
+    }
 }
 
 function getValueWithVariationHtml(value) {
@@ -868,19 +951,19 @@ function escapeDot(statName) {
 
 function getItemLine(index, short = false) {
     var html = "";
-    
-    
+
+
     var item = builds[currentUnitIndex].build[index];
     if (!item && builds[currentUnitIndex].fixedItems[index]) {
-        item = builds[currentUnitIndex].fixedItems[index];    
+        item = builds[currentUnitIndex].fixedItems[index];
     }
-    
+
     if (item && item.type == "unavailable") {
         return "";
     }
-    
+
     if (index >= 0 && builds[currentUnitIndex].fixedItems[index]) {
-        html += '<div class="td actions"><img class="pin fixed" title="Unpin this item" onclick="removeFixedItemAt(\'' + index +'\')" src="img/icons/pinned.png"></img><img title="Remove this item" class="delete" onclick="removeItemAt(\'' + index +'\')" src="img/icons/delete.png"></img>';
+        html += '<div class="td actions"><i class="fas fa-thumbtack pin fixed" title="Unpin this item" onclick="removeFixedItemAt(\'' + index +'\')"></i><i class="fas fa-trash-alt delete" title="Remove this item" onclick="removeItemAt(\'' + index +'\')"></i>';
         if (weaponList.includes(item.type)) {
             html += '<img class="itemEnchantmentButton" title="Modify this weapon enchantment" src="img/icons/dwarf.png" onclick="currentItemSlot = ' + index + ';selectEnchantement(getRawItemForEnhancements(builds[currentUnitIndex].fixedItems[' + index + ']))" />';
         }
@@ -889,8 +972,8 @@ function getItemLine(index, short = false) {
         html += '<div class="td actions"></div><div class="td type slot" onclick="displayFixItemModal(' + index + ');">'+ getSlotIcon(index) + '</div><div class="td name slot">'+ getSlotName(index) + '</div>'
     } else if (!item.placeHolder) {
         var enhancementText = item.enhancements ? JSON.stringify(item.enhancements).replace(/\"/g, "'") : false;
-        html += `<div class="td actions"><img title="Pin this item" class="pin notFixed" onclick="fixItem('${item.id}', ${index}, ${enhancementText});" src="img/icons/pin.png"></img><img title="Remove this item" class="delete" onclick="removeItemAt('${index}')" src="img/icons/delete.png"></img>`;
-        html += '<span title="Exclude this item from builds" class="excludeItem glyphicon glyphicon-ban-circle" onclick="excludeItem(\'' + item.id +'\', ' + index + ')" />';
+        html += `<div class="td actions"><i class="fas fa-thumbtack pin notFixed" title="Pin this item" onclick="fixItem('${item.id}', ${index}, ${enhancementText});"></i> <i class="fas fa-trash-alt delete" title="Remove this item" onclick="removeItemAt('${index}')"></i>`;
+        html += '<span title="Exclude this item from builds" class="excludeItem fas fa-ban" onclick="excludeItem(\'' + item.id +'\', ' + index + ')" />';
         if (weaponList.includes(item.type)) {
             html += '<img class="itemEnchantmentButton" title="Modify this weapon enchantment" src="img/icons/dwarf.png" onclick="currentItemSlot = ' + index + ';selectEnchantement(getRawItemForEnhancements(builds[currentUnitIndex].build[' + index + ']))" />';
         }
@@ -898,7 +981,7 @@ function getItemLine(index, short = false) {
     } else {
         html += '<div class="td"></div>'
     }
-    
+
     if (item) {
         if (short) {
             html += '<div class="change" onclick="displayFixItemModal(' + index + ');">' + getImageHtml(item) + '</div>' + getNameColumnHtml(item);
@@ -930,7 +1013,7 @@ function getNumberOfItemAlreadyUsedInThisBuild(unitBuild, index, item) {
         if (unitBuild.build[previousItemIndex] && !unitBuild.fixedItems[previousItemIndex] && unitBuild.build[previousItemIndex].id && unitBuild.build[previousItemIndex].id == item.id) {
             number++;
         }
-        
+
     }
     return number;
 }
@@ -961,6 +1044,9 @@ function getSlotIcon(index) {
             icon += "materia";
             break;
         case 10:
+            icon += "visionCard";
+            break;
+        case 11:
             icon += "esper";
             break;
     }
@@ -987,6 +1073,8 @@ function getSlotName(index) {
         case 9:
             return "Materia";
         case 10:
+            return "Vision Card";
+        case 11:
             return "Esper";
     }
 }
@@ -999,21 +1087,60 @@ function redrawBuildLine(index) {
 
 // Populate the unit html select with a line per unit
 function populateUnitSelect() {
+    let selector = $("#unitsSelect");
+    selector.empty();
+    selector.removeData();
+    selector.html(getUnitSelectOptions());
+    selector.on("select2:select", async () => await onUnitChange());
+    selector.on('select2:open', function (e) {
+        $('<label class="checkbox-label"><input id="displayOnly7StarsUnits" class="checkbox" type="checkbox" ' + (displayOnly7StarsUnits ? 'checked' : '') + '><span></span>Only 7★ units</label>')
+            .insertAfter(".select2-search")
+            .on('mousedown mouseup click', function(e) { e.stopPropagation(); })
+            .children('input')
+            .on('change', function(e) {
+                displayOnly7StarsUnits = !displayOnly7StarsUnits;
+                refreshUnitSelect();
+                e.stopPropagation();
+            });
+        selector.off("select2:open");
+    });
+    selector.select2({
+        placeholder: 'Select a unit...',
+        theme: 'bootstrap'
+    });
+}
+
+function refreshUnitSelect() {
+    var selector = $("#unitsSelect");
+    $("#displayOnly7StarsUnits").prop("checked", displayOnly7StarsUnits);
+    selector.html(getUnitSelectOptions());
+    selector.trigger('change');
+    selector.select2('close');
+    selector.select2('open');
+}
+
+function getUnitSelectOptions() {
     var options = '<option value=""></option>';
     Object.keys(units).sort(function(id1, id2) {
         return units[id1].name.localeCompare(units[id2].name);
     }).forEach(function(value, index) {
-        options += '<option value="'+ value + '">' + units[value].name + (units[value]["6_form"] ? ' ' + units[value].max_rarity + '★ ' : "") +  (units[value].unreleased7Star ? ' - JP data' : "") + '</option>';
-        if (units[value]["6_form"]) {
+        if (displayOnly7StarsUnits && units[value].max_rarity != 7 && units[value].max_rarity != 'NV') {
+            return;
+        }
+        options += '<option value="'+ value + '">'
+            + units[value].name
+            + (!displayOnly7StarsUnits && units[value]["6_form"] && units[value].max_rarity == 7 ? ' ' + units[value].max_rarity + '★ ' : "")
+            + (units[value].max_rarity == 'NV' && units[value]["7_form"] ? ' NV ' : "")
+            + ((server != 'JP' && (units[value].unreleased7Star || units[value].jpname)) ? ' - JP data' : "")
+            + '</option>';
+        if (units[value]["7_form"]) {
+            options += '<option value="'+ value + '-7">' + units[value]["7_form"].name + ' 7★</option>';
+        }
+        if (!displayOnly7StarsUnits && units[value]["6_form"]) {
             options += '<option value="'+ value + '-6">' + units[value]["6_form"].name + ' 6★</option>';
         }
     });
-    $("#unitsSelect").html(options);
-    $("#unitsSelect").change(onUnitChange);
-    $('#unitsSelect').select2({
-        placeholder: 'Select a unit...',
-        theme: 'bootstrap'
-    });
+    return options;
 }
 
 function selectUnitDropdownWithoutNotify(unitId) {
@@ -1022,9 +1149,15 @@ function selectUnitDropdownWithoutNotify(unitId) {
     $('#unitsSelect').val(unitId).trigger('change.select2');
 }
 
+async function selectUnit(unitId) {
+    $('#unitsSelect').val(unitId);
+    $('#unitsSelect').trigger('change');
+    await onUnitChange();
+}
+
 function goalSelectTemplate(state) {
     if (!state.id) return state.text;
-    var unitWithSkills = unitsWithSkills[builds[currentUnitIndex].unit.id];
+    let unitWithSkills = unitsWithSkills[builds[currentUnitIndex].unit.id];
     var html;
     if (state.id == "LB") {
         html = '<img class="selectIcon" src="img/icons/lb.png"> ' + state.text;
@@ -1054,16 +1187,16 @@ function goalSelectTemplate(state) {
         }
 
     } else if (state.id.startsWith("SKILL_")) {
-        var skill = getSkillFromId(state.id.substr(6), unitsWithSkills[builds[currentUnitIndex].unit.id]);
+        var skill = getSkillFromId(state.id.substr(6), unitWithSkills);
         if (skill) {
-            html = '<img class="selectIcon" src="img/items/' + skill.icon + '"> ' + state.text;
-            
-            
+            html = '<img class="selectIcon" src="img/items/' + skill.icon + '"><span class="name">' + state.text + '</span>';
+
+
             if (skill.ifUsedLastTurn) {
                 unlockers = "if " + skill.ifUsedLastTurn.map(x => x.name).sort().filter((item, pos, ar) => {return !pos || item != ar[pos -1]}).join(",") + " used last turn";
                 html += '<span class="upgradedSkillIcon" title="' + unlockers + '">☆</span>';
             }
-            
+
             var formula = formulaFromSkill(skill, true);
             if (formula.notSupported) {
                 html = html.replace("- Not supported yet", "<span class='selectTag notSupportedTag'>Not yet</span>");
@@ -1078,7 +1211,7 @@ function goalSelectTemplate(state) {
             html = state.text;
         }
     } else if (state.id.startsWith("MULTICAST_")) {
-        var skill = getSkillFromId(state.id.substr(10), unitsWithSkills[builds[currentUnitIndex].unit.id]);
+        var skill = getSkillFromId(state.id.substr(10), unitWithSkills);
         if (skill) {
             html = '<img class="selectIcon" src="img/items/' + skill.icon + '"> ' + state.text + "<span class='selectTag multicastTag'>multicast</span>";
         } else {
@@ -1124,153 +1257,144 @@ function goalSelectTemplate(state) {
 }
 
 function onUnitChange() {
-    $("#unitsSelect").find(':selected').each(function() {
-        var unitId = $(this).val();
-        var selectedUnitData;
-        let iconId;
-        if (unitId.endsWith("-6")) {
-            selectedUnitData = units[unitId.substr(0,unitId.length-2)]["6_form"];
-            iconId = unitId.substr(0,unitId.length-3) + '6';
-        } else {
-            selectedUnitData = units[unitId];
-            iconId = unitId.substr(0,unitId.length-1) + selectedUnitData.max_rarity;
-        }
-        if (selectedUnitData) {
-            $("#unitTabs .tab_" + currentUnitIndex + " a").html("<img src=\"img/units/unit_icon_" + iconId + ".png\"/>" + selectedUnitData.name);
-            var sameUnit = (builds[currentUnitIndex].unit && builds[currentUnitIndex].unit.id == selectedUnitData.id && builds[currentUnitIndex].unit.sixStarForm == selectedUnitData.sixStarForm);
-            var oldValues = builds[currentUnitIndex].baseValues;
-            var oldLevel = builds[currentUnitIndex]._level;
-            
-            reinitBuild(currentUnitIndex);
-            var unitData = selectedUnitData;
-            if (unitData.enhancements) {
-                unitData = JSON.parse(JSON.stringify(unitData));
-                unitData.enhancementLevels = [];
-                for (var i = unitData.enhancements.length; i--;) {
-                    var enhancementLevel = unitData.enhancements[i].levels.length - 1;
-                    if (sameUnit) {
-                        enhancementLevel = $("#enhancement_" + i).val();
-                    }
-                    unitData.skills = unitData.skills.concat(unitData.enhancements[i].levels[enhancementLevel]);
-                    unitData.enhancementLevels[i] = enhancementLevel;
+    return new Promise(async resolve => {
+        if ($("#unitsSelect").find(':selected').length > 0) {
+            var unitId = $("#unitsSelect").val();
+            if (unitId === '777700004') {
+                $('#exportForBattle').removeClass('hidden');
+            } else {
+                $('#exportForBattle').addClass('hidden');
+            }
+            var selectedUnitData;
+            let iconId;
+            let unitWithSkillsId = unitId;
+            if (unitId.endsWith("-6")) {
+                unitWithSkillsId = unitId.substr(0, unitId.length - 2);
+                selectedUnitData = units[unitId.substr(0, unitId.length - 2)]["6_form"];
+                iconId = unitId.substr(0, unitId.length - 3) + '6';
+            } else if (unitId.endsWith("-7")) {
+                unitWithSkillsId = unitId.substr(0,unitId.length-2);
+                selectedUnitData = units[unitId.substr(0,unitId.length-2)]["7_form"];
+                iconId = unitId.substr(0,unitId.length-3) + '7';
+            } else {
+                selectedUnitData = units[unitId];
+                iconId = unitId.substr(0,unitId.length-1) + (selectedUnitData.max_rarity == 'NV' ? '7' : selectedUnitData.max_rarity);
+            }
+            if (selectedUnitData) {
+                let unitWithSkills = await ensureInitUnitWithSkills(unitWithSkillsId);
+                if (selectedUnitData.braveShift || selectedUnitData.braveShifted) {
+                    $(".panel.unit").addClass("braveShift");
+                } else {
+                    $(".panel.unit").removeClass("braveShift");;
                 }
-            }
-            builds[currentUnitIndex].setUnit(unitData);
-            if(sameUnit) {
-                builds[currentUnitIndex].baseValues = oldValues;
-                builds[currentUnitIndex].setLevel(oldLevel);
-            }
-            updateUnitLevelDisplay();
-            updateUnitStats();
-            dataStorage.setUnitBuild(builds[currentUnitIndex]);
-            $("#help").addClass("hidden");
-            if (unitData.materiaSlots ||  unitData.materiaSlots == 0) {
-                for (var i = 4 - unitData.materiaSlots; i --;) {
-                    fixItem("unavailable", 9 - i);
-                }
-            }
-            
-            $(".panel.unit").removeClass("hidden");
-            $(".panel.goal .goalLine").removeClass("hidden");
-            $(".panel.goal .simpleConditions").removeClass("hidden");
+                $("#unitTabs .tab_" + currentUnitIndex + " a").html("<img src=\"img/units/unit_icon_" + iconId + ".png\"/>" + selectedUnitData.name);
+                var sameUnit = (builds[currentUnitIndex].unit && builds[currentUnitIndex].unit.id == selectedUnitData.id && builds[currentUnitIndex].unit.sixStarForm == selectedUnitData.sixStarForm);
+                var oldValues = builds[currentUnitIndex].baseValues;
+                var oldLevel = builds[currentUnitIndex].level;
 
-            builds[currentUnitIndex].goal = null;
-            updateGoal();
-            readGoal();
-        
-            recalculateApplicableSkills();
-            logCurrentBuild();
-            
-            if (itemInventory) {
-                $("#saveTeamButton").removeClass("hidden");
+                reinitBuild(currentUnitIndex);
+                var unitData = selectedUnitData;
+                if (unitData.enhancements) {
+                    unitData = JSON.parse(JSON.stringify(unitData));
+                    initUnitEnhancementLevel(unitData, sameUnit);
+                }
+                builds[currentUnitIndex].setUnit(unitData);
+                if(sameUnit) {
+                    builds[currentUnitIndex].baseValues = oldValues;
+                    builds[currentUnitIndex].level = oldLevel;
+                }
+                let braveShiftedUnitBuild = null;
+                if (unitData.braveShift && units[unitData.braveShift]) {
+                    braveShiftedUnitBuild = new UnitShift();
+                    braveShiftedUnitBuild.setUnit(units[unitData.braveShift]);
+                    initUnitEnhancementLevel(units[unitData.braveShift]);
+                } else if (unitData.braveShifted && units[unitData.braveShifted]) {
+                    braveShiftedUnitBuild = new UnitShift();
+                    braveShiftedUnitBuild.setUnit(units[unitData.braveShifted]);
+                    initUnitEnhancementLevel(units[unitData.braveShifted]);
+                }
+                builds[currentUnitIndex].setBraveShift(braveShiftedUnitBuild)
+                updateUnitLevelDisplay();
+                updateUnitStats();
+                dataStorage.setUnitBuild(builds[currentUnitIndex]);
+                $("#help").addClass("hidden");
+                if (unitData.materiaSlots ||  unitData.materiaSlots == 0) {
+                    for (var i = 4 - unitData.materiaSlots; i --;) {
+                        fixItem("unavailable", 9 - i);
+                    }
+                }
+                if (!unitData.equip.includes("visionCard")) {
+                    fixItem("unavailable", 10);
+                }
+
+                $(".panel.unit").removeClass("hidden");
+                $(".panel.goal .goalLine").removeClass("hidden");
+                $(".panel.goal .simpleConditions").removeClass("hidden");
+
+                builds[currentUnitIndex].goal = null;
+                updateGoal();
+                readGoal();
+
+                recalculateApplicableSkills();
+                logCurrentBuild();
+
+                if (itemInventory) {
+                    $("#saveTeamButton").removeClass("hidden");
+                }
+            } else {
+                builds[currentUnitIndex].setUnit(null);
+                reinitBuild(currentUnitIndex);
+                updateUnitStats();
+                $(".panel.unit").addClass("hidden");
+                $(".panel.goal .goalLine").addClass("hidden");
+                $(".panel.goal .simpleConditions").addClass("hidden");
             }
-        } else {
-            builds[currentUnitIndex].setUnit(null);
-            reinitBuild(currentUnitIndex); 
-            updateUnitStats();
-            $(".panel.unit").addClass("hidden");
-            $(".panel.goal .goalLine").addClass("hidden");
-            $(".panel.goal .simpleConditions").addClass("hidden");
+            displayUnitRarity(selectedUnitData);
+            displayUnitEnhancements();
+            if (window !== window.parent) {
+                window.parent.postMessage(JSON.stringify({'type':'unitSelected', 'value':''}), '*');
+            }
         }
-        displayUnitRarity(selectedUnitData);
-        displayUnitEnhancements();
+        resolve();
     });
 }
 
+function initUnitEnhancementLevel(unitData, sameUnit = false) {
+    unitData.enhancementLevels = [];
+    if (unitData.enhancements) {
+        for (var i = unitData.enhancements.length; i--;) {
+            var enhancementLevel = unitData.enhancements[i].levels.length - 1;
+            if (sameUnit && $("#enhancement_" + i).val()) {
+                enhancementLevel = $("#enhancement_" + i).val();
+            }
+            unitData.skills = unitData.skills.concat(unitData.enhancements[i].levels[enhancementLevel]);
+            unitData.enhancementLevels[i] = enhancementLevel;
+        }
+    }
+}
+
 function updateGoal() {
-            
+
     var choiceSelect = $("#normalGoalChoice");
-    choiceSelect.empty();
+    updateSkillSelectOptions(choiceSelect);
 
     if (builds[currentUnitIndex].unit) {
-        var unitWithSkills = unitsWithSkills[builds[currentUnitIndex].unit.id];
-
-        var formula = formulaFromSkill(unitWithSkills.lb);
-        if (formula) {
-            var option = '<option value="LB" ' + (formula.notSupported ? "disabled":"") + '>' + unitWithSkills.lb.name + " (Limit Burst)" + (formula.notSupported ? " - Not supported yet":"") + '</option>';
-            choiceSelect.append(option);
-        }
-        for (var skillIndex = unitWithSkills.passives.length; skillIndex--;) {
-            var passive = unitWithSkills.passives[skillIndex];
-            for (var effectIndex = passive.effects.length; effectIndex--;) {
-                var effect = passive.effects[effectIndex].effect;
-                if (effect && effect.replaceLb) {
-                    var formula = formulaFromSkill(effect.replaceLb);
-                    if (formula) {
-                        var option = '<option value="LB_REPLACED" ' + (formula.notSupported ? "disabled":"") + '>' + effect.replaceLb.name + " (Limit Burst)" + (formula.notSupported ? " - Not supported yet":"") + '</option>';
-                        choiceSelect.append(option);
-                    }
-                }
-                if (effect && effect.multicast) {
-                    var option = '<option value="MULTICAST_' + passive.id + '">' + passive.name +'</option>';
-                    choiceSelect.append(option);
-                }
-            }
-        }
-        for (var skillIndex = unitWithSkills.actives.length; skillIndex--;) {
-            var formula = formulaFromSkill(unitWithSkills.actives[skillIndex]);
-            if (formula) {
-                var option = '<option value=' + '"SKILL_' + unitWithSkills.actives[skillIndex].id + '" ' + (formula.notSupported ? "disabled":"") + '>' + unitWithSkills.actives[skillIndex].name + (formula.notSupported ? " - Not supported yet":"") + '</option>';
-                choiceSelect.append(option);
-            } else {
-                // test for dualcast
-                var skill = unitWithSkills.actives[skillIndex];
-                for (var effectIndex = skill.effects.length; effectIndex--;) {
-                    var effect = skill.effects[effectIndex].effect;
-                    if (effect && effect.multicast) {
-                        var option = '<option value="MULTICAST_' + skill.id + '">' + skill.name +'</option>';
-                        choiceSelect.append(option);
-                    }
-                }
-            }
-        }
-        for (var skillIndex = unitWithSkills.magics.length; skillIndex--;) {
-            var formula = formulaFromSkill(unitWithSkills.magics[skillIndex]);
-            if (formula) {
-                var option = '<option value=' + '"SKILL_' + unitWithSkills.magics[skillIndex].id + '" ' + (formula.notSupported ? "disabled":"") + '>' + unitWithSkills.magics[skillIndex].name + (formula.notSupported ? " - Not supported yet":"") + '</option>';
-                choiceSelect.append(option);
-            }
-        }
-
-
-        for (var selectDefaultIndex = 0, lenSelectDefaultIndex = goalQuickSelectDefaultValues.length; selectDefaultIndex < lenSelectDefaultIndex; selectDefaultIndex++) {
-            choiceSelect.append($("<option></option>").attr("value", goalQuickSelectDefaultValues[selectDefaultIndex][0]).text(goalQuickSelectDefaultValues[selectDefaultIndex][1]));
-        }
+        let unitWithSkills = unitsWithSkills[builds[currentUnitIndex].unit.id];
 
         var selectedSkill;
         var chainMultiplier;
-        if (builds[currentUnitIndex].goal == "custom" && builds[currentUnitIndex]._formula && isSimpleFormula(builds[currentUnitIndex]._formula)) {
-            var base = builds[currentUnitIndex]._formula;
+        if (builds[currentUnitIndex].goal == "custom" && builds[currentUnitIndex].formula && isSimpleFormula(builds[currentUnitIndex].formula)) {
+            var base = builds[currentUnitIndex].formula;
             if (base.type == "condition") {
                 base = base.formula;
-            } 
+            }
             if (base.type == "*") {
                 base = base.value2;
             }
             if (base.type == "multicast" || base.type == "skill") {
                 selectedSkill = base;
             }
-            chainMultiplier = getChainMultiplier(builds[currentUnitIndex]._formula);
+            chainMultiplier = getChainMultiplier(builds[currentUnitIndex].formula);
         }
         var multicastedSkills;
         if (selectedSkill) {
@@ -1282,9 +1406,9 @@ function updateGoal() {
                         choiceSelect.val("LB");
                     }
                 } else if (selectedSkill.id && selectedSkill.id != "0") {
-                    choiceSelect.val("SKILL_" + selectedSkill.id);    
+                    choiceSelect.val("SKILL_" + selectedSkill.id);
                 } else {
-                    choiceSelect.val(selectedSkill.formulaName);    
+                    choiceSelect.val(selectedSkill.formulaName);
                 }
             } else {
                 // multicast.
@@ -1303,9 +1427,15 @@ function updateGoal() {
             }
         } else {
             if (!builds[currentUnitIndex].goal) {
-                choiceSelect.val("physicalDamage");
+                if (builds[currentUnitIndex].unit.stats.pots.mag > builds[currentUnitIndex].unit.stats.pots.atk) {
+                    choiceSelect.val("magicalDamage");
+                } else if (hasMulticast(unitWithSkills)) {
+                    choiceSelect.val("physicalDamageMultiCast");
+                } else {
+                    choiceSelect.val("physicalDamage");
+                }
             } else if (builds[currentUnitIndex].goal != 'custom') {
-                choiceSelect.val(builds[currentUnitIndex].goal);    
+                choiceSelect.val(builds[currentUnitIndex].goal);
             } else {
                 let formula = builds[currentUnitIndex].formula;
                 if (formula.type == 'condition') {
@@ -1315,9 +1445,9 @@ function updateGoal() {
                 goal = Object.keys(formulaByGoal).find(goal => {
                     return JSON.stringify(formulaByGoal[goal]) == formulaString;
                 });
-            
+
                 if (goal) {
-                    $(".goal #normalGoalChoice").val(goal);  
+                    $(".goal #normalGoalChoice").val(goal);
                 } else {
                    choiceSelect.val("physicalDamage");
                 }
@@ -1325,11 +1455,11 @@ function updateGoal() {
         }
         manageMulticast(multicastedSkills);
 
-        if (builds[currentUnitIndex].goal == 'custom' && !isSimpleFormula(builds[currentUnitIndex]._formula)) {
+        if (builds[currentUnitIndex].goal == 'custom' && !isSimpleFormula(builds[currentUnitIndex].formula)) {
             $('.normalGoalChoices').addClass("hidden");
             $('.customGoalChoice').removeClass("hidden");
-            $("#customGoalFormula").text(formulaToString(builds[currentUnitIndex]._formula));
-            customFormula = builds[currentUnitIndex]._formula;
+            $("#customGoalFormula").text(formulaToString(builds[currentUnitIndex].formula));
+            customFormula = builds[currentUnitIndex].formula;
             $(".goal .chainMultiplier").addClass("hidden");
         } else {
             $('.normalGoalChoices').removeClass("hidden");
@@ -1337,9 +1467,9 @@ function updateGoal() {
             $(".goal .chainMultiplier").remove("hidden");
         }
     }
-    
+
     updateSimpleConditionsFromFormula(currentUnitIndex);
-    
+
     if (choiceSelect.hasClass("select2-hidden-accessible")) {
         choiceSelect.select2('destroy');
     }
@@ -1353,14 +1483,79 @@ function updateGoal() {
     });
 }
 
+function updateSkillSelectOptions(skillSelect) {
+    skillSelect.empty();
+    if (builds[currentUnitIndex].unit) {
+        let unitWithSkills = unitsWithSkills[builds[currentUnitIndex].unit.id];
+
+        for (var selectDefaultIndex = goalQuickSelectDefaultValues.length - 1; selectDefaultIndex >= 0; selectDefaultIndex--) {
+            skillSelect.append($("<option></option>").attr("value", goalQuickSelectDefaultValues[selectDefaultIndex][0]).text(goalQuickSelectDefaultValues[selectDefaultIndex][1]));
+        }
+
+        var formula = formulaFromSkill(unitWithSkills.lb);
+        if (formula) {
+            var option = '<option value="LB" ' + (formula.notSupported ? "disabled":"") + '>' + unitWithSkills.lb.name + " (Limit Burst)" + (formula.notSupported ? " - Not supported yet":"") + '</option>';
+            skillSelect.append(option);
+        }
+        for (var skillIndex = unitWithSkills.passives.length; skillIndex--;) {
+            var passive = unitWithSkills.passives[skillIndex];
+            for (var effectIndex = passive.effects.length; effectIndex--;) {
+                var effect = passive.effects[effectIndex].effect;
+                if (effect && effect.replaceLb) {
+                    var formula = formulaFromSkill(effect.replaceLb);
+                    if (formula) {
+                        var option = '<option value="LB_REPLACED" ' + (formula.notSupported ? "disabled":"") + '>' + effect.replaceLb.name + " (Limit Burst)" + (formula.notSupported ? " - Not supported yet":"") + '</option>';
+                        skillSelect.append(option);
+                    }
+                }
+            }
+        }
+        for (var skillIndex = unitWithSkills.actives.length; skillIndex--;) {
+            var formula = formulaFromSkill(unitWithSkills.actives[skillIndex]);
+            if (formula) {
+                var option = '<option value=' + '"SKILL_' + unitWithSkills.actives[skillIndex].id + '" ' + (formula.notSupported ? "disabled":"") + '>' + unitWithSkills.actives[skillIndex].name + (formula.notSupported ? " - Not supported yet":"") + '</option>';
+                skillSelect.append(option);
+            } else {
+                // test for dualcast
+                var skill = unitWithSkills.actives[skillIndex];
+                for (var effectIndex = skill.effects.length; effectIndex--;) {
+                    var effect = skill.effects[effectIndex].effect;
+                    if (effect && effect.multicast) {
+                        var option = '<option value="MULTICAST_' + skill.id + '">' + skill.name +'</option>';
+                        skillSelect.append(option);
+                    }
+                }
+            }
+        }
+        for (var skillIndex = unitWithSkills.magics.length; skillIndex--;) {
+            var formula = formulaFromSkill(unitWithSkills.magics[skillIndex]);
+            if (formula) {
+                var option = '<option value=' + '"SKILL_' + unitWithSkills.magics[skillIndex].id + '" ' + (formula.notSupported ? "disabled":"") + '>' + unitWithSkills.magics[skillIndex].name + (formula.notSupported ? " - Not supported yet":"") + '</option>';
+                skillSelect.append(option);
+            }
+        }
+    }
+}
+
 function updateUnitLevelDisplay() {
-    if (builds[currentUnitIndex].unit && builds[currentUnitIndex].unit.max_rarity == 7 && !builds[currentUnitIndex].unit.sixStarForm) {
+    if (builds[currentUnitIndex].unit && (builds[currentUnitIndex].unit.max_rarity == 7 || builds[currentUnitIndex].unit.max_rarity == 'NV') && !builds[currentUnitIndex].unit.sixStarForm) {
         $("#unitLevel").removeClass("hidden");
-        if (builds[currentUnitIndex]._level) {
-            $("#unitLevel select").val(builds[currentUnitIndex]._level.toString());
+        if (builds[currentUnitIndex].level) {
+            $("#unitLevel select").val(builds[currentUnitIndex].level.toString());
         } else {
             $("#unitLevel select").val("120");
-            builds[currentUnitIndex].setLevel(120);    
+            builds[currentUnitIndex].level = 120;
+        }
+        if (builds[currentUnitIndex].unit.max_rarity == 'NV' && !builds[currentUnitIndex].unit.sevenStarForm) {
+            $("#unitExAwakeningLevel").removeClass("hidden");
+            if (builds[currentUnitIndex]._exAwakeningLevel > -1) {
+                $("#unitExAwakeningLevel select").val(builds[currentUnitIndex]._exAwakeningLevel.toString());
+            } else {
+                $("#unitExAwakeningLevel select").val("1");
+                builds[currentUnitIndex].setExAwakeningLevel(1);
+            }
+        } else {
+            $("#unitExAwakeningLevel").addClass("hidden");
         }
     } else {
         $("#unitLevel").addClass("hidden");
@@ -1369,12 +1564,12 @@ function updateUnitLevelDisplay() {
 
 function displayUnitEnhancements() {
     $('#unitEnhancements').empty();
-    
+
     if (builds[currentUnitIndex].unit && builds[currentUnitIndex].unit.enhancements) {
         var html = "";
         for (var i = 0, len = builds[currentUnitIndex].unit.enhancements.length; i < len; i++) {
             var enhancement = builds[currentUnitIndex].unit.enhancements[i];
-            html += '<div class="col-xs-6 unitEnhancement"><select class="form-control" onchange="onUnitChange();" id="enhancement_' + i + '">';
+            html += '<div class="col-xs-6 unitEnhancement"><select class="form-control" onchange="onUnitChange().then(() => {});" id="enhancement_' + i + '">';
             for (var j = 0, lenJ = enhancement.levels.length; j < lenJ; j++) {
                 html += '<option value="'+ j + '"';
                 if (builds[currentUnitIndex].unit.enhancementLevels[i] == j) {
@@ -1387,7 +1582,7 @@ function displayUnitEnhancements() {
                     } else {
                         html += '>' + enhancement.name + ' unlocked</option>';
                     }
-                } else if (enhancement.levels[0].length == 0) {
+                } else if (enhancement.levels.length == 4 && enhancement.levels[0].length == 0) {
                     // latent skills
                     if (j == 0) {
                         html += '>' + enhancement.name + ' not unlocked</option>';
@@ -1397,7 +1592,7 @@ function displayUnitEnhancements() {
                         html += '>' + enhancement.name + ' +' + (j-1) + '</option>';
                     }
                 } else {
-                    html += '>' + enhancement.name + ' +' + j + '</option>';    
+                    html += '>' + enhancement.name + ' +' + j + '</option>';
                 }
             }
             html += '</select></div>';
@@ -1410,11 +1605,11 @@ function updateUnitStats() {
     $(baseStats).each(function (index, stat) {
         if (builds[currentUnitIndex].unit) {
             $(".unitStats .stat." + stat + " .baseStat input").val(builds[currentUnitIndex].getStat(stat));
-            if (builds[currentUnitIndex].baseValues[stat]) {
+            if (builds[currentUnitIndex].baseValues[stat].pots !== undefined) {
                 $(".unitStats .stat." + stat + " .pots input").val(builds[currentUnitIndex].baseValues[stat].pots);
                 $(".unitStats .stat." + stat + " .buff input").val(builds[currentUnitIndex].baseValues[stat].buff);
             } else {
-                $(".unitStats .stat." + stat + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[stat]);
+                $(".unitStats .stat." + stat + " .pots input").val(Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5));
             }
             updatePotStyle(stat);
         } else {
@@ -1450,9 +1645,20 @@ function updateUnitStats() {
     }
     populateUnitEquip();
     if (builds[currentUnitIndex].unit) {
-        for (var index in builds[currentUnitIndex].unit.equip) {
-            $(".unitEquipable i.img-equipment-" + builds[currentUnitIndex].unit.equip[index]).removeClass("notEquipable");
-        }
+        let equipmentBoost = [];
+        builds[currentUnitIndex].unit.skills
+            .filter(skill => skill.equipedConditions)
+            .forEach(skill => {
+           equipmentBoost = equipmentBoost.concat(skill.equipedConditions);
+        });
+
+        builds[currentUnitIndex].unit.equip.forEach(equip => {
+            let equipImg = $(".unitEquipable i.img-equipment-" + equip);
+            equipImg.removeClass("notEquipable");
+            if (equipmentBoost.includes(equip)) {
+                equipImg.addClass("boost");
+            }
+        });
     }
     if (builds[currentUnitIndex].unit) {
         $("#pleaseSelectUnitMessage").addClass("hidden");
@@ -1461,8 +1667,8 @@ function updateUnitStats() {
         $("#resultStats").removeClass("hidden");
         $(".buildLinks").removeClass("hidden");
         $("#buildResult").removeClass("hidden");
-        
-        $("#unitLink").prop("href",toUrl((builds[currentUnitIndex].unit.wikiEntry ? builds[currentUnitIndex].unit.wikiEntry : builds[currentUnitIndex].unit.name)));
+
+        $("#unitLink").prop("href",builds[currentUnitIndex].unit.wikiEntry ? toUrl(builds[currentUnitIndex].unit.wikiEntry) : toUnitUrl(builds[currentUnitIndex].unit));
         $("#unitLink").removeClass("hidden");
     } else {
         $("#unitTabs .tab_" + currentUnitIndex + " a").html("Select unit");
@@ -1479,23 +1685,44 @@ function updateUnitStats() {
     } else {
         $(".panel.unit").addClass("hidden");
     }
-    
+    $('.killerBuffs input').val("");
+    if (builds[currentUnitIndex].baseValues["killerBuffs"]) {
+        builds[currentUnitIndex].baseValues["killerBuffs"].forEach(killerData => {
+            if (killerData.physical)  {
+                $('.killerBuffs.physical .' + killerData.name + ' input').val(killerData.physical);
+            }
+            if (killerData.magical) {
+                $('.killerBuffs.magical .' + killerData.name + ' input').val(killerData.magical);
+            }
+        });
+    }
+    elementList.forEach(element => {
+        const input = $('.elementBuffs .' + element + ' input');
+        if (builds[currentUnitIndex].baseValues.elementBuffs && builds[currentUnitIndex].baseValues.elementBuffs[element]) {
+            input.val(builds[currentUnitIndex].baseValues.elementBuffs[element]);
+        } else {
+            input.val('');
+        }
+    });
+    updateKillerBuffSummary();
     readStatsValues();
-        
+
 }
 
 function reinitBuilds() {
     for (var i = builds.length; i-- > 1; ) {
         closeTab(i);
     }
-    builds[0] = new UnitBuild(null, [null, null, null, null, null, null, null, null,null,null,null], {});
+    builds[0] = new UnitBuild();
+    builds[0].monsterAttackFormula = monsterAttackFormula;
     loadBuild(0);
     $(".panel.goal .goalLine").addClass("hidden");
     $(".panel.goal .simpleConditions").addClass("hidden");
 }
 
 function reinitBuild(buildIndex) {
-    builds[buildIndex] = new UnitBuild(null, [null, null, null, null, null, null, null, null,null,null,null], {});
+    builds[buildIndex] = new UnitBuild();
+    builds[buildIndex].monsterAttackFormula = monsterAttackFormula;
     readGoal(buildIndex);
 }
 
@@ -1503,7 +1730,17 @@ function loadBuild(buildIndex) {
     currentUnitIndex = buildIndex;
     var build = builds[buildIndex];
 
-    selectUnitDropdownWithoutNotify(build.unit ? (build.unit.id + (build.unit.sixStarForm ? '-6' : '')) : null);
+    var unitToSelect = null;
+    if (build.unit) {
+        unitToSelect = build.unit.id;
+        if (build.unit.sixStarForm) {
+            unitToSelect += '-6';
+        }
+        if (build.unit.sevenStarForm) {
+            unitToSelect += '-7';
+        }
+    }
+    selectUnitDropdownWithoutNotify(unitToSelect);
 
     $(".unitAttackElement div.elements label").removeClass("active");
     if (build.innateElements) {
@@ -1511,34 +1748,39 @@ function loadBuild(buildIndex) {
             $(".unitAttackElement div.elements label:has(input[value=" + build.innateElements[i] + "])").addClass("active");
         }
     }
-    
+
     updateUnitLevelDisplay();
     updateUnitStats();
     displayUnitEnhancements();
-    
+
     customFormula = null;
     updateGoal();
     readGoal();
-    
-    
+
+
     if (builds[currentUnitIndex].unit) {
-        logCurrentBuild();  
+        logCurrentBuild();
+        if (builds[currentUnitIndex].unit.id === '777700004') {
+            $('#exportForBattle').removeClass('hidden');
+        } else {
+            $('#exportForBattle').addClass('hidden');
+        }
     }
 }
 
 function addNewUnit(focusUnitSelect = true) {
     $("#unitTabs li").removeClass("active");
     let newId = builds.length;
-    var newTab = $("<li class='active tab_" + newId + "'><a href='#'>Select unit</a><span class=\"closeTab glyphicon glyphicon-remove\" onclick=\"closeTab()\"></span></li>");
+    var newTab = $('<li class="active tab_' + newId + '"><a href="#">Select unit</a><span class="closeTab glyphicon glyphicon-remove" onclick="closeTab()"></span></li>');
     $("#unitTabs .tab_" + (newId - 1)).after(newTab);
     newTab.click(function() {
         selectUnitTab(newId);
-    })
+    });
     builds.push(null);
     reinitBuild(builds.length - 1);
-    $('#forceDoublehand input').prop('checked', false);
-    $('#forceDualWield input').prop('checked', false);
-    $('#tryEquipSources input').prop('checked', false);
+    $('#forceDoublehand').prop('checked', false);
+    $('#forceDualWield').prop('checked', false);
+    $('#tryEquipSources').prop('checked', false);
     loadBuild(builds.length - 1);
     if (builds.length > 9) {
         $("#addNewUnitButton").addClass("hidden");
@@ -1553,28 +1795,47 @@ function selectUnitTab(index) {
     $("#unitTabs li").removeClass("active");
     $("#unitTabs .tab_" + index).addClass("active");
     loadBuild(index);
+    if (builds[index].unit.braveShift || builds[index].unit.braveShifted) {
+        $(".panel.unit").addClass("braveShift");
+    } else {
+        $(".panel.unit").removeClass("braveShift");;
+    }
 }
 
 function closeTab(index = currentUnitIndex) {
-    
+
     $("#unitTabs .tab_" + index).remove();
     for (var i = index + 1; i < builds.length; i++) {
         let newId = i-1;
         $("#unitTabs .tab_" + i).removeClass("tab_" + i).addClass("tab_" + newId).off('click').click(function() {
             selectUnitTab(newId);
         });
-        
+
+
     }
     builds.splice(index, 1);
     if (index == currentUnitIndex) {
         currentUnitIndex--;
-        selectUnitTab(currentUnitIndex);    
+        selectUnitTab(currentUnitIndex);
     } else if (index < currentUnitIndex) {
         currentUnitIndex--;
     }
-    
+
     if (builds.length < 10) {
         $("#addNewUnitButton").removeClass("hidden");
+    }
+}
+
+function braveShift(index) {
+    if (builds[index].hasBraveShift()) {
+        builds[index].braveShift();
+        recalculateApplicableSkills();
+
+        let unit = builds[index].unit;
+        let iconId = unit.id.substr(0,unit.id.length-1) + '7';
+        $("#unitTabs .tab_" + index + " a").html("<img src=\"img/units/unit_icon_" + iconId + ".png\"/>" + unit.name);
+
+        selectUnitTab(index);
     }
 }
 
@@ -1587,35 +1848,25 @@ var displayUnitRarity = function(unit) {
         rarityWrapper.show();
         rarityWrapper.empty();
 
-        for (var i = 0; i < rarity; i++) {
-            rarityWrapper.append('☆');
-        }
-        if (rarity == "7") {
-            $('#forceTmrAbility').removeClass('hidden');
+        if (rarity == 'NV') {
+            rarityWrapper.append('<img src="img/icons/NV.png">');
         } else {
-            $('#forceTmrAbility').addClass('hidden');
-            $("#tryReduceOverCap input").prop('checked', false);
+            for (var i = 0; i < rarity; i++) {
+                rarityWrapper.append('☆');
+            }
+        }
+        if (rarity == "7" || rarity == 'NV') {
+            $('#forceTmrAbilityDiv').removeClass('hidden');
+        } else {
+            $('#forceTmrAbilityDiv').addClass('hidden');
+            $("#tryReduceOverCap").prop('checked', false);
         }
     } else {
         rarityWrapper.hide();
-        $('#forceTmrAbility').addClass('hidden');
-        $("#tryReduceOverCap input").prop('checked', false);
+        $('#forceTmrAbilityDiv').addClass('hidden');
+        $("#tryReduceOverCap").prop('checked', false);
     }
 };
-
-function inventoryLoaded() {
-    dataStorage.itemInventory = itemInventory;
-    $(".equipments select option[value=owned]").prop("disabled", false);
-    if (itemInventory.excludeFromExpeditions) {
-        $(".equipments select option[value=ownedAvailableForExpedition]").prop("disabled", false);
-    }
-    if (!dataLoadedFromHash) {
-        $(".equipments select").val("owned");
-        onEquipmentsChange();
-        $(".panel.paramChallenge").removeClass("hidden");
-    }
-    $("#savedTeamPanel").removeClass("hidden");
-}
 
 function updateSavedTeamPanelVisibility() {
     if (itemInventory) {
@@ -1625,13 +1876,10 @@ function updateSavedTeamPanelVisibility() {
     }
 }
 
-function notLoaded() {
-}
-
 function onGoalChange() {
     readGoal();
     updateGoal();
-    if (builds[currentUnitIndex].unit) { 
+    if (builds[currentUnitIndex].unit) {
         logCurrentBuild();
     }
 }
@@ -1647,14 +1895,15 @@ function manageMulticast(selectedSkills) {
         select.empty();
         select.removeData();
     }
-    
+
     if (!customFormula) {
         var goalValue = $(".goal #normalGoalChoice").val();
         if (goalValue) {
+            let unitWithSkills = unitsWithSkills[builds[currentUnitIndex].unit.id];
             if (goalValue.startsWith("MULTICAST_") && builds[currentUnitIndex].unit) {
                 builds[currentUnitIndex].goal = "custom";
                 var skillId = goalValue.substr(10);
-                var skill = getSkillFromId(skillId, unitsWithSkills[builds[currentUnitIndex].unit.id]);
+                var skill = getSkillFromId(skillId, unitWithSkills);
                 var multicastEffect;
                 for (var i = skill.effects.length; i--;) {
                     if (skill.effects[i].effect && skill.effects[i].effect.multicast) {
@@ -1666,10 +1915,10 @@ function manageMulticast(selectedSkills) {
                 if (multicastEffect.type=="skills") {
                     skillSource = multicastEffect.skills;
                 } else {
-                    skillSource = unitsWithSkills[builds[currentUnitIndex].unit.id].magics;
+                    skillSource = unitWithSkills.magics;
                 }
                 for (var j = 0, lenj = skillSource.length; j < lenj; j++) {
-                    var dcSkill = getSkillFromId(skillSource[j].id, unitsWithSkills[builds[currentUnitIndex].unit.id]);
+                    var dcSkill = getSkillFromId(skillSource[j].id, unitWithSkills);
                     if (dcSkill) {
                         if (multicastEffect.type=="whiteMagic" && (!dcSkill.magic || dcSkill.magic != "white")) {
                             continue;
@@ -1679,16 +1928,16 @@ function manageMulticast(selectedSkills) {
                         }
                         var dcFormula = formulaFromSkill(dcSkill, true);
                         if (dcFormula) {
-                            options += '<option value=' + '"SKILL_' + dcSkill.id + '" ' + (dcFormula.notSupported ? "disabled":"") + '>' + dcSkill.name + (dcFormula.notSupported ? " - Not supported yet":"") + '</option>';    
+                            options += '<option value=' + '"SKILL_' + dcSkill.id + '" ' + (dcFormula.notSupported ? "disabled":"") + '>' + dcSkill.name + (dcFormula.notSupported ? " - Not supported yet":"") + '</option>';
                         }
                     }
                 }
                 for (var i = 0, len = multicastEffect.time; i < len; i++) {
                     var select = $("#multicastSelect" + i);
-                    
+
                     select.append(options);
                     select.removeClass("hidden");
-                    
+
                     if (selectedSkills && selectedSkills.length > i) {
                         select.val("SKILL_" + selectedSkills[i].id);
                     }
@@ -1722,14 +1971,15 @@ function chooseCustomFormula(optionalCustomFormula) {
     if (formulaConditionString && formulaConditionString.length > 0) {
         formulaString += ";" + formulaConditionString;
     }
-    var formula = parseFormula(formulaString, unitsWithSkills[builds[currentUnitIndex].unit.id]);
+    let unitWithSkills = unitsWithSkills[builds[currentUnitIndex].unit.id];
+    var formula = parseFormula(formulaString, unitWithSkills);
     if (formula) {
         if (!isSimpleFormula(formula)) {
-            customFormula = formula;    
+            customFormula = formula;
         } else {
             customFormula = null;
         }
-        
+
         builds[currentUnitIndex].goal = "custom";
         builds[currentUnitIndex].formula = formula;
         $('#customFormulaModal').modal('hide');
@@ -1760,6 +2010,7 @@ function onEquipmentsChange() {
         $("#excludeNotReleasedYet").parent().removeClass("hidden");
         $("#excludeSTMR").parent().removeClass("hidden");
         $("#includeTMROfOwnedUnits").parent().addClass("hidden");
+        $("#includeTmrMoogles").parent().addClass("hidden");
         $("#includeTrialRewards").parent().addClass("hidden");
         $("#includeChocoboItems").parent().addClass("hidden");
         $("#includeEasilyObtainableItems").parent().addClass("hidden");
@@ -1773,8 +2024,10 @@ function onEquipmentsChange() {
         $("#excludeSTMR").parent().addClass("hidden");
         if (ownedUnits && Object.keys(ownedUnits).length > 0) {
             $("#includeTMROfOwnedUnits").parent().removeClass("hidden");
+            $("#includeTmrMoogles").parent().removeClass("hidden");
         } else {
             $("#includeTMROfOwnedUnits").parent().addClass("hidden");
+            $("#includeTmrMoogles").parent().addClass("hidden");
         }
         $("#includeTrialRewards").parent().removeClass("hidden");
         $("#includeChocoboItems").parent().removeClass("hidden");
@@ -1793,6 +2046,7 @@ function onEquipmentsChange() {
         $("#excludeNotReleasedYet").parent().addClass("hidden");
         $("#excludeSTMR").parent().addClass("hidden");
         $("#includeTMROfOwnedUnits").parent().addClass("hidden");
+        $("#includeTmrMoogles").parent().addClass("hidden");
         $("#includeTrialRewards").parent().addClass("hidden");
         $("#includeChocoboItems").parent().addClass("hidden");
         $("#includeEasilyObtainableItems").parent().addClass("hidden");
@@ -1801,12 +2055,14 @@ function onEquipmentsChange() {
     }
     updateEspers();
 }
-     
+
 function updateSearchResult() {
+    fixItemList.display([]);
     $("#fixItemModal").removeClass("showEnhancements");
+    let onlyOwnedItems = $('#onlyOwnedItems input').prop('checked');
+    let excludeNotReleasedYetOption = $('#excludeNotReleasedYetOption input').prop('checked');
     var searchText = $("#searchText").val();
     if ((searchText == null || searchText == "") && searchType.length == 0 && searchStat == "") {
-        $("#fixItemModal .results .tbody").html("");    
         return;
     }
     var types = searchType;
@@ -1818,14 +2074,15 @@ function updateSearchResult() {
         baseStat = builds[currentUnitIndex].baseValues[searchStat].total;
     }
     accessToRemove = [];
-    
+
     var dataWithOnlyOneOccurence = searchableEspers.slice();
-    for (var index = 0, len = dataStorage.data.length; index < len; index++) {
-        var item = dataStorage.data[index];
-        
+    dataStorage.data.forEach(item => {
         if (!isApplicable(item, builds[currentUnitIndex].unit)) {
             // Don't display not applicable items
-            continue;
+            return;
+        }
+        if (item.type == 'visionCard' && item.level < item.levels.length) {
+            return;
         }
         if (dataWithOnlyOneOccurence.length > 0 && dataWithOnlyOneOccurence[dataWithOnlyOneOccurence.length - 1].id == item.id) {
             var previousItem = dataWithOnlyOneOccurence[dataWithOnlyOneOccurence.length - 1];
@@ -1843,17 +2100,18 @@ function updateSearchResult() {
         } else {
             dataWithOnlyOneOccurence.push(item);
         }
-    }
+    });
+
     readItemsExcludeInclude();
-    displaySearchResults(sort(filter(dataWithOnlyOneOccurence, false, searchStat, baseStat, searchText, builds[currentUnitIndex].unit.id, types, [], [], [], [], [], "", !dataStorage.excludeNotReleasedYet, true), builds[currentUnitIndex].unit.id));
-    
+    displaySearchResults(sort(filter(dataWithOnlyOneOccurence, onlyOwnedItems, searchStat.split('-')[0], baseStat, searchText, builds[currentUnitIndex].unit.id, types, [], [], [], [], [], "", !excludeNotReleasedYetOption, true), builds[currentUnitIndex].unit.id));
+
     if (searchStat == "") {
         $("#fixItemModal .results").addClass("notSorted");
     } else {
-        $("#fixItemModal .results .thead .sort").text(searchStat.toUpperCase());    
+        $("#fixItemModal .results .thead .sort").text(searchStat.toUpperCase());
         $("#fixItemModal .results").removeClass("notSorted");
     }
-    
+
     $("#fixItemModal .results .tbody").unmark({
         done: function() {
             if (searchText && searchText.length != 0) {
@@ -1865,37 +2123,44 @@ function updateSearchResult() {
     });
 }
 
-function displayEquipableItemList() {
+function displayEquipableItemList(clickBehavior) {
     if (!builds[currentUnitIndex].unit) {
         Modal.showMessage("No unit selected", "Please select an unit");
         return;
     }
-    
+
     builds[currentUnitIndex].prepareEquipable();
+    dataStorage.calculateAlreadyUsedItems(builds, currentUnitIndex);
 
     types = [];
-    for(var index = 0; index < 10; ++index) {
-        var equipableSlot = builds[currentUnitIndex].equipable[index];
-        if (equipableSlot.length == 0) {
-            continue;
-        }
-        
-        dataStorage.calculateAlreadyUsedItems(builds, currentUnitIndex);
-        for(var i = 0; i < equipableSlot.length; ++i) {
-            if(!types.includes(equipableSlot[i])) {
-                types.push(equipableSlot[i]);
+    if (clickBehavior === ClickBehaviors.INCLUDE) {
+        types = typeList;
+    } else {
+        for(var index = 0; index < 10; ++index) {
+            var equipableSlot = builds[currentUnitIndex].equipable[index];
+            if (equipableSlot.length == 0) {
+                continue;
+            }
+
+            for(var i = 0; i < equipableSlot.length; ++i) {
+                if(!types.includes(equipableSlot[i])) {
+                    types.push(equipableSlot[i]);
+                }
             }
         }
     }
 
     $("#searchText").val("");
-    $("#fixItemModal .results .tbody").html("");
-    
+    //$("#fixItemModal .results .tbody").html("");
+
     $("#fixItemModal").modal();
+    if (!fixItemList) {
+        fixItemList = new VirtualScroll($('#fixItemResults'), getItemHtml, 64, false);
+    }
     populateItemType(types);
     selectSearchType(types);
     selectSearchStat(searchStat);
-    selectSearchClickBehavior(ClickBehaviors.EXCLUDE);
+    selectSearchClickBehavior(clickBehavior);
     updateSearchResult();
 }
 
@@ -1904,22 +2169,29 @@ function displayFixItemModal(slot) {
         Modal.showMessage("No unit selected", "Please select an unit");
         return;
     }
-    
-    
+
+
     builds[currentUnitIndex].prepareEquipable(slot);
     if (builds[currentUnitIndex].equipable[slot].length == 0) {
         Modal.showMessage("Equipment error", "Nothing can be added at this slot");
         return;
     }
     currentItemSlot = slot;
-    
+
     populateItemType(builds[currentUnitIndex].equipable[slot]);
-    
+
     dataStorage.calculateAlreadyUsedItems(builds, currentUnitIndex);
     $("#searchText").val("");
-    $("#fixItemModal .results .tbody").html("");
-    
+    //$("#fixItemModal .results .tbody").html("");
+
     $("#fixItemModal").modal();
+    if (!fixItemList) {
+        fixItemList = new VirtualScroll($('#fixItemResults'), getItemHtml, 64, false);
+    }
+    let equipmentChoice = $(".equipments select").val();
+    $('#onlyOwnedItems input').prop('checked', equipmentChoice == "owned" && equipmentChoice == "ownedAvailableForExpedition");
+    $('#excludeNotReleasedYetOption input').prop('checked', dataStorage.excludeNotReleasedYet);
+
     selectSearchStat(searchStat);
     selectSearchType(builds[currentUnitIndex].equipable[slot]);
     selectSearchClickBehavior(ClickBehaviors.EQUIP);
@@ -1933,8 +2205,11 @@ function fixItem(key, slotParam = -1, enhancements, pinItem = true) {
     } else {
         if (typeList.includes(key)) {
             item = getPlaceHolder(key);
-        } else if (espersByName[key])  {
-            item = espersByName[key]; 
+        } else if (espers.some(e => e.id == key))  {
+            item = espersByName[key];
+            if (!item) {
+                item = espers.filter(e => e.id == key)[0];
+            }
         } else if (key == "unavailable") {
             item = {"name":"Unavailable slot", "type":"unavailable", "placeHolder":true};
         } else {
@@ -1947,7 +2222,7 @@ function fixItem(key, slotParam = -1, enhancements, pinItem = true) {
             }
         }
     }
-        
+
     if (item) {
         builds[currentUnitIndex].prepareEquipable();
         var slot = slotParam;
@@ -1986,15 +2261,15 @@ function fixItem(key, slotParam = -1, enhancements, pinItem = true) {
         if (builds[currentUnitIndex].build[slot] && builds[currentUnitIndex].build[slot].id != item.id) {
             removeItemAt(slot);
         }
-        
+
         if (pinItem) {
-            builds[currentUnitIndex].fixedItems[slot] = item;
+            builds[currentUnitIndex].fixItem(item, slot);
         } else {
-            builds[currentUnitIndex].fixedItems[slot] = null;
+            builds[currentUnitIndex].fixItem(null, slot);
         }
-        builds[currentUnitIndex].build[slot] = item;
-        if (slot < 10) {
-            for (var index = 0; index < 10; index++) {
+        builds[currentUnitIndex].setItem(item, slot);
+        if (slot < 11) {
+            for (var index = 0; index < 11; index++) {
                 if (index != slot) {
                     var itemTmp = builds[currentUnitIndex].build[index];
                     if (itemTmp  && !itemTmp.placeHolder && index != slot) {
@@ -2016,9 +2291,9 @@ function fixItem(key, slotParam = -1, enhancements, pinItem = true) {
 }
 
 function adaptEsperMasteryToBuild() {
-    if (builds[currentUnitIndex].build[10]) {
-      
-        esper = espersByName[builds[currentUnitIndex].build[10].id];
+    if (builds[currentUnitIndex].build[11]) {
+
+        esper = getEsperItem(builds[currentUnitIndex].build[11].originalEsper);
         let typeCombination = [];
         builds[currentUnitIndex].build.forEach(i => {
             if (i && i.type && !typeCombination.includes(i.type)) {
@@ -2032,17 +2307,17 @@ function adaptEsperMasteryToBuild() {
                    if (c[s+'%']) {
                        addToStat(esper, s+'%', c[s+'%']);
                    }
-               }) 
+               })
             });
         }
-        builds[currentUnitIndex].build[10] = esper;
+        builds[currentUnitIndex].build[11] = esper;
     }
 }
 
 function removeFixedItemAt(slot) {
-    builds[currentUnitIndex].fixedItems[slot] = null;
+    builds[currentUnitIndex].fixItem(null, slot);
     var equip = builds[currentUnitIndex].getCurrentUnitEquip();
-    for (var index = 0; index < 10; index++) {
+    for (var index = 0; index < 11; index++) {
         var item = builds[currentUnitIndex].fixedItems[index];
         if (item && !item.placeHolder) {
             if (!equip.includes(item.type)) {
@@ -2060,8 +2335,8 @@ function removeItemAt(slot) {
     builds[currentUnitIndex].fixedItems[slot] = null;
     builds[currentUnitIndex].build[slot] = null;
     builds[currentUnitIndex].prepareEquipable();
-    
-    for (var index = 0; index < 10; index ++) {
+
+    for (var index = 0; index < 11; index ++) {
         var item = builds[currentUnitIndex].build[index];
         if (item && !item.placeHolder) {
             if (!builds[currentUnitIndex].equipable[index].includes(item.type)) {
@@ -2094,11 +2369,18 @@ function excludeItem(itemId, slot = -1) {
     $(".excludedItemNumber").html(itemsToExclude.length);
 }
 
+function includeItem(itemId) {
+    if (!itemsToInclude.includes(itemId)) {
+        itemsToInclude.push(itemId);
+    }
+    $(".includedItemNumber").html(itemsToInclude.length);
+}
+
 function recalculateApplicableSkills() {
-    builds[currentUnitIndex].build = builds[currentUnitIndex].build.slice(0,11);
+    builds[currentUnitIndex].build = builds[currentUnitIndex].build.slice(0,12);
     for (var skillIndex = builds[currentUnitIndex].unit.skills.length; skillIndex--;) {
         var skill = builds[currentUnitIndex].unit.skills[skillIndex];
-        if (areConditionOK(skill, builds[currentUnitIndex].build, builds[currentUnitIndex]._level)) {
+        if (areConditionOK(skill, builds[currentUnitIndex].build, builds[currentUnitIndex].level)) {
             builds[currentUnitIndex].build.push(skill);
         }
     }
@@ -2125,7 +2407,7 @@ function selectSearchStat(stat) {
         $("#fixItemModal .modal-header .stat .dropdown-toggle").addClass("img-sort-a-z");
     } else {
         searchStat = stat;
-        $("#fixItemModal .modal-header .stat .dropdown-toggle").addClass("img-sort-" + stat);
+        $("#fixItemModal .modal-header .stat .dropdown-toggle").addClass("img-sort-" + stat.split('-')[0]);
     }
 }
 
@@ -2139,10 +2421,10 @@ var displaySearchResults = function(items) {
     } else {
         $("#fixItemModal").addClass("notLoggedIn");
     }
-    var div = $("#fixItemModal .results .tbody");
-    div.empty();
-    displaySearchResultsAsync(items, 0, div);
-    
+    fixItemList.display(items);
+
+    setTimeout(() => $("#fixItemModal #fixItemResults")[0].scrollTop = 0, 100);
+
 }
 
 function toggleExclusionFromSearch(itemId) {
@@ -2151,8 +2433,18 @@ function toggleExclusionFromSearch(itemId) {
     } else {
         excludeItem(itemId);
     }
-    
+
     toggleExclusionIcon(itemId);
+}
+
+function toggleInclusionInSearch(itemId) {
+    if(itemsToInclude.includes(itemId)) {
+        removeItemFromIncludeList(itemId);
+    } else {
+        includeItem(itemId);
+    }
+
+    toggleInclusionIcon(itemId);
 }
 
 function displaySearchResultsAsync(items, start, div) {
@@ -2160,66 +2452,7 @@ function displaySearchResultsAsync(items, start, div) {
     var html = "";
     for (var index = start; index < end; index++) {
         var item = items[index];
-        if (item) {
-            var enhancementString = "null";
-            if (item.enhancements) {
-                enhancementString = JSON.stringify(item.enhancements).split('"').join("'");
-            }
-            html += '<div class="tr selectable item';
-            if (item.enhancements || itemInventory && itemInventory.enchantments && itemInventory.enchantments[item.id]) {
-                html += " enhanced";
-            }
-            
-            var excluded = itemsToExclude.includes(item.id);
-
-            if(searchClickBehavior == ClickBehaviors.IGNORE) {
-                html += '" >';
-            } else if (searchClickBehavior == ClickBehaviors.EXCLUDE) {
-                html += '" onclick="toggleExclusionFromSearch(\'' + item.id + '\');">';
-            } else {
-                html += '" onclick="fixItem(\'' + item.id + '\', ' + currentItemSlot + ', ' + enhancementString + ')">';
-            }
-
-            html += "<div class='td exclude'>";
-            html += getItemExclusionLink(item.id, excluded);
-            html += "</div>";
-
-            html += displayItemLine(item);
-            
-            if (searchClickBehavior != ClickBehaviors.EXCLUDE) {
-                html+= "<div class='td enchantment desktop'>";
-                html+= getItemEnhancementLink(item);
-                html+= "</div>";
-            }
-
-            if (itemInventory) {
-                var notEnoughClass = "";
-                var numbers = dataStorage.getOwnedNumber(item);
-                var owned = "";
-                if (numbers.total > 0) {
-                    owned += numbers.available;
-                    if (numbers.available != numbers.total) {
-                        owned += "/" + numbers.total;   
-                        if (numbers.available == 0) {
-                            notEnoughClass = " notEnough ";
-                        }
-                    }
-                }
-                html+= "<div class='td inventory desktop text-center'><span class='badge" + notEnoughClass + "'>" + owned + "</span></div>";
-                
-                html+= '<div class="td mobile" onclick="event.stopPropagation();"><div class="menu">';
-                html+=      '<span class="dropdown-toggle glyphicon glyphicon-option-vertical" data-toggle="dropdown" onclick="$(this).parent().toggleClass(\'open\');"></span>'
-                html+=      '<ul class="dropdown-menu pull-right">';
-                html+=          '<li>' + getAccessHtml(item) + '</li>';               
-                html+=          '<li>' + getItemEnhancementLink(item) + '</li>';                
-                html+=          '<li class="inventory"><span class="badge' + notEnoughClass + '">' + owned + '</span></li>';
-                html+=      '</ul>';
-                html+= '</div></div>';
-            } else {
-                html+= "<div class='td enchantment'/><div class='td inventory'/>"
-            }
-            html += "</div>";
-        }
+        html += getItemHtml(item);
     }
     div.append(html);
     if (end < items.length) {
@@ -2227,9 +2460,120 @@ function displaySearchResultsAsync(items, start, div) {
     }
 }
 
+function getItemHtml(item) {
+    let html = "";
+    if (item) {
+        var enhancementString = "null";
+        if (item.enhancements) {
+            enhancementString = JSON.stringify(item.enhancements).split('"').join("'");
+        }
+        html += '<div class="selectable itemWrapper';
+        if (item.enhancements || itemInventory && itemInventory.enchantments && itemInventory.enchantments[item.id]) {
+            html += " enhanced";
+        }
+
+        var excluded = itemsToExclude.includes(item.id);
+        var included = itemsToInclude.includes(item.id);
+
+        $('#fixItemModal').removeClass('exclusion');
+        $('#fixItemModal').removeClass('inclusion');
+        if(searchClickBehavior == ClickBehaviors.IGNORE) {
+            html += '" >';
+        } else if (searchClickBehavior == ClickBehaviors.EXCLUDE) {
+            html += '" onclick="toggleExclusionFromSearch(\'' + item.id + '\');">';
+            $('#fixItemModal').addClass('exclusion');
+        } else if (searchClickBehavior == ClickBehaviors.INCLUDE) {
+            html += '" onclick="toggleInclusionInSearch(\'' + item.id + '\');">';
+            $('#fixItemModal').addClass('inclusion');
+        } else {
+            html += '" onclick="fixItem(\'' + item.id + '\', ' + currentItemSlot + ', ' + enhancementString + ')">';
+        }
+
+        if (searchClickBehavior == ClickBehaviors.INCLUDE) {
+            html += "<div class='include'>";
+            html += getItemInclusionLink(item.id, included);
+            html += "</div>";
+        } else {
+            html += "<div class='exclude'>";
+            html += getItemExclusionLink(item.id, excluded);
+            html += "</div>";
+        }
+
+
+
+
+        html += '<div class="item">';
+        html += displayItemLine(item);
+
+        if (item.type == 'visionCard') {
+            html += '<div class="td levels"><span class="label">Level: </span>';
+            for (let i = 1; i <= item.level; i++) {
+                let cardLevelId = item.id.split('-')[0] + '-' + i;
+                let availableClass = '';
+                if (itemInventory) {
+                    var numbers = dataStorage.getOwnedNumber({id:cardLevelId, type:'visionCard'});
+                    if (numbers.total > 0) {
+                        if (numbers.available == 0) {
+                            availableClass = " notEnough ";
+                        } else {
+                            availableClass = " available "
+                        }
+                    }
+                }
+                html += '<button class="btn btn-default ' + availableClass + '" onclick="event.stopPropagation();fixItem(\'' + cardLevelId + '\', ' + currentItemSlot + ', ' + enhancementString + '); return false;">' + i + '</button>'
+            }
+            html += '</div>';
+        }
+
+        html += '</div>';
+
+        if (searchClickBehavior != ClickBehaviors.EXCLUDE && searchClickBehavior != ClickBehaviors.INCLUDE) {
+            html+= "<div class='enchantment desktop'>";
+            html+= getItemEnhancementLink(item);
+            html+= "</div>";
+        }
+
+        if (itemInventory) {
+            var notEnoughClass = "";
+            var numbers = dataStorage.getOwnedNumber(item);
+            var owned = "";
+            if (numbers.total > 0) {
+                owned += numbers.available;
+                if (numbers.available != numbers.total) {
+                    owned += "/" + numbers.total;
+                    if (numbers.available == 0) {
+                        notEnoughClass = " notEnough ";
+                    }
+                }
+            }
+            html+= "<div class='inventory desktop text-center'><span class='badge" + notEnoughClass + "'>" + owned + "</span></div>";
+
+            if (isMobile) {
+                html+= '<div class="mobile" onclick="event.stopPropagation();"><div class="menu">';
+                html+=      '<span class="dropdown-toggle glyphicon glyphicon-option-vertical" data-toggle="dropdown" onclick="$(this).parent().toggleClass(\'open\');"></span>'
+                html+=      '<ul class="dropdown-menu pull-right">';
+                html+=          '<li>' + getAccessHtml(item) + '</li>';
+                html+=          '<li>' + getItemEnhancementLink(item) + '</li>';
+                if (searchClickBehavior == ClickBehaviors.EXCLUDE) {
+                html+=          '<li>' + getItemExclusionLink(item.id, excluded) + '</li>';
+                }
+                if (searchClickBehavior == ClickBehaviors.INCLUDE) {
+                html+=          '<li>' + getItemInclusionLink(item.id, included) + '</li>';
+                }
+                html+=      '</ul>';
+                html+= '</div></div>';
+            }
+        } else {
+            html+= "<div class='enchantment'></div><div class='inventory'></div>"
+        }
+        html += "</div>";
+    }
+    return html;
+}
+
 function getItemEnhancementLink(item) {
     var html = "";
-    
+
     if (weaponList.includes(item.type)) {
         html += '<div class="enchantment"><img src="img/icons/dwarf.png" onclick="event.stopPropagation();selectEnchantedItem(\'' + item.id + '\')">';
         if (itemInventory && itemInventory.enchantments && itemInventory.enchantments[item.id]) {
@@ -2243,15 +2587,28 @@ function getItemEnhancementLink(item) {
 
 function getItemExclusionLink(itemId, excluded) {
     var html = "";
-    html += '<span title="Exclude this item from builds" class="miniIcon left excludeItem glyphicon glyphicon-ban-circle false itemid' + itemId + '" style="' + (excluded ? 'display: none;' : '') + '" onclick="event.stopPropagation(); toggleExclusionFromSearch(\'' + itemId + '\');"></span>';
-    html += '<span title="Include this item in builds again" class="miniIcon left excludeItem glyphicon glyphicon-ban-circle true itemid' + itemId + '" style="' + (!excluded ? 'display: none;' : '') + '" onclick="event.stopPropagation(); toggleExclusionFromSearch(\'' + itemId + '\');"></span>';
+    html += '<i title="Exclude this item from builds" class="excludeItem fas fa-ban false itemid' + itemId + '" style="' + (excluded ? 'display: none;' : '') + '" onclick="event.stopPropagation(); toggleExclusionFromSearch(\'' + itemId + '\');"></i>';
+    html += '<i title="Include this item in builds again" class="excludeItem fas fa-ban true itemid' + itemId + '" style="' + (!excluded ? 'display: none;' : '') + '" onclick="event.stopPropagation(); toggleExclusionFromSearch(\'' + itemId + '\');"></i>';
+    return html;
+}
+
+function getItemInclusionLink(itemId, included) {
+    var html = "";
+    html += '<i title="Include this item in build calculations" class="includeItem fas fa-plus false itemid' + itemId + '" style="' + (included ? 'display: none;' : '') + '" onclick="event.stopPropagation(); toggleInclusionInSearch(\'' + itemId + '\');"></i>';
+    html += '<i title="Don\'t include this item in build calculation anymore" class="includeItem fas fa-plus true itemid' + itemId + '" style="' + (!included ? 'display: none;' : '') + '" onclick="event.stopPropagation(); toggleInclusionInSearch(\'' + itemId + '\');"></i>';
     return html;
 }
 
 function toggleExclusionIcon(itemId) {
     var excluded = itemsToExclude.includes(itemId);
-    $('.excludeItem.glyphicon-ban-circle.' + !excluded + '.itemid' + itemId).css('display', 'none');
-    $('.excludeItem.glyphicon-ban-circle.' + excluded + '.itemid' + itemId).css('display', 'inline');
+    $('.excludeItem.fas.fa-ban.' + !excluded + '.itemid' + itemId).css('display', 'none');
+    $('.excludeItem.fas.fa-ban.' + excluded + '.itemid' + itemId).css('display', 'inline');
+}
+
+function toggleInclusionIcon(itemId) {
+    var included = itemsToInclude.includes(itemId);
+    $('.includeItem.fas.fa-plus.' + !included + '.itemid' + itemId).css('display', 'none');
+    $('.includeItem.fas.fa-plus.' + included + '.itemid' + itemId).css('display', 'inline');
 }
 
 function selectEnchantedItem(itemId) {
@@ -2312,6 +2669,12 @@ function selectEnchantement(item) {
     $("#modifyEnhancementModal .modal-header .title").html(getImageHtml(currentEnchantmentItem) + getNameColumnHtml(currentEnchantmentItem));
     $("#modifyEnhancementModal .value.rare_3").html(itemEnhancementLabels["rare_3"][currentEnchantmentItem.type]);
     $("#modifyEnhancementModal .value.rare_4").html(itemEnhancementLabels["rare_4"][currentEnchantmentItem.type]);
+    if (itemEnhancementLabels["special_1"][item.id]) {
+        $("#modifyEnhancementModal .value.special_1").removeClass("hidden");
+        $("#modifyEnhancementModal .value.special_1").html(itemEnhancementLabels["special_1"][item.id]);
+    } else {
+        $("#modifyEnhancementModal .value.special_1").addClass("hidden");
+    }
 }
 
 function toggleItemEnhancement(enhancement) {
@@ -2327,7 +2690,7 @@ function toggleItemEnhancement(enhancement) {
         }
         if (enhancements.length == 3) {
             $.notify("No more than 3 item enhancements can be selected", "warning");
-            return;   
+            return;
         }
         enhancements.push(enhancement);
     }
@@ -2336,13 +2699,170 @@ function toggleItemEnhancement(enhancement) {
 
 function pinChosenEnchantment() {
     if (currentEnchantmentItem.type == "fake") {
-        defaultWeaponEnhancement = currentEnchantmentItem.enhancements;
-        dataStorage.setDefaultWeaponEnhancement(defaultWeaponEnhancement);
-        $("#defaultWeaponEnhancement .display").html(getEnhancements(currentEnchantmentItem));
+        setDefaultEnhancements(currentEnchantmentItem.enhancements);
         $('#modifyEnhancementModal').modal('hide');
     } else {
         fixItem(applyEnhancements(currentEnchantmentItem, currentEnchantmentItem.enhancements), currentItemSlot);
     }
+}
+
+function setDefaultEnhancements(enhancements) {
+    defaultWeaponEnhancement = enhancements;
+    dataStorage.setDefaultWeaponEnhancement(defaultWeaponEnhancement);
+    $("#defaultWeaponEnhancement .display").html(getEnhancements({enhancements:enhancements}));
+}
+
+const stateHashCalculatedValues = {
+    "physicalEvasion": "evade.physical",
+    "magicalEvasion": "evade.magical",
+    "drawAttacks": "drawAttacks",
+    "lbDamage": "lbDamage",
+    "mpRefresh": "mpRefresh",
+    "lbFillRate": "lbFillRate",
+    "lbPerTurn": "lbPerTurn",
+    "jumpDamage": "jumpDamage",
+    "evoMag": "evoMag",
+    "evokeDamageBoost": "evokeDamageBoost.all",
+}
+
+function getUnitStateFromUnitBuild(build, braveShifted = false) {
+    var unit = {};
+    unit.id = build.unit.id;
+    unit.name = build.unit.name;
+    if (build.unit.sixStarForm) {
+        unit.rarity = 6;
+    } else {
+        unit.rarity = build.unit.max_rarity;
+    }
+    unit.enhancementLevels = build.unit.enhancementLevels;
+    unit.goal = formulaToString(build.formula);
+    unit.innateElements = getSelectedValuesFor("elements");
+
+    unit.items = [];
+    // first fix allow Use of items
+    for (var index = 0; index < 11; index++) {
+        var item = build.build[index];
+        if (item && !item.placeHolder && item.type != "unavailable" && item.allowUseOf) {
+            unit.items.push(getItemDataForStateHash(build, index));
+            addEnhancementsIfAny(item, unit);
+        }
+    }
+    // first fix dual wield items
+    for (var index = 0; index < 11; index++) {
+        var item = build.build[index];
+        if (item && !item.placeHolder && item.type != "unavailable" && !item.allowUseOf && hasDualWieldOrPartialDualWield(item)) {
+            unit.items.push(getItemDataForStateHash(build, index));
+            addEnhancementsIfAny(item, unit);
+        }
+    }
+    // then others items
+    for (var index = 0; index < 11; index++) {
+        var item = build.build[index];
+        if (item && !item.placeHolder && item.type != "unavailable" && !hasDualWieldOrPartialDualWield(item) && !item.allowUseOf) {
+            unit.items.push(getItemDataForStateHash(build, index));
+            addEnhancementsIfAny(item, unit);
+        }
+        if (item && item.placeHolder) {
+            unit.items.push({slot: index, id: item.type, pinned: false});
+        }
+    }
+    if (build.build[11]) {
+        unit.esperId = build.build[11].name;
+        unit.esperPinned = (build.fixedItems[11] != null);
+        if (build.build[11].originalEsper.selectedSkills) {
+            unit.esper = JSON.parse(JSON.stringify(build.build[11].originalEsper));
+            delete unit.esper.buildLink;
+            delete unit.esper.selectedSkills;
+            delete unit.esper.maxLevel;
+            if (!unit.esper.resist) {
+                unit.esper.resist = [];
+            }
+            unit.esper.buildLink = getEsperLink(build.build[11].originalEsper);
+        }
+    }
+
+    unit.pots = {};
+    unit.maxPots = {};
+    unit.buffs = {};
+    for (var index = baseStats.length; index--;) {
+        unit.pots[baseStats[index]] = build.baseValues[baseStats[index]].pots;
+        unit.maxPots[baseStats[index]] = build.unit.stats.pots[baseStats[index]];
+        unit.buffs[baseStats[index]] = build.baseValues[baseStats[index]].buff;
+    }
+    unit.buffs.lbFillRate = build.baseValues.lbFillRate.buff;
+    unit.lbShardsPerTurn = build.baseValues.lbFillRate.total;
+    unit.buffs.mitigation = {
+        "physical": build.baseValues.mitigation.physical,
+        "magical": build.baseValues.mitigation.magical,
+        "global": build.baseValues.mitigation.global
+    }
+
+    unit.buffs.drawAttacks = build.baseValues.drawAttacks || 0;
+    unit.buffs.lbDamage = build.baseValues.lbDamage || 0;
+    if (build.baseValues.killerBuffs) {
+        unit.buffs.killers = build.baseValues.killerBuffs;
+    }
+    if (build.baseValues.elementBuffs) {
+        unit.buffs.elements = build.baseValues.elementBuffs;
+    }
+    if (build.baseValues.currentStack) {
+        unit.stack = build.baseValues.currentStack;
+    }
+    if (build.level) {
+        unit.level = build.level;
+    }
+    if (build._exAwakeningLevel && build._exAwakeningLevel >= 0 ) {
+        unit.exAwakening = build._exAwakeningLevel;
+    }
+    unit.calculatedValues = {
+        "elementResists": {},
+        "ailmentResists": {},
+        "killers": {}
+    };
+    baseStats.forEach(stat => {
+        let value = calculateStatValue(build.build, stat, build);
+        unit.calculatedValues[stat] = {
+            "value": Math.floor(value.total),
+            "bonus": Math.floor(value.bonusPercent),
+            "flatStatBonus": Math.floor((getEquipmentStatBonus(build.build, stat, false) - 1) * 100)
+        };
+    });
+    Object.keys(stateHashCalculatedValues).forEach(stat => {
+        let value = calculateStatValue(build.build, stateHashCalculatedValues[stat], build).total;
+        unit.calculatedValues[stat] = {
+            "value": value
+        };
+    });
+    elementList.forEach(element => {
+        let value = calculateStatValue(build.build, "resist|" + element + ".percent", build).total;
+        unit.calculatedValues.elementResists[element] = value;
+    });
+    ailmentList.forEach(ailment => {
+        let value = calculateStatValue(build.build, "resist|" + ailment + ".percent", build).total;
+        unit.calculatedValues.ailmentResists[ailment] = value;
+    });
+    var killers = [];
+    for (var index = build.build.length; index--;) {
+        if (build.build[index] && build.build[index].killers) {
+            for (var j = 0; j < build.build[index].killers.length; j++) {
+                addToKiller(killers, build.build[index].killers[j]);
+            }
+        }
+    }
+    killerList.forEach(race => {
+        let killer = killers.filter(k => k.name === race);
+        let physicalKiller = 0;
+        let magicalKiller = 0;
+        if (killer.length > 0) {
+            physicalKiller = killer[0].physical || 0;
+            magicalKiller = killer[0].magical || 0;
+        }
+        unit.calculatedValues.killers[race] = {
+            "physical": physicalKiller,
+            "magical": magicalKiller
+        };
+    });
+    return unit;
 }
 
 function getStateHash(onlyCurrent = true) {
@@ -2359,70 +2879,11 @@ function getStateHash(onlyCurrent = true) {
     for (var i = min; i < min + num; i++) {
         var build = builds[i];
         if (build && build.unit && build.unit.id) {
-            var unit = {};
-            unit.id = build.unit.id;
-            if (build.unit.sixStarForm) {
-                unit.rarity = 6;
-            } else {
-                unit.rarity = build.unit.max_rarity;    
-            }
-            unit.enhancementLevels = build.unit.enhancementLevels;
-            unit.goal = formulaToString(build.formula);
-            unit.innateElements = getSelectedValuesFor("elements");
-
-            unit.items = [];
-            // first fix allow Use of items
-            for (var index = 0; index < 10; index++) {
-                var item = build.build[index];
-                if (item && !item.placeHolder && item.type != "unavailable" && item.allowUseOf) {
-                    unit.items.push({slot:index, id:item.id, pinned: build.fixedItems[index] != null});
-                    addEnhancementsIfAny(item, unit);
-                }
-            }
-            // first fix dual wield items
-            for (var index = 0; index < 10; index++) {
-                var item = build.build[index];
-                if (item && !item.placeHolder && item.type != "unavailable" && !item.allowUseOf && hasDualWieldOrPartialDualWield(item)) {
-                    unit.items.push({slot:index, id:item.id, pinned: build.fixedItems[index] != null});
-                    addEnhancementsIfAny(item, unit);
-                }
-            }
-            // then others items
-            for (var index = 0; index < 10; index++) {
-                var item = build.build[index];
-                if (item && !item.placeHolder && item.type != "unavailable" && !hasDualWieldOrPartialDualWield(item) && !item.allowUseOf) {
-                    unit.items.push({slot:index, id:item.id, pinned: build.fixedItems[index] != null});
-                    addEnhancementsIfAny(item, unit);
-                }
-                if (item && item.placeHolder) {
-                    unit.items.push({slot:index, id:item.type, pinned: false});
-                }
-            }
-            if (build.build[10]) {
-                unit.esperId = build.build[10].name;
-                unit.esperPinned = (build.fixedItems[10] != null);
-            }
-
-            unit.pots = {};
-            unit.buffs = {};
-            for (var index = baseStats.length; index--;) {
-                unit.pots[baseStats[index]] = build.baseValues[baseStats[index]].pots;
-                unit.buffs[baseStats[index]] = build.baseValues[baseStats[index]].buff;
-            }
-            unit.buffs.lbFillRate = build.baseValues.lbFillRate.buff;
-            unit.lbShardsPerTurn = build.baseValues.lbFillRate.total;
-            unit.mitigation = {
-                "physical":build.baseValues.mitigation.physical,
-                "magical":build.baseValues.mitigation.magical,
-                "global":build.baseValues.mitigation.global
-            }
-            unit.drawAttacks = build.baseValues.drawAttacks;
-            unit.lbDamage = build.baseValues.lbDamage;
-            if (build.baseValues.currentStack) {
-                unit.stack = build.baseValues.currentStack;
-            }
-            if (build._level) {
-                unit.level = build._level;
+            const unit = getUnitStateFromUnitBuild(build);
+            if (build.hasBraveShift()) {
+                build.braveShift();
+                unit.braveShiftedUnit = getUnitStateFromUnitBuild(build, true);
+                build.braveShift();
             }
             data.units.push(unit);
         }
@@ -2436,21 +2897,51 @@ function getStateHash(onlyCurrent = true) {
         "breaks" : ennemyStats.breaks,
         "buffs" : ennemyStats.buffs,
         "breakability" : ennemyStats.breakability,
-        "imperils" : ennemyStats.imperils
+        "imperils" : ennemyStats.imperils,
+        "attackFormula": formulaToString(monsterAttackFormula)
     }
     data.itemSelector = {
         "mainSelector": $(".equipments select").val(),
         "additionalFilters": []
     }
-    var additionalFilters = ["includeEasilyObtainableItems", "includeChocoboItems", "includeTMROfOwnedUnits", "includeTrialRewards", "exludeEvent", "excludePremium", "excludeTMR5", "excludeSTMR", "excludeNotReleasedYet"];
+    var additionalFilters = ["includeEasilyObtainableItems", "includeChocoboItems", "includeTMROfOwnedUnits", "includeTmrMoogles", "includeTrialRewards", "exludeEvent", "excludePremium", "excludeTMR5", "excludeSTMR", "excludeNotReleasedYet"];
     for (var i = 0; i < additionalFilters.length; i++) {
         if ($("#" + additionalFilters[i]).prop('checked')) {
             data.itemSelector.additionalFilters.push(additionalFilters[i]);
         }
     }
     data.useNewJpDamageFormula = $("#useNewJpDamageFormula").prop("checked");
-    
+
     return data;
+}
+
+function getItemDataForStateHash(unitBuild, index) {
+    let item = unitBuild.build[index];
+    let itemData = {slot:index, id:item.id, pinned: unitBuild.fixedItems[index] != null, icon:item.icon, name:item.name}
+    if (index === 0 || index === 1) {
+        itemData.type = item.type;
+        if (weaponList.includes(itemData.type)) {
+            itemData.atk = item.atk || 0;
+            if (item.damageVariance) {
+                itemData.damageVariance = {
+                    min: item.damageVariance.min,
+                    max: item.damageVariance.max
+                };
+            } else {
+                itemData.damageVariance = {
+                    min: weaponBaseDamageVariance[item.type].min,
+                    max: weaponBaseDamageVariance[item.type].max
+                };
+            }
+        }
+    } else if (index === 10) {
+        itemData.id = item.id.split('-')[0];
+        baseStats.forEach(stat => {
+            itemData[stat] = unitBuild.build[index][stat] || 0;
+        });
+        itemData.level = item.level;
+    }
+    return itemData;
 }
 
 function addEnhancementsIfAny(item, unit) {
@@ -2462,6 +2953,12 @@ function addEnhancementsIfAny(item, unit) {
     } else {
         unit.itemEnchantments.push(null);
     }
+}
+function addIconIfAny(item, unit) {
+    if (!unit.itemIcons) {
+        unit.itemIcons = [];
+    }
+    unit.itemIcons.push(item.icon);
 }
 
 function readStateHashData(callback) {
@@ -2497,7 +2994,7 @@ function oldLinkFormatToNew(oldData) {
     var data = {
         "units": []
     };
-    
+
     var unit = {};
     unit.id = oldData.unit;
     unit.rarity = oldData.rarity;
@@ -2510,14 +3007,14 @@ function oldLinkFormatToNew(oldData) {
 
     unit.items = oldData.fixedItems;
     unit.esperId = oldData.esper;
-    
+
     unit.pots = oldData.pots;
     unit.buffs = oldData.buff;
     unit.lbShardsPerTurn = oldData.lbShardsPerTurn;
     unit.mitigation = oldData.mitigation;
     data.units.push(unit);
-    
-    
+
+
     data.monster = {
         "races": oldData.ennemyRaces,
         elementalResist : oldData.ennemyResists,
@@ -2531,13 +3028,13 @@ function oldLinkFormatToNew(oldData) {
         "mainSelector": oldData.equipmentToUse,
         "additionalFilters": []
     }
-    var additionalFilters = ["includeTMROfOwnedUnits", "includeTrialRewards", "exludeEvent", "excludePremium", "excludeTMR5", "excludeSTMR", "excludeNotReleasedYet"];
+    var additionalFilters = ["includeTMROfOwnedUnits", "includeTmrMoogles", "includeTrialRewards", "exludeEvent", "excludePremium", "excludeTMR5", "excludeSTMR", "excludeNotReleasedYet"];
     for (var i = 0; i < additionalFilters.length; i++) {
         if (oldData[additionalFilters[i]]) {
             data.itemSelector.additionalFilters.push(additionalFilters[i]);
         }
     }
-    
+
     return data;
 }
 
@@ -2561,9 +3058,9 @@ function shortLinkFormatToData(shortLinkData) {
     var data = {
         "units": []
     };
-  
+
     let unitIdString = shortLinkData[0][0].toString();
-  
+
     let baseUnitId = unitIdString.substr(0, unitIdString.length -1);
     let rarity = unitIdString.substr(unitIdString.length -1);
     let unitFound = null;
@@ -2576,7 +3073,7 @@ function shortLinkFormatToData(shortLinkData) {
       Modal.showMessage("Wrong link data", "Unknown unit id");
       return;
     }
-  
+
     var unit = {};
     unit.id = unitFound.id;
     if (rarity != 6 && unitFound.max_rarity != rarity) {
@@ -2588,7 +3085,7 @@ function shortLinkFormatToData(shortLinkData) {
     if (unit.rarity == 7) {
       unit.level = shortLinkData[0][1]
     }
-  
+
     unit.goal = "Maximize P_DAMAGE";
     unit.pots = {
       "hp":shortLinkData[0][2][0],
@@ -2598,10 +3095,10 @@ function shortLinkFormatToData(shortLinkData) {
       "mag":shortLinkData[0][2][4],
       "spr":shortLinkData[0][2][5]
     }
-  
-    unit.esperId = esperNameById[shortLinkData[1][0]];  
+
+    unit.esperId = esperNameById[shortLinkData[1][0]];
     unit.esperPinned = false;
-    unit.items = shortLinkData[2].map((id, index) => { 
+    unit.items = shortLinkData[2].map((id, index) => {
         if (id) {
             return {"id":id.toString(), "slot": index, "pinned": false}
         }
@@ -2615,85 +3112,230 @@ function shortLinkFormatToData(shortLinkData) {
         unit.itemEnchantments[1] = shortLinkData[3][1].map(id => itemEnhancementBySkillId[id]);
       }
     }
-  
+
     data.units.push(unit);
-    
+
     data.itemSelector = {
         "mainSelector": "all",
         "additionalFilters": ["excludeNotReleasedYet"]
     }
-    
+
     data.version = 2;
     return data;
 }
-    
-function loadStateHashAndBuild(data, importMode = false) {
+
+async function loadUnitFromStateHash(unit, dataVersion) {
+    if (unit.enhancementLevels) {
+        builds[currentUnitIndex].unit.enhancementLevels = unit.enhancementLevels;
+    }
+
+    builds[currentUnitIndex].goal = "custom";
+    builds[currentUnitIndex].formula = parseFormula(unit.goal, unitsWithSkills[unit.id]);
+    if (!isSimpleFormula(builds[currentUnitIndex].formula)) {
+        customFormula = builds[currentUnitIndex].formula;
+    }
+
+    updateGoal();
+    readGoal();
+
+
+    if (unit.level) {
+        $("#unitLevel select").val(unit.level);
+        builds[currentUnitIndex].level = unit.level;
+        updateUnitStats();
+        recalculateApplicableSkills();
+    }
+    if (unit.exAwakening) {
+        $("#unitExAwakeningLevel select").val(unit.exAwakening.toString());
+        builds[currentUnitIndex].setExAwakeningLevel(unit.exAwakening);
+        updateUnitStats();
+    }
+
+    select("elements", unit.innateElements);
+
+    if (unit.items) {
+        for (var index in unit.items) {
+            if (unit.items[index]) {
+                var itemId = dataVersion >= 1 ? unit.items[index].id : unit.items[index];
+                var itemSlot = dataVersion >= 1 ? unit.items[index].slot : -1;
+                if (itemSlot === 10 && unit.items[index].level) {
+                    itemId = itemId + '-' + unit.items[index].level;
+                }
+                if (dataVersion >= 2) {
+                    fixItem(itemId, itemSlot, (unit.itemEnchantments && unit.itemEnchantments[index] ? unit.itemEnchantments[index] : undefined), unit.items[index].pinned);
+                } else {
+                    fixItem(itemId, itemSlot, (unit.itemEnchantments && unit.itemEnchantments[index] ? unit.itemEnchantments[index] : undefined));
+                }
+            }
+        }
+    }
+
+    if (unit.esperId) {
+        if (unit.esper) {
+            fixItem(getEsperItem(unit.esper), 11, undefined, unit.esperPinned);
+        } else if (dataVersion >= 2) {
+            fixItem(unit.esperId, -1, undefined, unit.esperPinned);
+        } else {
+            fixItem(unit.esperId, -1, undefined, true);
+        }
+    }
+    if (unit.pots) {
+        for (var index = baseStats.length; index--;) {
+            $(".unitStats .stat." + baseStats[index] + " .pots input").val(unit.pots[baseStats[index]]);
+        }
+    }
+    if (unit.buffs) {
+        for (var index = baseStats.length; index--;) {
+            $(".unitStats .stat." + baseStats[index] + " .buff input").val(unit.buffs[baseStats[index]]);
+        }
+        if (unit.buffs.lbFillRate) {
+            $(".unitStats .stat.lbFillRate .buff input").val(unit.buffs.lbFillRate);
+        }
+        if (unit.buffs.killers) {
+            unit.buffs.killers.forEach(killerData => {
+                if (killerData.physical) {
+                    $('.killerBuffs.physical .' + killerData.name + ' input').val(killerData.physical);
+                }
+                if (killerData.magical) {
+                    $('.killerBuffs.magical .' + killerData.name + ' input').val(killerData.magical);
+                }
+            });
+        }
+        if (unit.buffs.elements) {
+            elementList.forEach(element => {
+                const input = $('.elementBuffs .' + element + ' input');
+                if (unit.buffs.elements[element]) {
+                    input.val(unit.buffs.elements[element]);
+                } else {
+                    input.val('');
+                }
+            });
+        }
+    }
+    if (unit.lbShardsPerTurn) {
+        $(".unitStats .stat.lbShardsPerTurn .buff input").val(unit.lbShardsPerTurn);
+    }
+    let mitigation = unit.buffs.mitigation || unit.mitigation;
+    if (mitigation) {
+        $(".unitStats .stat.pMitigation .buff input").val(mitigation.physical);
+        $(".unitStats .stat.mMitigation .buff input").val(mitigation.magical);
+        $(".unitStats .stat.mitigation .buff input").val(mitigation.global);
+    }
+    let drawAttacks = unit.buffs.drawAttacks || unit.drawAttacks;
+    if (drawAttacks) {
+        $(".unitStats .stat.drawAttacks .buff input").val(drawAttacks);
+    }
+    let lbDamage = unit.buffs.lbDamage || unit.lbDamage;
+    if (lbDamage) {
+        $(".unitStats .stat.lbDamage .buff input").val(lbDamage);
+    }
+    if (unit.stack) {
+        $(".unitStack input").val(unit.stack);
+    }
+    logCurrentBuild();
+}
+
+async function loadStateHashAndBuild(data, importMode = false) {
     var dataVersion = data.version ? data.version : 0;
 
     if (data.itemSelector.mainSelector == "owned" && !itemInventory) {
         return;
     }
-    
+
     if (data.useNewJpDamageFormula) {
         $("#useNewJpDamageFormula").prop("checked", true);
     } else {
         $("#useNewJpDamageFormula").prop("checked", false);
     }
 
-    
+
     if (!importMode) {
         if (data.monster) {
-          select("races", data.monster.races);
-          for (var element in data.monster.elementalResist) {
-              if (data.monster.elementalResist[element] == 0) {
-                  $("#elementalResists ." + element + " input.elementalResist").val("");
-              } else {
-                  $("#elementalResists ." + element + " input.elementalResist").val(data.monster.elementalResist[element]);
-              }
-              if (data.monster.imperils && data.monster.imperils[element]) {
-                  $("#elementalResists ." + element + " input.imperil").val(data.monster.imperils[element]);
-              }
-          }
-          
-          if (data.monster.def) {
-              $("#monsterDefensiveStats .def .stat").val(data.monster.def);
-          }
-          if (data.monster.spr) {
-              $("#monsterDefensiveStats .spr .stat").val(data.monster.spr);
-          }
-          if (data.monster.breaks) {
-              if (data.monster.breaks.def) {
-                  $("#monsterDefensiveStats .def .break").val(data.monster.breaks.def);
-              }
-              if (data.monster.breaks.spr) {
-                  $("#monsterDefensiveStats .spr .break").val(data.monster.breaks.spr);
-              }
-          }
-          if (data.monster.buffs) {
-              if (data.monster.buffs.def) {
-                  $("#monsterDefensiveStats .def .buff").val(data.monster.buffs.def);
-              }
-              if (data.monster.buffs.spr) {
-                  $("#monsterDefensiveStats .spr .buff").val(data.monster.buffs.spr);
-              }
-          }
-          if (data.monster.breakability) {
-              setMonsterStatBreakibility('def', data.monster.breakability.def);
-              setMonsterStatBreakibility('spr', data.monster.breakability.spr);
-          }
-          $('.equipments select option[value="' + data.itemSelector.mainSelector + '"]').prop("selected", true);
-          for (var i = 0; i < data.itemSelector.additionalFilters.length; i++) {
+            select("races", data.monster.races);
+            for (var element in data.monster.elementalResist) {
+                if (data.monster.elementalResist[element] == 0) {
+                    $("#elementalResists ." + element + " input.elementalResist").val("");
+                } else {
+                    $("#elementalResists ." + element + " input.elementalResist").val(data.monster.elementalResist[element]);
+                }
+                if (data.monster.imperils && data.monster.imperils[element]) {
+                    $("#elementalResists ." + element + " input.imperil").val(data.monster.imperils[element]);
+                }
+            }
+
+            if (data.monster.imperils) {
+                for (var type in data.monster.imperils) {
+                    if (elementList.includes(type) && data.monster.imperils[type]) {
+                        $("#elementalResists ." + type + " input.imperil").val(data.monster.imperils[type]);
+                    }
+                    if (weaponList.includes(type) && data.monster.imperils[type]) {
+                        $(".weaponImperils ." + type + " input").val(data.monster.imperils[type]);
+                    }
+                }
+            }
+
+            if (data.monster.atk) {
+                $("#monsterStats .atk .stat").val(data.monster.atk);
+            }
+            if (data.monster.mag) {
+                $("#monsterStats .mag .stat").val(data.monster.mag);
+            }
+            if (data.monster.def) {
+                $("#monsterStats .def .stat").val(data.monster.def);
+            }
+            if (data.monster.spr) {
+                $("#monsterStats .spr .stat").val(data.monster.spr);
+            }
+            if (data.monster.breaks) {
+                if (data.monster.breaks.atk) {
+                  $("#monsterStats .atk .break").val(data.monster.breaks.atk);
+                }
+                if (data.monster.breaks.mag) {
+                  $("#monsterStats .mag .break").val(data.monster.breaks.mag);
+                }
+                if (data.monster.breaks.def) {
+                  $("#monsterStats .def .break").val(data.monster.breaks.def);
+                }
+                if (data.monster.breaks.spr) {
+                  $("#monsterStats .spr .break").val(data.monster.breaks.spr);
+                }
+            }
+            if (data.monster.buffs) {
+                if (data.monster.buffs.atk) {
+                  $("#monsterStats .atk .buff").val(data.monster.buffs.atk);
+                }
+                if (data.monster.buffs.mag) {
+                  $("#monsterStats .mag .buff").val(data.monster.buffs.mag);
+                }
+                if (data.monster.buffs.def) {
+                  $("#monsterStats .def .buff").val(data.monster.buffs.def);
+                }
+                if (data.monster.buffs.spr) {
+                  $("#monsterStats .spr .buff").val(data.monster.buffs.spr);
+                }
+            }
+            if (data.monster.breakability) {
+                setMonsterStatBreakibility('atk', data.monster.breakability.atk);
+                setMonsterStatBreakibility('mag', data.monster.breakability.mag);
+                setMonsterStatBreakibility('def', data.monster.breakability.def);
+                setMonsterStatBreakibility('spr', data.monster.breakability.spr);
+            }
+            if (data.monster.attackFormula) {
+                setMonsterAttackFormula(parseFormula(data.monster.attackFormula, null));
+            }
+            $('.equipments select option[value="' + data.itemSelector.mainSelector + '"]').prop("selected", true);
+            for (var i = 0; i < data.itemSelector.additionalFilters.length; i++) {
             $("#" + data.itemSelector.additionalFilters[i]).prop('checked', true);
-          }
+            }
         }
     }
-    
+
     $('.goal #normalGoalChoice option').prop("selected", false);
-    
-    
+
+
     var first = true;
     for (var i = 0; i < data.units.length; i++) {
-        
+
         if (first) {
             if (importMode && (builds.length > 1 || builds[0].unit != null)) {
                 addNewUnit(false);
@@ -2704,90 +3346,29 @@ function loadStateHashAndBuild(data, importMode = false) {
         } else {
             addNewUnit(false);
         }
-        
+
         var unit = data.units[i];
-        selectUnitDropdownWithoutNotify(unit.id + ((unit.rarity == 6 && units[unit.id]["6_form"]) ? '-6' : ''));
-        onUnitChange();
-        
-        if (unit.enhancementLevels) {
-            builds[currentUnitIndex].unit.enhancementLevels = unit.enhancementLevels;
-            displayUnitEnhancements();
-            onUnitChange();
+        if (!unit.id.endsWith("7") && displayOnly7StarsUnits) {
+            displayOnly7StarsUnits = !displayOnly7StarsUnits;
+            refreshUnitSelect();
         }
-        
-        builds[i].goal = "custom";
-        builds[i].formula = parseFormula(unit.goal, unitsWithSkills[unit.id]);
-        if (!isSimpleFormula(builds[i].formula)) {
-            customFormula = builds[i].formula;
+        var unitToSelect = unit.id;
+        if (unit.rarity == 6 && units[unit.id]["6_form"]) {
+            unitToSelect += '-6';
+        } else if (unit.rarity == 7 && units[unit.id]["7_form"]) {
+            unitToSelect += '-7';
         }
-        
-        updateGoal();
-        readGoal();
+        selectUnitDropdownWithoutNotify(unitToSelect);
+        await onUnitChange();
 
-        
-        if (unit.level) {
-            $("#unitLevel select").val(unit.level);
-            builds[currentUnitIndex].setLevel(unit.level);
-            updateUnitStats();
-            recalculateApplicableSkills();
+        await loadUnitFromStateHash(unit, dataVersion);
+        if (unit.braveShiftedUnit) {
+            braveShift(currentUnitIndex);
+            await loadUnitFromStateHash(unit.braveShiftedUnit, dataVersion);
+            braveShift(currentUnitIndex);
         }
-
-        select("elements", unit.innateElements);
-        
-        if (unit.items) {
-            for (var index in unit.items) {
-                if (unit.items[index]) {
-                    var itemId = dataVersion >= 1 ? unit.items[index].id : unit.items[index];
-                    var itemSlot = dataVersion >= 1 ? unit.items[index].slot : -1;
-                    if (dataVersion >= 2) {
-                        fixItem(itemId, itemSlot, (unit.itemEnchantments && unit.itemEnchantments[index] ? unit.itemEnchantments[index] : undefined), unit.items[index].pinned);
-                    } else {
-                        fixItem(itemId, itemSlot, (unit.itemEnchantments && unit.itemEnchantments[index] ? unit.itemEnchantments[index] : undefined));
-                    }
-                }
-            }
-        }
-        
-        if (unit.esperId) {
-            if (dataVersion >= 2) {
-                fixItem(unit.esperId, -1, undefined, unit.esperPinned)
-            } else {
-                fixItem(unit.esperId, -1, undefined, true);
-            }
-        }
-        if (unit.pots) {
-            for (var index = baseStats.length; index--;) {
-                $(".unitStats .stat." + baseStats[index] + " .pots input").val(unit.pots[baseStats[index]]);
-            }
-        }
-        if (unit.buffs) {
-            for (var index = baseStats.length; index--;) {
-                $(".unitStats .stat." + baseStats[index] + " .buff input").val(unit.buffs[baseStats[index]]);
-            }
-            if (unit.buffs.lbFillRate) {
-                $(".unitStats .stat.lbFillRate .buff input").val(data.buffs.lbFillRate);
-            }
-        }
-        if (unit.lbShardsPerTurn) {
-            $(".unitStats .stat.lbShardsPerTurn .buff input").val(unit.lbShardsPerTurn);
-        }
-        if (unit.mitigation) {
-            $(".unitStats .stat.pMitigation .buff input").val(unit.mitigation.physical);
-            $(".unitStats .stat.mMitigation .buff input").val(unit.mitigation.magical);
-            $(".unitStats .stat.mitigation .buff input").val(unit.mitigation.global);
-        }
-        if (unit.drawAttacks) {
-            $(".unitStats .stat.drawAttacks .buff input").val(unit.drawAttacks);
-        }
-        if (unit.lbDamage) {
-            $(".unitStats .stat.lbDamage .buff input").val(unit.lbDamage);
-        }
-        if (unit.stack) {
-            $(".unitStack input").val(unit.stack);
-        }
-        logCurrentBuild();
     }
-    
+
     selectUnitTab(0);
     dataLoadedFromHash = true;
     window.location.hash = "";
@@ -2799,7 +3380,7 @@ function updateSimpleConditionsFromFormula(buildIndex) {
     unselectAll("simpleConditionVarious")
     $(".goal .elements .element input").val("");
     $(".goal .chainMultiplier input").val("");
-    
+
     let formula = builds[buildIndex].formula;
     if (formula && isSimpleFormula(formula)) {
         var simpleConditions = getSimpleConditions(formula);
@@ -2818,10 +3399,10 @@ function updateSimpleConditionsFromFormula(buildIndex) {
         if (chainMultiplier != 1 || simpleConditions.ailmentImunity.length > 0 || Object.keys(simpleConditions.elementalResist).length > 0 || simpleConditions.forcedElements.length > 0 || simpleConditions.various.length > 0 ) {
             $("#simpleConditionsButton").attr("aria-expanded", "true");
             $("#simpleConditionsList").addClass("in");
-        }    
+        }
     }
-        
-    
+
+
 }
 
 function clearItemsFromBuild(keepPinnedItems = false)
@@ -2837,9 +3418,9 @@ function clearItemsFromBuild(keepPinnedItems = false)
 
 function showBuildLink(onlyCurrentUnit) {
     var data = getStateHash(onlyCurrentUnit);
-    
+
     data.itemSelector.mainSelector = "all";
-    
+
     $.ajax({
         url: 'partyBuild',
         method: 'POST',
@@ -2869,7 +3450,7 @@ function showAllBuildsAsText() {
 
 function getBuildAsText(buildIndex) {
     var text = "";
-    text += 
+    text +=
         builds[buildIndex].unit.name + ' ' + (builds[buildIndex].unit.sixStarForm ? 6 : builds[buildIndex].unit.max_rarity) + '★  \n' +
         getItemLineAsText("Right hand", 0, buildIndex) +
         getItemLineAsText("Left hand", 1, buildIndex) +
@@ -2881,7 +3462,8 @@ function getBuildAsText(buildIndex) {
         getItemLineAsText("Materia 2", 7, buildIndex) +
         getItemLineAsText("Materia 3", 8, buildIndex) +
         getItemLineAsText("Materia 4", 9, buildIndex) +
-        getItemLineAsText("Esper", 10, buildIndex) +
+        getItemLineAsText("Vision Card", 10, buildIndex) +
+        getItemLineAsText("Esper", 11, buildIndex) +
         getBuildStatsAsText(buildIndex);
     return text;
 }
@@ -2895,17 +3477,42 @@ function showExcludedItems() {
         if (itemsToExclude.includes(item.id) && !idAlreadyTreated.includes(item.id)) {
             text += '<div class="tr id_' + escapeName(item.id) +'">' +
                 '<div class="td actions"><span class="excludeItem glyphicon glyphicon-remove" onclick="removeItemFromExcludeList(\'' + item.id +'\')"></span></div>' +
-                getImageHtml(item) + 
-                getNameColumnHtml(item) + 
+                getImageHtml(item) +
+                getNameColumnHtml(item) +
                 '</div>';
             idAlreadyTreated.push(item.id);
         }
     }
-    
+
     Modal.show({
         title: "Excluded items",
         body: '<button class="btn btn-warning" onclick="resetExcludeList();">Reset item exclusion list</button><button class="btn btn-warning" style="margin-left: 10px;" onclick="saveExcludeList();">Save as default exclusion list</button>'+
               '<div id="showExcludedItemsDialog"><div class="table items">' + text + '</div></div>',
+        size: 'large',
+        withCancelButton: false
+    });
+}
+
+function showIncludedItems() {
+    var text = "";
+    var idAlreadyTreated = [];
+    var dataToSearch = data.concat(espers);
+    for (var index = 0, len = dataToSearch.length; index < len; index++) {
+        var item = dataToSearch[index];
+        if (itemsToInclude.includes(item.id) && !idAlreadyTreated.includes(item.id)) {
+            text += '<div class="tr id_' + escapeName(item.id) +'">' +
+                '<div class="td actions"><span class="includeItem glyphicon glyphicon-remove" onclick="removeItemFromIncludeList(\'' + item.id +'\')"></span></div>' +
+                getImageHtml(item) +
+                getNameColumnHtml(item) +
+                '</div>';
+            idAlreadyTreated.push(item.id);
+        }
+    }
+
+    Modal.show({
+        title: "Included items",
+        body: '<button class="btn btn-warning" onclick="resetIncludeList();">Reset item inclusion list</button>'+
+              '<div id="showIncludedItemsDialog"><div class="table items">' + text + '</div></div>',
         size: 'large',
         withCancelButton: false
     });
@@ -2956,7 +3563,7 @@ function showMonsterList() {
     //     text += '</div>';
     //     text += '</div>';
     // }
-    
+
     Modal.show({
         title: "Monster List",
         body: '<div>' + text + '</div>',
@@ -2978,10 +3585,16 @@ function selectBestiaryCategory(category) {
 
 function selectMonster(category, monsterIndex) {
     var monster = bestiary.monstersByCategory[category][monsterIndex];
-    $("#monsterDefensiveStats .def .stat").val(monster.def);
-    $("#monsterDefensiveStats .spr .stat").val(monster.spr);
-    $("#monsterDefensiveStats .def .buff").val('');
-    $("#monsterDefensiveStats .spr .buff").val('');
+    $("#monsterStats .atk .stat").val(monster.atk);
+    $("#monsterStats .mag .stat").val(monster.mag);
+    $("#monsterStats .def .stat").val(monster.def);
+    $("#monsterStats .spr .stat").val(monster.spr);
+    $("#monsterStats .atk .buff").val('');
+    $("#monsterStats .mag .buff").val('');
+    $("#monsterStats .def .buff").val('');
+    $("#monsterStats .spr .buff").val('');
+    setMonsterStatBreakibility('atk', false);
+    setMonsterStatBreakibility('mag', false);
     setMonsterStatBreakibility('def', false);
     setMonsterStatBreakibility('spr', false);
     for(var elementIndex = elementList.length; elementIndex--;) {
@@ -2992,36 +3605,44 @@ function selectMonster(category, monsterIndex) {
         for(var resistIndex = monster.resist.length; resistIndex--;) {
             var resist = monster.resist[resistIndex];
             $("#elementalResists ." + resist.name + " input.elementalResist").val(resist.percent);
-        }   
+        }
     }
     if (monster.breakability) {
+        setMonsterStatBreakibility('atk', monster.breakability.def);
+        setMonsterStatBreakibility('mag', monster.breakability.spr);
         setMonsterStatBreakibility('def', monster.breakability.def);
         setMonsterStatBreakibility('spr', monster.breakability.spr);
-    }  
+    }
+    if (monster['atk%']) {
+        $("#monsterStats .atk .buff").val(monster['atk%']);
+    }
+    if (monster['mag%']) {
+        $("#monsterStats .mag .buff").val(monster['mag%']);
+    }
     if (monster['def%']) {
-        $("#monsterDefensiveStats .def .buff").val(monster['def%']);
+        $("#monsterStats .def .buff").val(monster['def%']);
     }
     if (monster['spr%']) {
-        $("#monsterDefensiveStats .spr .buff").val(monster['spr%']);
+        $("#monsterStats .spr .buff").val(monster['spr%']);
     }
     unselectAll("races");
     select("races", monster.races);
     Modal.hide();
     if (builds[currentUnitIndex] && builds[currentUnitIndex].unit) {
-        logCurrentBuild();    
+        logCurrentBuild();
     }
 }
 
 function toogleMonsterBreakability(stat) {
-    let icon = $("#monsterDefensiveStats ." + stat + " .breakIcon");
+    let icon = $("#monsterStats ." + stat + " .breakIcon");
     setMonsterStatBreakibility(stat, icon.hasClass("glyphicon-ban-circle"), icon);
     readEnnemyStats();
     logCurrentBuild();
 }
 
 function setMonsterStatBreakibility(stat, allow, providedIcon) {
-    let icon = providedIcon || $("#monsterDefensiveStats ." + stat + " .breakIcon");
-    let field = $("#monsterDefensiveStats ." + stat + " .break");
+    let icon = providedIcon || $("#monsterStats ." + stat + " .breakIcon");
+    let field = $("#monsterStats ." + stat + " .break");
     if (allow) {
         icon.removeClass("glyphicon-ban-circle");
         icon.addClass("glyphicon-download");
@@ -3034,10 +3655,50 @@ function setMonsterStatBreakibility(stat, allow, providedIcon) {
     }
 }
 
+function changeMonsterAttack() {
+    $("#monsterAttackFormulaModal").modal();
+}
+
+function chooseMonsterAttackFormula() {
+    var formulaString = $("#monsterAttackFormulaModal #monsterAttackInput").val();
+    var formula = parseFormula(formulaString, null);
+    if (formula) {
+        if (isAttackFormula(formula)) {
+            setMonsterAttackFormula(formula);
+            $('#monsterAttackFormulaModal').modal('hide');
+        } else {
+            Modal.showMessage("Wrong formula", "The inputed formula is not a valid simple damage formula");
+        }
+    }
+}
+
+function setMonsterAttackFormula(attackFormula) {
+    monsterAttackFormula = attackFormula;
+    builds.forEach(bu => {
+        if (bu) {
+            bu.monsterAttackFormula = attackFormula;
+        }
+    });
+    $('#monsterAttack .monsterAttackFormula').text(formulaToString(monsterAttackFormula, false));
+    if (builds[currentUnitIndex] && builds[currentUnitIndex].unit) {
+        logCurrentBuild();
+    }
+}
+
+function resetMonsterAttack() {
+    setMonsterAttackFormula(defaultMonsterAttackFormula);
+}
+
 function removeItemFromExcludeList(id) {
     $("#showExcludedItemsDialog .tr.id_" + escapeName(id)).remove();
     itemsToExclude.splice(itemsToExclude.indexOf(id),1);
     $(".excludedItemNumber").html(itemsToExclude.length);
+}
+
+function removeItemFromIncludeList(id) {
+    $("#showIncludedItemsDialog .tr.id_" + escapeName(id)).remove();
+    itemsToInclude.splice(itemsToInclude.indexOf(id),1);
+    $(".includedItemNumber").html(itemsToInclude.length);
 }
 
 function resetExcludeList() {
@@ -3045,6 +3706,13 @@ function resetExcludeList() {
     $(".excludedItemNumber").html(itemsToExclude.length);
     Modal.hide();
     showExcludedItems();
+}
+
+function resetIncludeList() {
+    itemsToInclude = [];
+    $(".includedItemNumber").html(itemsToInclude.length);
+    Modal.hide();
+    showIncludedItems();
 }
 
 function saveExcludeList() {
@@ -3071,12 +3739,17 @@ function getItemLineAsText(prefix, slot, buildIndex = currentUnitIndex) {
             if (builds && builds[buildIndex] && builds[buildIndex].build) {
                 for (var i = 0; i < builds[buildIndex].build.length; i++) {
                     if (builds[buildIndex].build[i] && builds[buildIndex].build[i].esperStatsBonus) {
-                        statBonusCoef += builds[buildIndex].build[i].esperStatsBonus["hp"] / 100;
+                        if (builds[buildIndex].build[i].esperStatsBonus.all) {
+                            statBonusCoef += builds[buildIndex].build[i].esperStatsBonus.all["hp"] / 100;
+                        }
+                        if (builds[buildIndex].build[11] && builds[buildIndex].build[i].esperStatsBonus[builds[buildIndex].build[11].id]) {
+                            statBonusCoef += builds[buildIndex].build[i].esperStatsBonus[builds[buildIndex].build[11].id]["hp"] / 100;
+                        }
                     }
                 }
             }
             statBonusCoef = Math.min(3, statBonusCoef);
-        } 
+        }
         var resultText = prefix + ": " + item.name + " ";
         var first = true;
         for (var statIndex = 0, len = baseStats.length; statIndex < len; statIndex++) {
@@ -3107,9 +3780,11 @@ function getItemLineAsText(prefix, slot, buildIndex = currentUnitIndex) {
                     resultText += ", ";
                 }
                 if (item.enhancements[i] == "rare_3") {
-                    resultText += "Rare lvl3";
+                    resultText += itemEnhancementLabels["rare_3"][item.type];
                 } else if (item.enhancements[i] == "rare_4") {
-                    resultText += "Rare lvl4";
+                    resultText += itemEnhancementLabels["rare_4"][item.type];
+                } else if (item.enhancements[i] == "special_1") {
+                    resultText += itemEnhancementLabels["special_1"][item.id];
                 } else {
                     resultText += itemEnhancementLabels[item.enhancements[i]];
                 }
@@ -3176,7 +3851,7 @@ function switchPots() {
     });
     if (allZero) {
       baseStats.forEach(stat => {
-        $(".unitStats .stat." + stat + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[stat]);
+        $(".unitStats .stat." + stat + " .pots input").val(Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5));
         updatePotStyle(stat);
       });
     } else {
@@ -3186,12 +3861,12 @@ function switchPots() {
       });
       if (notMaxed) {
         baseStats.forEach(stat => {
-          $(".unitStats .stat." + stat + " .pots input").val(Math.floor(builds[currentUnitIndex].unit.stats.pots[stat] * 1.5));
-          updatePotStyle(stat);
+            $(".unitStats .stat." + stat + " .pots input").val("0");
+            updatePotStyle(stat);
         });
       } else {
         baseStats.forEach(stat => {
-          $(".unitStats .stat." + stat + " .pots input").val("0");
+            $(".unitStats .stat." + stat + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[stat]);
           updatePotStyle(stat);
         });
       }
@@ -3228,13 +3903,13 @@ function updateEspers() {
     }
     espersByName = {};
     for (var index = esperSource.length; index--;) {
-        espersByName[esperSource[index].id] = esperSource[index];    
+        espersByName[esperSource[index].id] = esperSource[index];
     }
     searchableEspers = [];
     for (var index = esperSource.length; index--;) {
         searchableEspers.push(esperSource[index]);
     }
-    
+
     prepareSearch(searchableEspers);
 }
 
@@ -3259,14 +3934,14 @@ function saveTeam(name = null) {
         if (name) {
             saveTeamAs(name);
         } else {
-            showSaveAsPopup();    
+            showSaveAsPopup();
         }
     } else {
         if (name) {
             saveTeamAs(name);
         } else {
             savedBuilds.teams[currentSavedBuildIndex].team = getStateHash(false);
-            writeSavedTeams();    
+            writeSavedTeams();
         }
     }
 }
@@ -3292,7 +3967,7 @@ function writeSavedTeams() {
         contentType: "application/json; charset=utf-8",
         dataType: "json",
         success: function() { $.notify("Team saved", "success");},
-        error: function(error) { 
+        error: function(error) {
             Modal.showError("Save error", 'An error occured while trying to save the team.', error);
         }
     });
@@ -3301,14 +3976,16 @@ function writeSavedTeams() {
 function showSaveAsPopup() {
     Modal.show({
         title: "Save team as...",
-        body: '<div class="input-group">' + 
+        body: '<div class="input-group">' +
                 '<span class="input-group-addon">Build name</span>' +
-                '<input class="form-control" type="text"/>' + 
+                '<input class="form-control" type="text"/>' +
               '</div>',
         size: 'large',
         onOpen: function($modal) {
             // Focus on input
-            $modal.find('input').focus();
+            if (!isMobile) {
+                $modal.find('input').focus();
+            }
         },
         buttons: [{
             text: 'Save',
@@ -3368,10 +4045,11 @@ function importSavedTeam(index) {
     });
 }
 
+let savedTeamModal;
 function showSavedTeams() {
     getSavedBuilds(function(savedBuilds) {
-        
-        Modal.show({
+
+        savedTeamModal = Modal.show({
             title: "Saved teams",
             body: getSavedTeamList,
             size: 'large',
@@ -3398,18 +4076,23 @@ function getSavedTeamList() {
 }
 
 function deleteSavedTeam(index) {
-    savedBuilds.teams.splice(index, 1);
-    if (currentSavedBuildIndex >= 0) {
-        if (currentSavedBuildIndex == index) {
-            $("#saveTeamAsButton").addClass("hidden");
-            $(".savedTeamName").text("New team");
-            currentSavedBuildIndex = -1;
-        } else if (currentSavedBuildIndex > index) {
-            currentSavedBuildIndex--;
+    var r = confirm("Are you sure to delete that team ?");
+    if (r == true) {
+        savedBuilds.teams.splice(index, 1);
+        if (currentSavedBuildIndex >= 0) {
+            if (currentSavedBuildIndex == index) {
+                $("#saveTeamAsButton").addClass("hidden");
+                $(".savedTeamName").text("New team");
+                currentSavedBuildIndex = -1;
+            } else if (currentSavedBuildIndex > index) {
+                currentSavedBuildIndex--;
+            }
         }
+        writeSavedTeams();
+        savedTeamModal.modal('hide');
+        showSavedTeams();
     }
-    writeSavedTeams();
-    showSavedTeams();
+
 }
 
 
@@ -3418,7 +4101,7 @@ function modifyDefaultWeaponEnhancement() {
     selectEnchantement(fakeItem);
 }
 
-function findUnitForParamChallenge() {
+async function findUnitForParamChallenge() {
     runningParamChallenge = true;
     let ids = Object.keys(ownedUnits);
     let goal = $("#paramChallengeSelect").val();
@@ -3447,7 +4130,7 @@ function findUnitForParamChallenge() {
     for (i = currentUnitIdIndexForParamChallenge + 1; i < idsToSearch.length; i++) {
         currentUnitIdIndexForParamChallenge = i;
         selectUnitDropdownWithoutNotify(idsToSearch[i]);
-        onUnitChange();
+        await onUnitChange();
         chooseCustomFormula(tokens[0]);
         currentBestParamChallengeBuild.goal = parseInt(tokens[1]);
         build();
@@ -3455,14 +4138,14 @@ function findUnitForParamChallenge() {
     }
     currentUnitIdIndexForParamChallenge = -1;
     runningParamChallenge = false;
-    
+
     if (currentBestParamChallengeBuild.value >= currentBestParamChallengeBuild.goal) {
-        Modal.showMessage("No more possible builds", "Best build found has been displayed");    
+        Modal.showMessage("No more possible builds", "Best build found has been displayed");
     } else {
-        Modal.showMessage("Impossible to do the challenge", "Best build found has been displayed");    
+        Modal.showMessage("Impossible to do the challenge", "Best build found has been displayed");
     }
     selectUnitDropdownWithoutNotify(currentBestParamChallengeBuild.build.unit.id);
-    onUnitChange();
+    await onUnitChange();
     chooseCustomFormula(tokens[0]);
     builds[currentUnitIndex] = currentBestParamChallengeBuild.build;
     logCurrentBuild();
@@ -3491,6 +4174,7 @@ function onFeatureSelect(selectedFeature) {
     if (selectedFeature === 'buildAUnit') {
         $('.panel.buildRules').removeClass('hidden');
         $('#addNewUnitButton').removeClass('hidden');
+        $('.panel.monster').removeClass('hidden');
         updateSavedTeamPanelVisibility();
         parameterChallengesMode = false;
     } else {
@@ -3513,50 +4197,314 @@ function onFeatureSelect(selectedFeature) {
     updateBuildButtonDisplay();
 }
 
+function showExportAsImage() {
+    $("#exportAsImageModal").modal();
+    FFBEEquipBuildAsImage.drawTeam($('#exportAsImageCanvas')[0], getStateHash(false));
+}
+
+function exportAsImage() {
+    $('#exportAsImageCanvas')[0].toBlob(function (blob) {
+        window.saveAs(blob, builds.map(build => build.unit.name).join("-") + ".png");
+        $("#exportAsImageModal").modal('hide');
+    });
+}
+
+function uploadToImgur() {
+    var img = $('#exportAsImageCanvas')[0].toDataURL().split(',')[1];
+
+    $.ajax({
+        url: 'https://api.imgur.com/3/image',
+        type: 'post',
+        headers: {
+            Authorization: 'Client-ID ' + window.clientConfig.imgurClientId,
+        },
+        data: {
+            image: img
+        },
+        dataType: 'json',
+        success: function(response) {
+            if(response.success) {
+                Modal.showWithBuildLink("Build image on Imgur", response.data.link);
+                $("#exportAsImageModal").modal('hide');
+            } else {
+                Modal.showMessage("Imposible to upload to Imgur", "The daily quota of free upload to Imgur has been reached. Please try again later.");
+            }
+        }
+    });
+}
+
+function switchDisplayKillerBuffs() {
+    $('.unit.panel .killerBuffs.physical').toggleClass('hidden');
+    $('.unit.panel .killerBuffs.magical').toggleClass('hidden');
+    $('.unit.panel .killerBuffsSummary').toggleClass('hidden');
+}
+
+function switchDisplayWeaponImperils() {
+    $('.weaponImperils').toggleClass('hidden');
+    $('.weaponImperilsSummary').toggleClass('hidden');
+}
+
+function onKillerBuffChange() {
+    killerList.forEach(killer => {
+        let input = $('.killerBuffs.physical .' + killer + ' input');
+        let value = input.val() || 0;
+        if (value > 300) {
+            input.val(300);
+        }
+        input = $('.killerBuffs.magical .' + killer + ' input');
+        value = input.val() || 0;
+        if (value > 300) {
+            input.val(300);
+        }
+    });
+    logCurrentBuild();
+    updateKillerBuffSummary();
+}
+
+
+function updateKillerBuffSummary() {
+    let killerHtml = getKillerHtml(builds[currentUnitIndex].baseValues["killerBuffs"]);
+    $('.unit.panel .killerBuffsSummary .physical').html(killerHtml.physical);
+    $('.unit.panel .killerBuffsSummary .magical').html(killerHtml.magical);
+}
+
+function updateWeaponImperilsSummary() {
+    let weaponImperilsHtml = "";
+    weaponList.filter(weaponType => ennemyStats.imperils[weaponType]).forEach(weaponType => {
+        weaponImperilsHtml += `<i class="img img-equipment-${weaponType}"></i><span class="value">${ennemyStats.imperils[weaponType]}%</span>`;
+    });
+    $('.weaponImperilsSummary').html(weaponImperilsHtml);
+}
+
+const effectKeysSupported = ["turns", "damage", "statsBuff", "heal", "healOverTurn", "imperil", "break", "globalMitigation", "physicalMitigaiton", "magicalMitigation", "imbue", "dispel", "autoReraise", "restoreMp", "inflict", "cureAilments", "area","target","frames","repartition", "multicast"];
+function exportUnitForCombat() {
+    let unitBuild = builds[currentUnitIndex];
+    if (unitBuild.unit.id !== '777700004') {
+        Modal.showMessage("Uh ? It's not Lady!?", "Only Holiday Hero is currently allowed to fight me.");
+        return;
+    }
+    if (unitBuild.build.some(i => i && i.access && i.access.includes('not released yet'))) {
+        Modal.showMessage("Trying to get ahead in time ?", "Your current build includes items that are not yet released in GL. You can't bring them to the challenge.");
+        return;
+    }
+    let unitWithSkills = unitsWithSkills[unitBuild.unit.id];
+
+    let unit = {
+        id: unitBuild.unit.id,
+        name: unitBuild.unit.name,
+        elementalResists:{},
+        ailmentResists:{},
+        physicalKillers:{},
+        magicalKillers:{},
+        elements: [],
+        leftDamageVariance: [1, 1],
+        rightDamageVariance: [1, 1],
+        physicalEvasion:calculateStatValue(unitBuild.build, "evade.physical", unitBuild).total,
+        magicalEvasion:calculateStatValue(unitBuild.build, "evade.magical", unitBuild).total,
+        accuracy:calculateStatValue(unitBuild.build, "accuracy", unitBuild).total,
+        mpRefresh:calculateStatValue(unitBuild.build, "mpRefresh", unitBuild).total,
+        dualWielding: unitBuild.build[0] && unitBuild.build[1] && weaponList.includes(unitBuild.build[0].type) && weaponList.includes(unitBuild.build[1].type),
+        guts: unitBuild.build.filter(i => i && i.guts).map(i => i.guts),
+        autoCastedSkills:unitBuild.build.filter((item, index) => item && index < 12 && item.autoCastedSkills).reduce((acc, item) => acc = acc.concat(item.autoCastedSkills), []),
+        counterSkills:unitBuild.build.filter((item, index) => item && index < 12 && item.counterSkills).reduce((acc, item) => acc = acc.concat(item.counterSkills), []),
+        startOfTurnSkills:unitBuild.build.filter((item, index) => item && index < 12 && item.startOfTurnSkills).reduce((acc, item) => acc.concat(item.startOfTurnSkills), []),
+    }
+    unit.skills = unitBuild.build.filter((item, index) => item && index < 12 && item.skills).reduce((acc, item) => acc = acc.concat(item.skills), []);
+    unit.skills = unit.skills.concat(unitWithSkills.actives).concat(unitWithSkills.magics);
+    baseStats.forEach(stat => {
+        unit[stat] = {};
+        unit[stat].base = unitBuild.stats[stat] + unitBuild.baseValues[stat].pots;
+        value = calculateStatValue(unitBuild.build, stat, unitBuild, 0, true);
+        unit[stat].passiveIncreasePercent = Math.min(400, value.bonusPercent);
+        unit[stat].flatIncrease = value.total - Math.floor(unit[stat].base * (1+unit[stat].passiveIncreasePercent/100));
+    });
+    unit.elements = [];
+    if (unitBuild.build[0] && weaponList.includes(unitBuild.build[0].type)) {
+        unit.atk.rightFlatAtk = unitBuild.build[0].atk || 0;
+        if (unitBuild.build[0].element) {
+            unit.elements = unit.elements.concat(unitBuild.build[0].element);
+        }
+        if (unitBuild.build[0].damageVariance) {
+            unit.rightDamageVariance = [unitBuild.build[0].damageVariance.min, unitBuild.build[0].damageVariance.max];
+        } else {
+            unit.rightDamageVariance = [weaponBaseDamageVariance[unitBuild.build[0].type].min, weaponBaseDamageVariance[unitBuild.build[0].type].max];
+        }
+        if (unitBuild.build[0].enhancements) {
+            unit.autoCastedSkills = unit.autoCastedSkills.concat(unitBuild.build[0].enhancements.filter(enh => skillByItemEnhancement[enh]).map(enh => skillByItemEnhancement[enh]));
+        }
+    } else {
+        unit.atk.rightFlatAtk = 0;
+    }
+    if (unitBuild.build[1] && weaponList.includes(unitBuild.build[1].type)) {
+        unit.atk.leftFlatAtk = unitBuild.build[1].atk || 0;
+        if (unitBuild.build[1].element) {
+            unit.elements = unit.elements.concat(unitBuild.build[1].element);
+        }
+        if (unitBuild.build[1].enhancements) {
+            unit.autoCastedSkills = unit.autoCastedSkills.concat(unitBuild.build[1].enhancements.filter(enh => skillByItemEnhancement[enh]).map(enh => skillByItemEnhancement[enh]));
+        }
+    } else {
+        unit.atk.leftFlatAtk = 0;
+    }
+    elementList.forEach(element => {
+        unit.elementalResists[element] = calculateStatValue(unitBuild.build, "resist|" + element + ".percent", unitBuild).total
+    });
+    ailmentList.forEach(ailment => {
+        unit.ailmentResists[ailment] = calculateStatValue(unitBuild.build, "resist|" + ailment + ".percent", unitBuild).total
+    });
+    var killers = [];
+    unitBuild.build.filter(item => item && item.killers).forEach(item => {
+        item.killers.forEach(killer => {
+            addToKiller(killers, killer);
+        });
+    });
+    killerList.forEach(race => {
+        let killerData = killers.filter(killerData => killerData.name == race);
+        if (killerData.length == 0) {
+            unit.physicalKillers[race] = 0;
+            unit.magicalKillers[race] = 0;
+        } else {
+            unit.physicalKillers[race] = killerData[0].physical || 0;
+            unit.magicalKillers[race] = killerData[0].magical || 0;
+        }
+    });
+    if (unitBuild.build[1] && weaponList.includes(unitBuild.build[1].type) && unitBuild.build[1].element) {
+        unit.elements = unit.elements.concat(unitBuild.build[1].element);
+    }
+
+    let unsupportedEffects = "";
+    let special = unitBuild.build
+        .filter(i => i && i.special)
+        .reduce((acc, value) => acc.concat(value.special), [])
+        .filter(special => !["dualWield", "twoHanded", "notStackable"].includes(special)).join('</li><li>');
+    if (special) {
+        unsupportedEffects += '<li>' + special + '</li>';
+    }
+    unit.skills.concat(unit.autoCastedSkills).concat(unit.counterSkills.map(counter => counter.skill)).forEach(skill => {
+        skill.effects.forEach(effect => {
+            if (!effect.effect) {
+                unsupportedEffects += '<li>' + skill.name + ':' + effect.desc + '</li>';
+            } else {
+                let keys = Object.keys(effect.effect);
+                keys = keys
+                    .filter(key => !effectKeysSupported.includes(key));
+                if (keys.length) {
+                    unsupportedEffects += '<li>' + skill.name + ':' + effect.desc + '</li>';
+                }
+            }
+        });
+    });
+
+    if (unsupportedEffects.length == 0) {
+        window.saveAs(new Blob([JSON.stringify(unit)], {type: "text/json;charset=utf-8"}), "unitForCombat.json");
+    } else {
+        Modal.confirm("Some effects are not supported yet", "<ul>" + unsupportedEffects + "</ul><br/>Continue nonetheless?", () => {window.saveAs(new Blob([JSON.stringify(unit)], {type: "text/json;charset=utf-8"}), "unitForCombat.json");});
+    }
+
+
+}
+
+function inventoryLoaded() {
+    dataStorage.itemInventory = itemInventory;
+    $(".equipments select option[value=owned]").prop("disabled", false);
+    if (itemInventory.excludeFromExpeditions) {
+        $(".equipments select option[value=ownedAvailableForExpedition]").prop("disabled", false);
+    }
+    if (!dataLoadedFromHash) {
+        $(".equipments select").val("owned");
+        onEquipmentsChange();
+        $(".panel.paramChallenge").removeClass("hidden");
+    }
+    $("#savedTeamPanel").removeClass("hidden");
+    waitingCallbackKeyReady("loginStatus");
+    if (builds[0].unit) {
+        $("#saveTeamButton").removeClass("hidden");
+    }
+}
+
+function notLoaded() {
+    waitingCallbackKeyReady("loginStatus");
+}
+
+function ensureInitUnitWithSkills(unitId) {
+    return new Promise(resolve => {
+        if (unitsWithSkills[unitId]) {
+            resolve(unitsWithSkills[unitId]);
+        } else {
+            $.get(`/${server}/unit/${unitId}`, function(result) {
+                unitsWithSkills[unitId] = result;
+                if (units[unitId].braveShift) {
+                    ensureInitUnitWithSkills(units[unitId].braveShift).then(() => {
+                        resolve(unitsWithSkills[unitId]);
+                    });
+                } else if (units[unitId].braveShifted) {
+                    ensureInitUnitWithSkills(units[unitId].braveShifted).then(() => {
+                        resolve(unitsWithSkills[unitId]);
+                    });
+                } else {
+                    resolve(unitsWithSkills[unitId]);
+                }
+            }, 'json').fail(function(jqXHR, textStatus, errorThrown ) {
+                Modal.showErrorGet(this.url, errorThrown);
+            });
+        }
+    });
+}
 
 // will be called by common.js at page load
 function startPage() {
     progressElement = $("#buildProgressBar .progressBar");
     $('#useNewJpDamageFormula').prop('checked', true);
-    
-    registerWaitingCallback(["data", "unitsWithPassives", "unitsWithSkill"], () => {
-        populateUnitSelect();
-        prepareSearch(data);
-        waitingCallbackKeyReady("unitsAndItems");
-    });
-    registerWaitingCallback(["unitsAndItems", "defaultBuilderEspers"], () => {
-        initWorkerNumber();
-        initWorkers();
-        
-        var hashData = readStateHashData(function(hashData) {
+    resetMonsterAttack();
+
+    registerWaitingCallback(["data", "unitsWithPassives", "defaultBuilderEspers"], () => {
+        readStateHashData(function(hashData) {
+            populateUnitSelect();
+            prepareSearch(data);
+            initWorkerNumber();
+            initWorkers();
             if (hashData) {
                 loadStateHashAndBuild(hashData);
             } else {
                 reinitBuild(currentUnitIndex);
             }
+
         });
     });
-    
+
+    registerWaitingCallback(["data", "unitsWithPassives", "defaultBuilderEspers", "loginStatus"], () => {
+        if (window !== window.parent) {
+            window.parent.postMessage(JSON.stringify({'type':'ready'}), '*');
+        }
+    });
+
     getStaticData("data", true, function(result) {
         data = result;
-        dataStorage.setData(data);
-        waitingCallbackKeyReady("data");
+        getStaticData("visionCards", false, function(cards) {
+            addCardsToData(cards, data);
+            dataStorage.setData(data);
+            waitingCallbackKeyReady("data");
+        });
+
     });
     getStaticData("unitsWithPassives", true, function(result) {
         units = result;
         waitingCallbackKeyReady("unitsWithPassives");
     });
-    getStaticData("unitsWithSkill", false, function(result) {
-        unitsWithSkills = result;
-        waitingCallbackKeyReady("unitsWithSkill");
-    });
+
+    // try to read unit skill from cache
+    var unitsWithSkillsData = staticFileCache.retrieve(`${server}/unitsWithSkill.json`);
+    if (unitsWithSkillsData && !$.isEmptyObject(unitsWithSkillsData)) {
+        unitsWithSkills = unitsWithSkillsData;
+    }
+
     getStaticData("defaultBuilderEspers", false, function(result) {
         espers = [];
         for (var index = result.length; index--;) {
             espers.push(getEsperItem(result[index]))
         }
         updateEspers();
-        
+
         waitingCallbackKeyReady("defaultBuilderEspers");
     });
     $.get(server + "/units", function(result) {
@@ -3576,21 +4524,23 @@ function startPage() {
         $(".excludedItemNumber").html(itemsToExclude.length);
     }, 'json').fail(function(jqXHR, textStatus, errorThrown ) {
     });
-    
-    
-    builds[currentUnitIndex] = new UnitBuild(null, [null, null, null, null, null, null, null, null, null, null, null], null);
-    
-    $("#normalGoalChoice").change(function() {
+    $(".includedItemNumber").html(itemsToInclude.length);
+
+
+    builds[currentUnitIndex] = new UnitBuild();
+    builds[currentUnitIndex].monsterAttackFormula = monsterAttackFormula;
+
+    $("#normalGoalChoice").on("select2:select", function() {
         customFormula = null;
         manageMulticast();
         onGoalChange();
     });
-    
+
     $(".equipments select").change(onEquipmentsChange);
-    
+
     $("#buildButton").click(onBuildClick);
     $("#paramChallengeButton").click(findUnitForParamChallenge);
-    
+
     // Elements
 	addIconChoicesTo("elements", elementList, "checkbox", "element", ucFirst);
     addIconChoicesTo("forcedElements", elementList.concat(['noElement']), "checkbox", "element", function(v){
@@ -3600,36 +4550,40 @@ function startPage() {
             return "Force use of " + ucFirst(v);
         }
     });
-    addIconChoicesTo("ailmentImunities", ailmentList, "checkbox", "ailment", ucFirst);
+    addIconChoicesTo("ailmentImunities", ailmentList.slice(0, 9), "checkbox", "ailment", ucFirst);
     // Killers
 	addTextChoicesTo("races",'checkbox',{'Aquatic':'aquatic', 'Beast':'beast', 'Bird':'bird', 'Bug':'bug', 'Demon':'demon', 'Dragon':'dragon', 'Human':'human', 'Machine':'machine', 'Plant':'plant', 'Undead':'undead', 'Stone':'stone', 'Spirit':'spirit'});
-    
+
     addTextChoicesTo("simpleConditionVarious",'checkbox',{'100% physical evasion':'evade.physical', '100% accuracy':'accuracy', '100% draw attacks':'drawAttacks'});
-    
+
     populateItemStat();
     populateUnitEquip();
     populateResists();
-    
+
     // Triggers on search text box change
     $("#searchText").on("input", $.debounce(300,updateSearchResult));
+    $('#onlyOwnedItems input').on("input", updateSearchResult);
+    $('#excludeNotReleasedYetOption input').on("input", updateSearchResult);
     $('#fixItemModal').on('shown.bs.modal', function () {
-        $('#searchText').focus();
-    })  
+        if (!isMobile) {
+            $('#searchText').focus();
+        }
+    })
     $("#customFormulaModal").on('shown.bs.modal', function () {
         $("#customFormulaModal #formulaInput").focus();
     })
-    
-    
+
+
     $(".excludedItemNumber").html(itemsToExclude.length);
 
-    $("#forceDoublehand input").change(function() {
-        if ($("#forceDoublehand input").prop('checked')) {
-            $('#forceDualWield input').prop('checked', false);
+    $("#forceDoublehand").change(function() {
+        if ($("#forceDoublehand").prop('checked')) {
+            $('#forceDualWield').prop('checked', false);
         }
     });
-    $("#forceDualWield input").change(function() {
-        if ($("#forceDualWield input").prop('checked')) {
-            $('#forceDoublehand input').prop('checked', false);
+    $("#forceDualWield").change(function() {
+        if ($("#forceDualWield").prop('checked')) {
+            $('#forceDoublehand').prop('checked', false);
         }
     });
     for (let statIndex = baseStats.length; statIndex--;) {
@@ -3639,11 +4593,11 @@ function startPage() {
             if (builds[currentUnitIndex].unit) {
                 var value = parseInt($(".unitStats .stat." + baseStats[statIndex] + " .pots input").val()) || 0;
                 if (value < builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]) {
-                    $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]);
-                } else if (value < Math.floor(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]] * 1.5)) {
                     $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val(Math.floor(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]] * 1.5));
-                } else {
+                } else if (value < Math.floor(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]] * 1.5)) {
                     $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val("0");
+                } else {
+                    $(".unitStats .stat." + baseStats[statIndex] + " .pots input").val(builds[currentUnitIndex].unit.stats.pots[baseStats[statIndex]]);
                 }
                 onPotsChange(baseStats[statIndex]);
             }
@@ -3656,7 +4610,10 @@ function startPage() {
     $(".unitStats .stat.mitigation .buff input").on('input',$.debounce(300,function() {onBuffChange("mitigation")}));
     $(".unitStats .stat.drawAttacks .buff input").on('input',$.debounce(300,function() {onBuffChange("drawAttacks")}));
     $(".unitStats .stat.lbDamage .buff input").on('input',$.debounce(300,function() {onBuffChange("lbDamage")}));
+    $(".killerBuffs input").on('input',$.debounce(300,function() {onKillerBuffChange();}));
+    $(".elementBuffs input").on('input',$.debounce(300,function() {logCurrentBuild();;}));
     $(".unitStack input").on('input',$.debounce(300,function() {logCurrentBuild();}));
+    $(".weaponImperils input").on('input',$.debounce(300,function() {logCurrentBuild();;}));
     $("#multicastSkillsDiv select").change(function() {customFormula = null; logCurrentBuild();});
     $("#paramChallengeSelect").change(function() {
         currentBestParamChallengeBuild.value = 0;
@@ -3665,14 +4622,28 @@ function startPage() {
     });
 
     $("#unitLevel select").change(function() {
-        builds[currentUnitIndex].setLevel($("#unitLevel select").val());
+        builds[currentUnitIndex].level = $("#unitLevel select").val();
         updateUnitStats();
         recalculateApplicableSkills();
         logCurrentBuild();
     });
+    $("#unitExAwakeningLevel select").change(function() {
+        let exLevel = +$("#unitExAwakeningLevel select").val();
+        builds[currentUnitIndex].setExAwakeningLevel(exLevel);
+        if (exLevel === 0) {
+            if (builds[currentUnitIndex].unit.braveShifted) {
+                braveShift(currentUnitIndex);
+            }
+            $(".panel.unit").removeClass("braveShift");
+        } else {
+            $(".panel.unit").addClass("braveShift");
+        }
+        updateUnitStats();
+        logCurrentBuild();
+    });
     $("#useNewJpDamageFormula").change(function() {logCurrentBuild();});
-    
-    $("#monsterDefensiveStats input").on('input',$.debounce(300,function() {
+
+    $("#monsterStats input").on('input',$.debounce(300,function() {
         readEnnemyStats();
         logCurrentBuild();
     }));
@@ -3680,10 +4651,16 @@ function startPage() {
         readEnnemyStats();
         logCurrentBuild();
     }));
-    
+
     $(".chainMultiplier input").change($.debounce(300,onGoalChange));
     $("#forcedElements input").change($.debounce(300,onGoalChange));
     $("#ailmentImunities input").change($.debounce(300,onGoalChange));
+    $("#defaultVisionCardLevel").change(() => dataStorage.defaultVisionCardLevel = $("#defaultVisionCardLevel").val());
+    dataStorage.defaultVisionCardLevel = $("#defaultVisionCardLevel").val();
+
+    if (window !== window.parent) {
+        window.addEventListener("message", handleExternalControl);
+    }
 }
 
 function initWorkerNumber() {
@@ -3730,9 +4707,9 @@ function initWorkers() {
                     buildCounterThrottle();
                     break;
                 case "betterBuildFound":
-                    if (!builds[currentUnitIndex].buildValue[goalVariation] 
+                    if (!builds[currentUnitIndex].buildValue[goalVariation]
                             || builds[currentUnitIndex].buildValue[goalVariation] < messageData.value[goalVariation]
-                            || (builds[currentUnitIndex].buildValue[goalVariation] == messageData.value[goalVariation] 
+                            || (builds[currentUnitIndex].buildValue[goalVariation] == messageData.value[goalVariation]
                                 && (messageData.freeSlots > builds[currentUnitIndex].freeSlots
                                    || calculateStatValue(messageData.build, "hp", builds[currentUnitIndex]).total > calculateStatValue(builds[currentUnitIndex].build, "hp", builds[currentUnitIndex]).total))) {
                         builds[currentUnitIndex].build = messageData.build;
@@ -3748,10 +4725,10 @@ function initWorkers() {
                         if (runningParamChallenge) {
                             if (messageData.value.max >= currentBestParamChallengeBuild.goal) {
                                 // any build will do. We found one, stop there
-                                logCurrentBuild();  
+                                logCurrentBuild();
                                 stopBuild();
                                 progressElement.width("100%");
-                                progressElement.text("100%");    
+                                progressElement.text("100%");
                                 document.title = "100% - FFBE Equip - Builder";
                                 updateFindAWayButtonDisplay();
                             } else {
@@ -3766,9 +4743,9 @@ function initWorkers() {
                                 // any build will do. We found one, stop there
                                 stopBuild();
                                 progressElement.width("100%");
-                                progressElement.text("100%");    
+                                progressElement.text("100%");
                                 document.title = "100% - FFBE Equip - Builder";
-                            }    
+                            }
                         }
                     }
                     break;
@@ -3780,7 +4757,7 @@ function initWorkers() {
                     if (progress != newProgress) {
                         progress = newProgress;
                         progressElement.width(progress + "%");
-                        progressElement.text(progress + "%");    
+                        progressElement.text(progress + "%");
                         document.title = progress + "% - FFBE Equip - Builder";
                     }
                     if (workerWorkingCount == 0) {
@@ -3790,14 +4767,14 @@ function initWorkers() {
                         } else {
                             if (!builds[currentUnitIndex].buildValue  && builds[currentUnitIndex].formula.condition) {
                                 Modal.showMessage("Build error", "The condition set in the goal are impossible to meet.");
-                            }    
+                            }
                         }
-                        
+
                         if (initialPinnedWeapons[0] && (builds[currentUnitIndex].fixedItems[0] && builds[currentUnitIndex].fixedItems[0].id != initialPinnedWeapons[0].id || !builds[currentUnitIndex].fixedItems[0]) ||
                            initialPinnedWeapons[1] && (builds[currentUnitIndex].fixedItems[1] && builds[currentUnitIndex].fixedItems[1].id != initialPinnedWeapons[1].id || ! builds[currentUnitIndex].fixedItems[1])) {
                             $.notify("Weapons hands were switched to optimize build", "info");
                         }
-                        
+
                         if (secondaryOptimization) {
                             builds[currentUnitIndex].fixedItems = secondaryOptimizationFixedItemSave;
                             builds[currentUnitIndex].formula = secondaryOptimizationFormulaSave;
@@ -3810,11 +4787,11 @@ function initWorkers() {
                             dataStorage.calculateAlreadyUsedItems(builds, currentUnitIndex);
                             builds[currentUnitIndex].prepareEquipable();
                         } else {
-                            
+
                             var overcapedStats = [];
                             for (var i = baseStats.length; i--;) {
                                 var percent = calculateStatValue(builds[currentUnitIndex].build, baseStats[i], builds[currentUnitIndex]).bonusPercent;
-                                if (percent > statsBonusCap[server]) {
+                                if (percent > getStatBonusCap(baseStats[i])) {
                                     overcapedStats.push(percentValues[baseStats[i]]);
                                 }
                                 var equipmentFlatStatBonus = Math.round((getEquipmentStatBonus(builds[currentUnitIndex].build, baseStats[i], false) - 1) * 100);
@@ -3826,14 +4803,14 @@ function initWorkers() {
                                     } else {
                                         if (equipmentFlatStatBonus > 300) {
                                             if (!isTwoHanded(builds[currentUnitIndex].build[0]) && !isTwoHanded(builds[currentUnitIndex].build[0])) {
-                                                overcapedStats.push("singleWieldingOneHanded." + baseStats[i]);    
+                                                overcapedStats.push("singleWieldingOneHanded." + baseStats[i]);
                                             }
                                             overcapedStats.push("singleWielding." + baseStats[i]);
                                         }
                                     }
                                 }
                             }
-                            if (overcapedStats.length > 0 && $("#tryReduceOverCap input").prop('checked')) {
+                            if (overcapedStats.length > 0 && $("#tryReduceOverCap").prop('checked')) {
                                 secondaryOptimization = true;
                                 secondaryOptimizationFixedItemSave = builds[currentUnitIndex].fixedItems.slice();
                                 secondaryOptimizationFormulaSave = JSON.parse(JSON.stringify(builds[currentUnitIndex].formula));
@@ -3844,7 +4821,7 @@ function initWorkers() {
                                         builds[currentUnitIndex].build[i] = null;
                                     }
                                 }
-                                var statToFavor = $("#tryReduceOverCap select").val();
+                                var statToFavor = $("#tryReduceOverCapSelect").val();
                                 if (builds[currentUnitIndex].formula.type == "condition") {
                                     builds[currentUnitIndex].formula = {
                                         "type": "condition",
@@ -3888,11 +4865,14 @@ function initWorkers() {
                                     updateBuildButtonDisplay();
                                     $("body").removeClass("building");
                                 }
+                                if (window !== window.parent) {
+                                    parent.postMessage(JSON.stringify({'type':'buildFinished', 'value':getStateHash(false)}), '*');
+                                }
                             }
-                            
+
                         }
-                        
-                        
+
+
                     }
                     break;
             }
@@ -3902,6 +4882,7 @@ function initWorkers() {
 
 function populateUnitEquip() {
     var target = $(".unitEquipable.weapons1");
+
     var counter = 0;
     target.html("");
 	for (var key in weaponList) {
@@ -3910,18 +4891,18 @@ function populateUnitEquip() {
             var target = $(".unitEquipable.weapons2");
             target.html("");
         }
-        target.append('<i class="img img-equipment-'+weaponList[key]+' notEquipable" onclick="toogleEquipableType(\'' + weaponList[key] + '\');"></i>');
+        target.append('<i class="img img-equipment-'+weaponList[key]+' notEquipable" onclick="toogleEquipableType(\'' + weaponList[key] + '\');"><i class="fas fa-angle-double-up boostArrow"></i></i></i>');
 	}
     var target = $(".unitEquipable.armors");
     target.html("");
     for (var key in shieldList) {
-        target.append('<i class="img img-equipment-'+shieldList[key]+' notEquipable" onclick="toogleEquipableType(\'' + shieldList[key] + '\');"></i>');
+        target.append('<i class="img img-equipment-'+shieldList[key]+' notEquipable" onclick="toogleEquipableType(\'' + shieldList[key] + '\');"><i class="fas fa-angle-double-up boostArrow"></i></i>');
 	}
     for (var key in headList) {
-        target.append('<i class="img img-equipment-'+headList[key]+' notEquipable" onclick="toogleEquipableType(\'' + headList[key] + '\');"></i>');
+        target.append('<i class="img img-equipment-'+headList[key]+' notEquipable" onclick="toogleEquipableType(\'' + headList[key] + '\');"><i class="fas fa-angle-double-up boostArrow"></i></i>');
 	}
     for (var key in bodyList) {
-        target.append('<i class="img img-equipment-'+bodyList[key]+' notEquipable" onclick="toogleEquipableType(\'' + bodyList[key] + '\');"></i>');
+        target.append('<i class="img img-equipment-'+bodyList[key]+' notEquipable" onclick="toogleEquipableType(\'' + bodyList[key] + '\');"><i class="fas fa-angle-double-up boostArrow"></i></i>');
 	}
     if (builds[currentUnitIndex]) {
         builds[currentUnitIndex].bannedEquipableTypes.forEach(type => $('.unitEquipable .img-equipment-' + type).addClass("banned"));
@@ -3932,7 +4913,7 @@ function toogleEquipableType(equipableType) {
     builds[currentUnitIndex].toogleEquipableType(equipableType);
     $('.unitEquipable .img-equipment-' + equipableType).toggleClass("banned");
 }
-    
+
 function populateItemType(equip) {
     var target = $("#fixItemModal .modal-body .nav.type");
     target.html("");
@@ -3944,18 +4925,30 @@ function populateItemType(equip) {
                       '<i class="img img-equipment-' + equip[key] + '"></i>'+
                       '</a></li>');
 	}
-    
+
 }
 
 function populateItemStat() {
-    var statList = ["hp", "mp", "atk", "def", "mag", "spr", "evade", "inflict", "resist"];
+    var statList = ["hp", "mp", "atk", "def", "mag", "spr"];
     var target = $("#fixItemModal .stat .dropdown-menu");
-    target.append('<button class="btn btn-default" onclick="selectSearchStat();updateSearchResult();"><i class="img img-sort-a-z"></i></button>');
+    target.append('<div class="sortChoices">');
+    target.append('<div class="sortChoice"><i class="img img-sort-a-z"></i><button class="btn btn-default" onclick="selectSearchStat();updateSearchResult();">by name</button></div>');
 	for (var key in statList) {
-        target.append('<button class="btn btn-default" onclick="selectSearchStat(\'' + statList[key] + '\');updateSearchResult();">'+
-                      '<i class="img img-sort-' + statList[key] + '"></i>' + 
-                      '</button>');
+        target.append('<div class="sortChoice"><i class="img img-sort-' + statList[key] + '"></i>'+
+                      '<button class="btn btn-default" onclick="selectSearchStat(\'' + statList[key] + '\');updateSearchResult();">total</button>' +
+                      '<button class="btn btn-default" onclick="selectSearchStat(\'' + statList[key] + '-flat\');updateSearchResult();">flat</button>' +
+                      '</div>');
 	}
+    target.append('<div class="sortChoice"><i class="img img-sort-evade"></i>'+
+        '<button class="btn btn-default" onclick="selectSearchStat(\'evade\');updateSearchResult();">total</button>' +
+        '</div>');
+    target.append('<div class="sortChoice"><i class="img img-sort-inflict"></i>'+
+        '<button class="btn btn-default" onclick="selectSearchStat(\'inflict\');updateSearchResult();">total</button>' +
+        '</div>');
+    target.append('<div class="sortChoice"><i class="img img-sort-resist"></i>'+
+        '<button class="btn btn-default" onclick="selectSearchStat(\'resist\');updateSearchResult();">total</button>' +
+        '</div>');
+    target.append('</div>');
 }
 
 function populateResists() {
@@ -3966,6 +4959,7 @@ function populateResists() {
                    '<div class="value">0%<div></div>');
     }
     var div = $("#resultStats .resists .ailments");
+
     for (var index in ailmentList) {
         div.append('<div class="resist ' + ailmentList[index] + ' ' +  escapeDot("resist|" + ailmentList[index] + ".percent") +'">'+
                    '<i class="img img-ailment-' + ailmentList[index] + '"></i>'+
@@ -4042,3 +5036,76 @@ validator.addSchema('shortLink', {
 		},
 	]
 });
+
+let handleExternalControl = function(message) {
+    let data = JSON.parse(message.data);
+    console.log("Message received : " + data.type);
+    switch(data.type) {
+        case 'selectUnit':
+            selectUnit(data.value);
+            break;
+        case 'pinItem':
+            fixItem(data.value);
+            parent.postMessage(JSON.stringify({'type':'itemPinned' + data.requestId, 'value':''}), '*');
+            break;
+        case 'checkOption':
+            checkbox = $('#' + data.value);
+            if (!checkbox.prop('checked')) {
+                checkbox.prop('checked', true);
+            }
+            parent.postMessage(JSON.stringify({'type':'optionChecked' + data.requestId, 'value':''}), '*');
+            break;
+        case 'uncheckOption':
+            checkbox = $('#' + data.value);
+            if (checkbox.prop('checked')) {
+                checkbox.prop('checked', false);
+            }
+            parent.postMessage(JSON.stringify({'type':'optionUnchecked' + data.requestId, 'value':''}), '*');
+            break;
+        case 'setBuff':
+            $('.stat.' + data.value.stat + ' .buff input').val(data.value.value);
+            onBuffChange(data.value.stat);
+            parent.postMessage(JSON.stringify({'type':'buffSet' + data.requestId, 'value':''}), '*');
+            break;
+        case 'setPot':
+            $('.stat.' + data.value.stat + ' .pots input').val(data.value.value);
+            onPotsChange(data.value.stat);
+            parent.postMessage(JSON.stringify({'type':'potSet' + data.requestId, 'value':''}), '*');
+            break;
+        case 'setMonsterStats':
+            $('#monsterStats .atk .stat').val(data.value.baseAtk);
+            $('#monsterStats .mag .stat').val(data.value.basemMag);
+            $('#monsterStats .def .stat').val(data.value.baseDef);
+            $('#monsterStats .spr .stat').val(data.value.baseSpr);
+            $('#monsterStats .atk .break').val(data.value.atkBreak);
+            $('#monsterStats .mag .break').val(data.value.magBreak);
+            $('#monsterStats .def .break').val(data.value.defBreak);
+            $('#monsterStats .spr .break').val(data.value.sprBreak);
+            $('#monsterStats .atk .buff').val(data.value.atkBuff);
+            $('#monsterStats .mag .buff').val(data.value.magBuff);
+            $('#monsterStats .def .buff').val(data.value.defBuff);
+            $('#monsterStats .spr .buff').val(data.value.sprBuff);
+            parent.postMessage(JSON.stringify({'type':'monsterStatsSet', 'value':''}), '*');
+            break;
+        case 'setMonsterElementalResist':
+            $('.panel.monster #elementalResists .element.' + data.value.element + ' .elementalResist').val(data.value.value);
+            parent.postMessage(JSON.stringify({'type':'monsterElementalResistSet' + data.requestId, 'value':''}), '*');
+            break;
+        case 'setMonsterRaces':
+            unselectAll("races");
+            select("races", data.value);
+            parent.postMessage(JSON.stringify({'type':'monsterRacesSet', 'value':''}), '*');
+            break;
+        case 'setDefaultEnhancements':
+            setDefaultEnhancements(data.value);
+            parent.postMessage(JSON.stringify({'type':'defaultEnhancementsSet', 'value':''}), '*');
+            break;
+        case 'selectGoal':
+            chooseCustomFormula(data.value);
+            parent.postMessage(JSON.stringify({'type':'goalChanged' + data.requestId, 'value':''}), '*');
+            break;
+        case 'build':
+            build();
+            break;
+    }
+}

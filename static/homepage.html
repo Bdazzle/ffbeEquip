@@ -16,8 +16,9 @@
 		<link rel="stylesheet" type="text/css" href="common.css">
         <link rel="stylesheet" type="text/css" href="homepage.css">
         <link rel="stylesheet" type="text/css" href="languages.css">
+        <link rel="stylesheet" type="text/css" href="dark-mode.css"/>
     </head>
-    <body>
+    <body class="dark">
         <a href="#" id="scrollToTopButton" style="display: none;" title="Scroll back to the top"><span></span></a>
         <div id="header" class="headerMogChocobo">
             <div class="headerContent">
@@ -102,6 +103,13 @@
                 </div>
             </div>
             <div class="headerTopButtons">
+                <div id="themeSelector">
+                    <span class="title">Theme :</span>
+                    <select class="form-control smallSelect">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
                 <div id="languages">
                     <span class="lang lang-sm" lang="en" onclick="switchToLanguage('en')"></span>
                     <span class="lang lang-sm" lang="zh" onclick="switchToLanguage('zh')"></span>
@@ -219,8 +227,7 @@
             </div>
         </div>
 
-        <script src="https://code.jquery.com/jquery-3.1.0.min.js"
-                integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
+        <script src="lib/jquery-3.1.0.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 		<script src="lib/jquery.ba-throttle-debounce.min.js"></script>

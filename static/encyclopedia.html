@@ -23,8 +23,11 @@
 		<link rel="stylesheet" type="text/css" href="common.css">
         <link rel="stylesheet" type="text/css" href="encyclopedia.css">
         <link rel="stylesheet" type="text/css" href="languages.css">
+        <link rel="stylesheet" type="text/css" href="dark-mode.css"/>
+        
     </head>
-    <body>
+    <body class="dark">
+        
         <a href="#" id="scrollToTopButton" class="withButtonSideBar" style="display: none;" title="Scroll back to the top"><span></span></a>
         <div id="header" class="headerSakura">
             <div class="headerContent">
@@ -109,6 +112,13 @@
                 </div>
             </div>
             <div class="headerTopButtons">
+                <div id="themeSelector">
+                    <span class="title">Theme :</span>
+                    <select class="form-control smallSelect">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
                 <div id="languages">
                     <span class="lang lang-sm" lang="en" onclick="switchToLanguage('en')"></span>
                     <span class="lang lang-sm" lang="zh" onclick="switchToLanguage('zh')"></span>
@@ -136,7 +146,7 @@
                             <span class="input-group-addon">Search</span>
                             <input type="text" class="form-control" id="searchText" placeholder="Enter search text. Will search in item name, stats, abilities, TMR's unit, ...">
                         </div>
-					</div>
+                    </div>
                 </div>
 
                 <div id="filterSummary" class="hidden-md hidden-lg">
@@ -226,7 +236,15 @@
                     </div>
 
                     <div class="panel panel-default elements">
-                        <div class="panel-heading"><span>Elements</span><a class="buttonLink hidden unselectAll" onclick="unselectAll('elements')">unselect all</a></div>
+                        <div class="panel-heading">
+                            <span>Elements</span><a class="buttonLink hidden unselectAll" onclick="unselectAll('elements')">unselect all</a>
+                            <div class="filters">
+                                <div class="btn-group choice" id="elementsLogicalConnector" data-toggle="buttons">
+                                    <label class="btn btn-default" data-toggle="tooltip" title="" data-original-title="Show items having at least one of the selected elements"><input type="radio" name="elementsLogicalConnector" value="or" autocomplete="off">OR</label>
+                                    <label class="btn btn-default" data-toggle="tooltip" title="" data-original-title="Show items having all of the selected elements"><input type="radio" name="elementsLogicalConnector" value="and" autocomplete="off">AND</label>
+                                </div>
+                            </div>
+                        </div>
                         <div class="panel-body">
                             <div class="btn-group elements choice" data-toggle="buttons" id="elements">
                             </div>
@@ -234,7 +252,15 @@
                     </div>
 
                     <div class="panel panel-default ailments">
-                        <div class="panel-heading"><span>Status ailment</span><a class="buttonLink hidden unselectAll" onclick="unselectAll('ailments')">unselect all</a></div>
+                        <div class="panel-heading">
+                            <span>Status ailment</span><a class="buttonLink hidden unselectAll" onclick="unselectAll('ailments')">unselect all</a>
+                            <div class="filters">
+                                <div class="btn-group choice" id="ailmentsLogicalConnector" data-toggle="buttons">
+                                    <label class="btn btn-default" data-toggle="tooltip" title="" data-original-title="Show items having at least one of the selected ailments"><input type="radio" name="ailmentsLogicalConnector" value="or" autocomplete="off">OR</label>
+                                    <label class="btn btn-default" data-toggle="tooltip" title="" data-original-title="Show items having all of the selected ailments"><input type="radio" name="ailmentsLogicalConnector" value="and" autocomplete="off">AND</label>
+                                </div>
+                            </div>
+                        </div>
                         <div class="panel-body">
                             <div class="btn-group ailments choice" data-toggle="buttons" id="ailments">
                             </div>
@@ -242,7 +268,15 @@
                     </div>
 
                     <div class="panel panel-default killers">
-                        <div class="panel-heading"><span>Killers</span><a class="buttonLink hidden unselectAll" onclick="unselectAll('killers')">unselect all</a></div>
+                        <div class="panel-heading">
+                            <span>Killers</span><a class="buttonLink hidden unselectAll" onclick="unselectAll('killers')">unselect all</a>
+                            <div class="filters">
+                                <div class="btn-group choice" id="killersLogicalConnector" data-toggle="buttons">
+                                    <label class="btn btn-default" data-toggle="tooltip" title="" data-original-title="Show items having at least one of the selected killers"><input type="radio" name="killersLogicalConnector" value="or" autocomplete="off">OR</label>
+                                    <label class="btn btn-default" data-toggle="tooltip" title="" data-original-title="Show items having all of the selected killers"><input type="radio" name="killersLogicalConnector" value="and" autocomplete="off">AND</label>
+                                </div>
+                            </div>
+                        </div>
                         <div class="panel-body">
                             <div class="btn-group elements choice" data-toggle="buttons" id="physicalKillers"></div>
                             <div class="btn-group elements choice" data-toggle="buttons" id="magicalKillers"></div>
@@ -273,24 +307,19 @@
                     <div class="panel-heading">
                         <div>Results : <span id="resultNumber"></span></div>
                         <div class="checkbox-inline userInputedResultsChoice">
-                            <div id="onlyShowOwnedItemsDiv" class="hidden"><input id="onlyShowOwnedItems" type="checkbox" value="" onchange="update();"><label>Only show owned items</label></div>
-                            <div><input id="showNotReleasedYet" type="checkbox" value="" onchange="update();"><label>Show unreleased items</label></div>
+                            <label id="onlyShowOwnedItemsDiv" class="checkbox-label hidden">
+                                <input id="onlyShowOwnedItems" type="checkbox" class="checkbox" onchange="update();"><span></span>
+                                Only show owned items
+                            </label>
+                            <label class="checkbox-label">
+                                <input id="showNotReleasedYet" type="checkbox" class="checkbox" onchange="update();"><span></span>
+                                Show unreleased items
+                            </label>
                         </div>
                     </div>
-                    <div class="panel-body" style="padding:0;">
-                        <div id="results" class="table notSorted items results">
-							<div class="thead">
-                                <div class="tr">
-                                    <div class="td type">&nbsp;</div>
-                                    <div class="td name">Name</div>
-                                    <div id="statTitle" class="td value sort">Value</div>
-                                    <div class="td special">Special</div>
-									<div class="td access">Access</div>
-                                </div>
-                            </div>
-                            <div class="tbody">
-
-                            </div>
+                    <div class="panel-body items" style="padding:0;width:100%">
+                        <div id="resultsContent" class="tbody">
+                            <div class="">No results…</div>
                         </div>
                     </div>
                 </div>
@@ -311,8 +340,8 @@
             </div>
         </div>
 
-        <script src="https://code.jquery.com/jquery-3.1.0.min.js"
-                integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
+
+        <script src="lib/jquery-3.1.0.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/mark.js/8.9.1/jquery.mark.min.js"
@@ -323,8 +352,10 @@
                 integrity="sha384-+pWnyi8LtZx+cgXfD2arWgUX7pHIaEL215cEPPk9WrsegNlgvDL9DNjaqsceQq6o" crossorigin="anonymous"></script>
 		<script src="lib/jquery.ba-throttle-debounce.min.js"></script>
         <script src="lib/notify.min.js"></script>
+        <script src="virtualScroll.js"></script>
         <script src="constants.js"></script>
         <script src="common.js"></script>
+        <script src="builder/common.js"></script>
 		<script src="encyclopedia.js"></script>
         <script src="googleAnalytics.js"></script>
     </body>

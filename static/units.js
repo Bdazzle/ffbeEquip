@@ -1,4 +1,5 @@
 var releasedUnits;
+var releasedUnitIds = [];
 var lastItemReleases;
 
 var currentSort = showRaritySort;
@@ -13,10 +14,15 @@ var onlyShowOwnedUnits = false;
 var onlyShow7Star = false;
 var showNumberTMRFarmed = false;
 var readOnly;
+var unitsToIgnoreForImport = {
+    'GL': ['100000327'],
+    'JP': []
+}
 
 function beforeShow() {
     $("#pleaseWaitMessage").addClass("hidden");
     $("#loginMessage").addClass("hidden");
+    $("#unitsWrapper").removeClass("hidden");
     $("#unitsWrapper").removeClass("hidden");
     $("#searchBox").addClass("hidden");
 
@@ -143,12 +149,14 @@ function showPullSimulator() {
 function displayStats() {
     var stats = {
         "all": {
+            "NV": {"different":0, "total":0, "number":0},
             "7": {"different":0, "total":0, "number":0},
             "5": {"different":0, "total":0, "number":0},
             "4": {"different":0, "total":0, "number":0},
             "3": {"different":0, "total":0, "number":0},
         },
         "timeLimited": {
+            "NV": {"different":0, "total":0, "number":0},
             "7": {"different":0, "total":0, "number":0},
             "5": {"different":0, "total":0, "number":0},
             "4": {"different":0, "total":0, "number":0},
@@ -158,7 +166,7 @@ function displayStats() {
     var unitIds = Object.keys(releasedUnits);
     for (var i = unitIds.length; i--;) {
         var unit = releasedUnits[unitIds[i]];
-        if (unit.min_rarity >= 3) {
+        if (unit.min_rarity >= 3 || unit.min_rarity == 'NV') {
             var maxRarity = (unit.unreleased7Star ? 6 : unit.max_rarity);
             stats.all[unit.min_rarity].total++;
             if (maxRarity == 7) {
@@ -257,13 +265,13 @@ var displayUnits = function(units, useTmrName = false) {
 
 };
 
-function buildRarityID(min_rarity, max_rarity)
+function buildRarityID(min_rarity, max_rarity, soon = false)
 {
-    return "rarity-" + min_rarity + "-of-" + max_rarity;
+    return "rarity-" + min_rarity + "-of-" + max_rarity + (soon ? '_soon' : '');
 }
 
-function displayUnitsByRarity(units, minRarity = 1) {
-    var lastMinRarity, lastMaxRarity;
+function displayUnitsByRarity(units, minRarity = 1, soon) {
+    var lastMinRarity, lastMaxRarity, lastSoonNVA;
     var first = true;
 
     var html = '';
@@ -276,7 +284,7 @@ function displayUnitsByRarity(units, minRarity = 1) {
                 if (!ownedUnits[unit.id] || !ownedUnits[unit.id].sevenStar) {
                     continue;
                 }
-            } else if (unit.min_rarity < minRarity) {
+            } else if (unit.min_rarity != 'NV' && unit.min_rarity < minRarity) {
                 continue;
             }
             var maxRarity = (unit.unreleased7Star ? 6 : unit.max_rarity);
@@ -286,15 +294,16 @@ function displayUnitsByRarity(units, minRarity = 1) {
                 first = false;
                 rarity_list.push({'min_rarity': unit.min_rarity, "max_rarity": maxRarity});
             } else {
-                if (maxRarity != lastMaxRarity || unit.min_rarity != lastMinRarity) {
+                if (maxRarity != lastMaxRarity || unit.min_rarity != lastMinRarity || isSoonNVA(unit) != lastSoonNVA) {
                     html += '</div>';
-                    html += '<div class="raritySeparator" id="' + buildRarityID(unit.min_rarity, maxRarity) + '">' + getRarity(unit.min_rarity, maxRarity) + "</div>";
+                    html += '<div class="raritySeparator" id="' + buildRarityID(unit.min_rarity, maxRarity, isSoonNVA(unit)) + '">' + getRarity(unit.min_rarity, maxRarity, isSoonNVA(unit)) + "</div>";
                     html += '<div class="unitList">';
                     rarity_list.push(unit);
                 }
             }
             lastMaxRarity = maxRarity;
             lastMinRarity = unit.min_rarity;
+            lastSoonNVA = isSoonNVA(unit);
             html += getUnitDisplay(unit);
         }
         html += '</div>';
@@ -307,8 +316,8 @@ function displayUnitsByRarity(units, minRarity = 1) {
             // Loop from end to begin, to show smaller star first
             // Also, do not show index 0 because it's the one just below, so don't need to jump...
             for (index = 1, len = rarity_list.length; index < len; index++) {
-                rarity_jump_html += '<a class="rarityJump" href="#' + buildRarityID(rarity_list[index].min_rarity, rarity_list[index].max_rarity) + '">';
-                rarity_jump_html += getRarity(rarity_list[index].min_rarity, rarity_list[index].max_rarity) ;
+                rarity_jump_html += '<a class="rarityJump btn btn-default" href="#' + buildRarityID(rarity_list[index].min_rarity, rarity_list[index].max_rarity, isSoonNVA(rarity_list[index])) + '">';
+                rarity_jump_html += getRarity(rarity_list[index].min_rarity, rarity_list[index].max_rarity, isSoonNVA(rarity_list[index])) ;
                 rarity_jump_html += "</a>";
             }
             rarity_jump_html += '</div>';
@@ -322,15 +331,41 @@ function displayUnitsByRarity(units, minRarity = 1) {
 
 };
 
+function getUnitImage(unit) {
+    var unitImage = '/img/units/unit_icon_' + unit.id.substr(0,7);
+    var formToDisplay = unit.max_rarity;
+    if (unit.max_rarity == 'NV' && unit.min_rarity != 'NV') {
+        unitImage += '1';
+    } else {
+        unitImage += unit.id.substr(7,1);
+    }
+    if (unit.max_rarity == 'NV') {
+        unitImage += '7';
+    } else {
+        if (unit.max_rarity == 7 && ownedUnits[unit.id] && !ownedUnits[unit.id].sevenStar) {
+            unitImage += '6';
+        } else {
+            unitImage += unit.max_rarity;
+        }
+    }
+    unitImage += '.png'
+    return unitImage;
+}
+
 function getUnitDisplay(unit, useTmrName = false) {
   var html = "";
     if (!onlyShowOwnedUnits || ownedUnits[unit.id]) {
-        var is7Stars = ownedUnits[unit.id] && ownedUnits[unit.id].sevenStar;
+        let is7Stars = unit.min_rarity !== 'NV' && ownedUnits[unit.id] && ownedUnits[unit.id].sevenStar;
+        let isNV = unit.min_rarity === 'NV';
+        let isNVA = unit.max_rarity === 'NV' && unit.min_rarity !== 'NV';
         html += '<div class="unit ' + unit.id;
-        if (ownedUnits[unit.id]) {
+        if (ownedUnits[unit.id] && (ownedUnits[unit.id].number || ownedUnits[unit.id].sevenStar || ownedUnits[unit.id].nv)) {
             html += ' owned';
         } else {
             html += ' notOwned';
+        }
+        if (ownedUnits[unit.id] && ownedUnits[unit.id].tmrMoogles) {
+            html += ' tmrMoogles';
         }
         if (ownedUnits[unit.id] && ownedUnits[unit.id].farmable > 0) {
             html += ' farmable';
@@ -349,7 +384,17 @@ function getUnitDisplay(unit, useTmrName = false) {
         } else {
             html += ' notSevenStars';
         }
-        if (unit.max_rarity == 7) {
+        if (isNV) {
+            html += ' NV';
+        } else {
+            html += ' notNV';
+        }
+        if (isNVA) {
+            html += ' NVA';
+        } else {
+            html += ' notNVA';
+        }
+        if (unit.max_rarity == 7 || unit.max_rarity == 'NV') {
             html += ' showStmr';
         } 
         html += '"';
@@ -359,8 +404,9 @@ function getUnitDisplay(unit, useTmrName = false) {
         }*/
         html += '>';
         html += '<div class="ownedNumbers">';
+        html += '<div class="NVNumber"><i class="img img-crystal-NV"></i><span class="ownedNumber badge badge-success NV">' + (ownedUnits[unit.id] ? (ownedUnits[unit.id].nv || 0) : 0) + '</span></div>';
         html += '<div class="sevenStarNumber"><i class="img img-crystal-sevenStarCrystal"></i><span class="ownedNumber badge badge-success sevenStar">' + (ownedUnits[unit.id] ? (ownedUnits[unit.id].sevenStar || 0) : 0) + '</span></div>';
-        html += '<div>'
+        html += '<div class="ownedNumberDiv">'
         if (unit.min_rarity == 3) {
             html += '<i class="img img-crystal-blueCrystal"></i>';
         } else if (unit.min_rarity == 4) {
@@ -369,23 +415,22 @@ function getUnitDisplay(unit, useTmrName = false) {
             html += '<i class="img img-crystal-rainbowCrystal"></i>';
         }
         html += '<span class="ownedNumber base badge badge-success">' + (ownedUnits[unit.id] ? ownedUnits[unit.id].number : 0) + '</span></div>';
+        html += '<div class="tmrMoogles"><img src="img/units/unit_ills_904000103.png"></img><span class="ownedNumber badge badge-success" title="' + ((ownedUnits[unit.id] && ownedUnits[unit.id].tmrMoogles) ? ownedUnits[unit.id].tmrMoogles.map(p => p + '%').join(', ') : '') + '">' + ((ownedUnits[unit.id] && ownedUnits[unit.id].tmrMoogles) ? ownedUnits[unit.id].tmrMoogles.length : 0) + '</span></div>';
+        let fragmentCount = unit.fragmentId ? ownedConsumables[unit.fragmentId] || 0 : 0;
+        html += `<div class="fragments"><img src="img/icons/fragment.png"></img><span class="ownedNumber badge badge-success" title="${fragmentCount} fragments">${fragmentCount}</span></div>`;
         html += '</div>'    
         
         
         html += '<div class="secondColumn">'
         html += '<div class="imageAndName">'
-        var formToDisplay = unit.max_rarity;
-        if (formToDisplay == 7 && ownedUnits[unit.id] && !ownedUnits[unit.id].sevenStar) {
-            formToDisplay = 6;
-        }
-        html += '<div><img class="unitImage lazyload" data-src="/img/units/unit_icon_' + unit.id.substr(0, unit.id.length - 1) + formToDisplay + '.png"/></div>';
+        html += '<div><img class="unitImage lazyload" data-src="' + getUnitImage(unit) + '"/></div>';
         
         html +='<div class="unitNameAndRarity">';
         html +='<div class="unitName">';
         if (useTmrName) {
             html += toLink(tmrByUnitId[unit.id].name);
         } else {
-            html += toLink(unit.name);
+            html += toLink(unit.name, unit.name, true);
         }
         if (unit.summon_type === 'event') {
             html +='<span class="glyphicon glyphicon-time"/>';
@@ -444,11 +489,13 @@ function updateUnitDisplay(unitId) {
     let owned = !!ownedUnits[unitId];
     let farmable = ownedUnits[unitId] && ownedUnits[unitId].farmable > 0;
     let farmableStmr = ownedUnits[unitId] && ownedUnits[unitId].farmableStmr > 0;
+    let hasTmrMoogles = !!(ownedUnits[unitId] && ownedUnits[unitId].tmrMoogles && ownedUnits[unitId].tmrMoogles.length > 0) ;
     let awakenable = !unit.unreleased7Star && unit.max_rarity == 7 && ownedUnits[unitId] && ownedUnits[unitId].number >= 1;
 
     let div = $(".unit." + unitId);
     div.toggleClass("owned", owned);
     div.toggleClass("notOwned", !owned);
+    div.toggleClass("tmrMoogles", hasTmrMoogles);
     div.toggleClass("sevenStars", is7Stars);
     div.toggleClass("notSevenStars", !is7Stars);
     div.toggleClass("farmable", farmable);
@@ -459,9 +506,23 @@ function updateUnitDisplay(unitId) {
     div.find(".ownedNumber.base.badge").html(ownedNumber);
 
     div.find(".sevenStarNumber").toggleClass("hidden", !is7Stars);
+
+    if (unit.max_rarity == 'NV') {
+        let ownedNVs = owned ? (ownedUnits[unitId].nv || 0) : 0;
+        div.find(".ownedNumber.NV.badge").html(ownedNVs);
+        if (unit.fragmentId) {
+            let ownedFragments = ownedConsumables[unit.fragmentId] || 0;
+            div.find(".fragments .ownedNumber.badge").html(ownedFragments);
+        }
+    }
     if (is7Stars) {
         let owned7Stars = ownedUnits[unitId].sevenStar || 0;
         div.find(".ownedNumber.sevenStar.badge").html(owned7Stars);
+    }
+    if (hasTmrMoogles) {
+        let counter = div.find(".tmrMoogles .ownedNumber");
+        counter.html(ownedUnits[unitId].tmrMoogles.length);
+        counter.prop('title', ownedUnits[unitId].tmrMoogles.map(n => n + '%').join(', '));
     }
 
     if (owned) {
@@ -490,13 +551,24 @@ function updateUnitDisplay(unitId) {
 
 }
 
-function getRarity(minRarity, maxRarity) {
-    var html = '';
-    for (var rarityIndex = 0; rarityIndex < minRarity; rarityIndex++ ) {
-        html += '<img src="/img/icons/star_icon_filled.png"/>';
+function getRarity(minRarity, maxRarity, soon = false) {
+    let nv = false;
+    if (minRarity == 'NV') {
+        return '<i class="img img-crystal-NV"></i>';
     }
-    for (var rarityIndex = 0; rarityIndex < (maxRarity - minRarity); rarityIndex++ ) {
-        html += '<img src="/img/icons/star_icon.png"/>';
+    var html = '';
+    if (maxRarity == 'NV') {
+        html = '<i class="img img-crystal-NVA"></i>'
+    } else {
+        for (var rarityIndex = 0; rarityIndex < minRarity; rarityIndex++ ) {
+            html += '★';
+        }
+        for (var rarityIndex = 0; rarityIndex < (maxRarity - minRarity); rarityIndex++ ) {
+            html += '☆';
+        }
+    }
+    if (soon) {
+        html += ' (soon)';
     }
     return html;
 }
@@ -509,7 +581,8 @@ function addToOwnedUnits(unitId) {
     }
     
     ownedUnits[unitId].number += 1;
-    if (!tmrNumberByUnitId[unitId] || (tmrNumberByUnitId[unitId] < ownedUnits[unitId].number)) {
+    let ownedUnitsCount = ownedUnits[unitId].number + (ownedUnits[unitId].sevenStar || 0) * 2;
+    if (!tmrNumberByUnitId[unitId] || (tmrNumberByUnitId[unitId] < ownedUnitsCount)) {
         ownedUnits[unitId].farmable += 1;
     }
     updateUnitDisplay(unitId);
@@ -654,25 +727,50 @@ function awakenFollowUp(unitId) {
 }
 
 function editUnit(unitId) {
-    let form = '<form>' +
-      '<div class="form-group">' +
-        '<label for="ownedNumber">Owned number</label>' +
-        '<input type="number" class="form-control" id="ownedNumber" aria-describedby="emailHelp" placeholder="Enter owned number" value="' + ownedUnits[unitId].number + '">' +
-      '</div>'+
-      '<div class="form-group">' +
-        '<label for="farmableTMR">Number of TMR that can still be farmed</label>' +
-        '<input type="number" class="form-control" id="farmableTMR" aria-describedby="emailHelp" placeholder="Enter farmable TMR number" value="' + ownedUnits[unitId].farmable + '">' +
-      '</div>';
+    if (!ownedUnits[unitId]) {
+        ownedUnits[unitId] = {"number":0, "farmable":0, "sevenStar":0, "farmableStmr":0};
+    }
     let unit = units[unitId];
-    if (unit.max_rarity == '7') {
+    let form = '<form>';
+    if (unit.max_rarity == 'NV') {
+        form += '<div class="form-group">' +
+            '<label for="ownedNVNumber">Owned NV number</label>' +
+            '<input type="number" class="form-control" id="ownedNVNumber" placeholder="Enter owned number" value="' + (ownedUnits[unitId].nv || 0) + '">' +
+            '</div>';
+    }
+    if (unit.max_rarity == '7' || unit.max_rarity == 'NV') {
         form += '<div class="form-group">' +
             '<label for="ownedSeventStarNumber">Owned 7* number</label>' +
-            '<input type="number" class="form-control" id="ownedSeventStarNumber" aria-describedby="emailHelp" placeholder="Enter owned number" value="' + (ownedUnits[unitId].sevenStar || 0) + '">' +
-          '</div>'+
-          '<div class="form-group">' +
+            '<input type="number" class="form-control" id="ownedSeventStarNumber" placeholder="Enter owned number" value="' + (ownedUnits[unitId].sevenStar || 0) + '">' +
+            '</div>';
+    }
+      form += '<div class="form-group">' +
+        '<label for="ownedNumber">Owned 6* or under number</label>' +
+        '<input type="number" class="form-control" id="ownedNumber" placeholder="Enter owned number" value="' + ownedUnits[unitId].number + '">' +
+      '</div>';
+    if (unit.max_rarity == '7' || unit.max_rarity == 'NV') {
+        form += '<div class="form-group">' +
             '<label for="farmableSTMR">Number of STMR that can still be farmed</label>' +
-            '<input type="number" class="form-control" id="farmableSTMR" aria-describedby="emailHelp" placeholder="Enter farmable STMR number" value="' + (ownedUnits[unitId].farmableStmr || 0) + '">' +
-          '</div>';
+            '<input type="number" class="form-control" id="farmableSTMR" placeholder="Enter farmable STMR number" value="' + (ownedUnits[unitId].farmableStmr || 0) + '">' +
+            '</div>';
+    }
+      form += '<div class="form-group">' +
+        '<label for="farmableTMR">Number of TMR that can still be farmed</label>' +
+        '<input type="number" class="form-control" id="farmableTMR" placeholder="Enter farmable TMR number" value="' + ownedUnits[unitId].farmable + '">' +
+      '</div>';
+    if (unit.max_rarity == 'NV') {
+        form += '<div class="form-group">' +
+            '<label for="ownedFragmentNumber">Owned Fragment number</label>' +
+            '<input type="number" class="form-control" id="ownedFragmentNumber" placeholder="Enter owned number" value="' + (ownedConsumables[unit.fragmentId] || 0) + '" step="5">' +
+            '</div>';
+    }
+
+
+    if (tmrByUnitId[unitId]) {
+        form += '<div class="form-group">' +
+            '<label for="tmrMoogles">TMR Moogles owned</label>' +
+            '<input type="text" class="form-control" id="tmrMoogles" aria-describedby="emailHelp" placeholder="Enter values of tmr moogles, separated by coma" value="' + (ownedUnits[unitId].tmrMoogles? ownedUnits[unitId].tmrMoogles.join(", ") : "") + '">' +
+            '</div>'
     }
     form += '</form>';
     Modal.show({
@@ -686,14 +784,40 @@ function editUnit(unitId) {
                     onClick: function() {
                         ownedUnits[unitId].number = parseInt($("#ownedNumber").val() || 0);
                         ownedUnits[unitId].farmable = parseInt($("#farmableTMR").val() || 0);
-                        if (unit.max_rarity == '7') {
+                        if (unit.max_rarity == 'NV') {
+                            ownedUnits[unitId].nv = parseInt($("#ownedNVNumber").val() || 0);
+                            if (unit.fragmentId) {
+                                ownedConsumables[unit.fragmentId] = parseInt($("#ownedFragmentNumber").val() || 0);
+                            }
+                        }
+                        if (unit.max_rarity == '7' || (unit.max_rarity == 'NV' && unit.min_rarity != 'NV')) {
                             ownedUnits[unitId].sevenStar = parseInt($("#ownedSeventStarNumber").val() || 0);
+                        }
+                        if (unit.max_rarity == '7' || unit.max_rarity == 'NV') {
                             ownedUnits[unitId].farmableStmr = parseInt($("#farmableSTMR").val() || 0);
                         }
-                        if (ownedUnits[unitId].number == 0 && ownedUnits[unitId].farmable == 0) {
-                            if (unit.max_rarity != '7' || (ownedUnits[unitId].sevenStar == 0 && ownedUnits[unitId].farmableStmr == 0)) {
-                                delete ownedUnits[unitId];
-                            }
+                        let tmrMooglesText = $('#tmrMoogles').val();
+                        let tmrMoogles = [];
+                        if (tmrMooglesText) {
+                            tmrMooglesText.split(",").forEach(text => {
+                                text = text.trim();
+                                if (isNaN(text) || !text) {
+                                    $('#tmrMoogles').addClass("has-error");
+                                    throw "wrong value for Tmr Moogles"
+                                } else {
+                                    tmrMoogles.push(+text);
+                                }
+                            });
+                        }
+                        $('#tmrMoogles').removeClass("has-error");
+                        if (tmrMoogles.length > 0) {
+                            ownedUnits[unitId].tmrMoogles = tmrMoogles;
+                        } else {
+                            delete ownedUnits[unitId].tmrMoogles;
+                        }
+                        if (!ownedUnits[unitId].number && !ownedUnits[unitId].farmable && !ownedUnits[unitId].tmrMoogles
+                            && !ownedUnits[unitId].sevenStar && !ownedUnits[unitId].farmableStmr && !ownedUnits[unitId].nv) {
+                            delete ownedUnits[unitId];
                         }
                         updateUnitDisplay(unitId);
                         markSaveNeeded();
@@ -708,8 +832,7 @@ function markSaveNeeded() {
     savePublicLinkNeeded = true;
     if (saveTimeout) {clearTimeout(saveTimeout)}
     if (savePublicLinkTimeout) {clearTimeout(savePublicLinkTimeout)}
-    mustSaveInventory = true;
-    saveTimeout = setTimeout(saveUserData,3000, mustSaveInventory, true, false);
+    saveTimeout = setTimeout(saveUserData,3000, true, true, false, true);
     savePublicLinkTimeout = setTimeout(savePublicLink, 10000);
 }
 
@@ -828,8 +951,14 @@ function sortTMRAlphabetically(units) {
 function sortByRarity(units) {
     var unitsToSort = Object.values(units).slice();
     return unitsToSort.sort(function (unit1, unit2){
-        var maxRarity1 = unit1.max_rarity;
-        var maxRarity2 = unit2.max_rarity;
+        var maxRarity1 = unit1.max_rarity == 'NV' ? 8 : unit1.max_rarity;
+        var maxRarity2 = unit2.max_rarity == 'NV' ? 8 : unit2.max_rarity;
+        if (maxRarity1 == 8 && isSoonNVA(unit1)) {
+            maxRarity1 = 7.5;
+        }
+        if (maxRarity2 == 8 && isSoonNVA(unit2)) {
+            maxRarity2 = 7.5;
+        }
         if (maxRarity1 == 7 && unit1.unreleased7Star) {
             maxRarity1 = 6;
         }
@@ -840,12 +969,26 @@ function sortByRarity(units) {
             if (unit1.min_rarity == unit2.min_rarity) {
                 return unit1.name.localeCompare(unit2.name);
             } else {
-                return unit2.min_rarity - unit1.min_rarity;
+                var minRarity1 = unit1.min_rarity == 'NV' ? 8 : unit1.min_rarity;
+                var minRarity2 = unit2.min_rarity == 'NV' ? 8 : unit2.min_rarity
+                return minRarity2 - minRarity1;
             }
         } else {
             return maxRarity2 - maxRarity1;
         }
     });
+}
+
+function isNV(unit) {
+    return unit.max_rarity === 'NV' && unit.min_rarity === 'NV'
+}
+
+function isNVA(unit) {
+    return unit.max_rarity === 'NV' && unit.min_rarity !== 'NV' && unit.braveShift;
+}
+
+function isSoonNVA(unit) {
+    return unit.max_rarity === 'NV' && unit.min_rarity !== 'NV' && (!unit.braveShift || !releasedUnitIds.includes(unit.braveShift));
 }
 
 function sortByBaseRarity(units) {
@@ -891,6 +1034,12 @@ function prepareData() {
             }
         }
     }
+    // Object.keys(ownedUnits).forEach(unitId => {
+    //     if (units[unitId].min_rarity === 'NV' && ownedUnits[unitId].sevenStar) {
+    //         ownedUnits[unitId].nv = ownedUnits[unitId].sevenStar;
+    //         ownedUnits[unitId].sevenStar = 0;
+    //     }
+    // });
 }
 
 function exportAsImage(minRarity = 1) {
@@ -925,7 +1074,7 @@ function exportAsImage(minRarity = 1) {
 }
 
 function exportAsCsv() {
-    var csv = "Unit Id; Unit Name;Min Rarity;Max Rarity;Number Owned;Number of TMR/STMR owned;Number of TMR/STMR still farmable\n";
+    var csv = "Unit Id; Unit Name;Min Rarity;Max Rarity;Number Owned (not 7*); 7* Number owned;Number of TMR owned;Number of STMR owned;Number of TMR still farmable;Number of STMR still obtainable\n";
     var sortedUnits = sortByRarity(units);
     for (var index = 0, len = sortedUnits.length; index < len; index++) {
         var unit = sortedUnits[index];
@@ -934,10 +1083,13 @@ function exportAsCsv() {
             csv +=  "\"" + unit.id + "\";" + 
                 "\"" + unit.name + "\";" + 
                 unit.min_rarity + ';' + 
-                maxRarity + ';' + 
-                (unit.min_rarity == 7 ? ownedUnits[unit.id].sevenStar : ownedUnits[unit.id].number) + ';' + 
-                (unit.min_rarity == 7 ? (stmrNumberByUnitId[unit.id] ? stmrNumberByUnitId[unit.id] : 0) : (tmrNumberByUnitId[unit.id] ? tmrNumberByUnitId[unit.id] : 0)) + ';' + 
-                (unit.min_rarity == 7 ? ownedUnits[unit.id].farmableStmr : ownedUnits[unit.id].farmable) + "\n";
+                maxRarity + ';' +
+                ownedUnits[unit.id].number + ';' +
+                (ownedUnits[unit.id].sevenStar || 0) + ';' +
+                (tmrNumberByUnitId[unit.id] ? tmrNumberByUnitId[unit.id] : 0) + ';' +
+                (stmrNumberByUnitId[unit.id] ? stmrNumberByUnitId[unit.id] : 0) + ';' +
+                ownedUnits[unit.id].farmable + ';' +
+                (ownedUnits[unit.id].farmableStmr || 0) + '\n';
         }
     }
     window.saveAs(new Blob([csv], {type: "text/csv;charset=utf-8"}), 'FFBE_Equip - Unit collection.csv');
@@ -978,9 +1130,11 @@ function importUnits() {
         baseUnitIdBySpecificRarityUnitId = {};
         releasedUnits.forEach(unit => {
             let unitIdBase = unit.id.substring(0,unit.id.length - 1);
-           for (i = parseInt(unit.min_rarity); i <= parseInt(unit.max_rarity); i++) {
+            let minRarity = unit.min_rarity === 'NV' ? 7: unit.min_rarity;
+            let maxRarity = unit.max_rarity === 'NV' ? 7: unit.max_rarity;
+            for (i = minRarity; i <= maxRarity; i++) {
                baseUnitIdBySpecificRarityUnitId[unitIdBase + i] = unit.id;
-           }
+            }
         });
     }
     if (!baseUnitIdByTmrId) {
@@ -994,16 +1148,18 @@ function importUnits() {
     importedOwnedUnit = null;
     Modal.show({
         title: "Import unit collection",
-        body: '<p class="label label-danger">This feature is a Work in Progress. It will override your unit collection on FFBE Equip</p><br/><br/>' +
+        body: '<p class="label label-danger">It will override your unit collection on FFBE Equip</p><br/><br/>' +
               '<input type="file" id="importFile" name="importFile" onchange="treatImportFile"/>'+
-              '<p><a class="link" href="https://www.reddit.com/r/FFBraveExvius/comments/asd3ps/ffbe_data_exporter_its_back/?st=jsc28fu2&sh=a61614c2">Instructions to import your data directly from the game</a> (require +login to FFBE with Facebook for now. Google login will probably be supported later)</p><br>' +
+              '<p><a class="link" href="https://www.reddit.com/r/FFBraveExvius/comments/dd8ljd/ffbe_sync_is_back/">Instructions to import your data directly from the game</a> ((require login to FFBE with Facebook or Google)</p><br>' +
               '<p id="importSummary"></p>',
         buttons: [{
             text: "Import",
             onClick: function() {
                 if (importedOwnedUnit) {
                     ownedUnits = importedOwnedUnit;
+                    markSaveNeeded();
                     saveUserData(false, true, false);
+                    savePublicLink();
                     showRaritySort();
                 } else {
                     Modal.show("Please select a file to import");
@@ -1015,9 +1171,36 @@ function importUnits() {
     $('#importFile').change(treatImportFile);
 }
 
+function importConsumables() {
+    importedConsumables = null;
+    Modal.show({
+        title: "Import consumables",
+        body: '<input type="file" id="importConsumableFile" name="importConsumableFile" onchange="treatImportConsumablesFile"/>'+
+            '<p><a class="link" href="https://www.reddit.com/r/FFBraveExvius/comments/dd8ljd/ffbe_sync_is_back/">Instructions to import your data directly from the game</a> ((require login to FFBE with Facebook or Google)</p><br>' +
+            '<p id="importSummary"></p>',
+        buttons: [{
+            text: "Import",
+            onClick: function() {
+                if (importedConsumables) {
+                    ownedConsumables = importedConsumables;
+                    markSaveNeeded();
+                    saveUserData(false, false, false, true);
+                    savePublicLink();
+                    showRaritySort();
+                } else {
+                    Modal.show("Please select a file to import");
+                }
+
+            }
+        }]
+    });
+    $('#importConsumableFile').change(treatImportConsumablesFile);
+}
+
 let baseUnitIdBySpecificRarityUnitId = null;
 let baseUnitIdByTmrId = null;
 let importedOwnedUnit;
+let importedConsumables;
 
 function treatImportFile(evt) {
     var f = evt.target.files[0]; // FileList object
@@ -1040,40 +1223,66 @@ function treatImportFile(evt) {
                     Modal.showMessage("unit doesn't have id : " + JSON.stringify(unit));
                     importedOwnedUnit = null;
                     return;
-                } else {
-                    if (unit.id == '904000115') {
+                } else if (!unitsToIgnoreForImport[server].includes(unit.id)) {
+                    if (unit.id == '904000115' && unit.tmr < 1000) {
                         let baseUnitId = baseUnitIdByTmrId[unit.tmrId]
-                        if (baseUnitId && unit.tmr < 1000) {
+                        if (baseUnitId) {
                             if (!importedOwnedUnit[baseUnitId]) {
                                 importedOwnedUnit[baseUnitId] = {"number":0,"farmable":1,"sevenStar":0,"farmableStmr":0};
                             } else {
                                 importedOwnedUnit[baseUnitId].farmable++;
                             }
                         }
+                    } else if (unit.id == '904000103') {
+                        let baseUnitId = baseUnitIdByTmrId[unit.tmrId]
+                        if (baseUnitId) {
+                            if (!importedOwnedUnit[baseUnitId]) {
+                                importedOwnedUnit[baseUnitId] = {"number":0,"farmable":0,"sevenStar":0,"farmableStmr":0, "tmrMoogles": []};
+                            } else {
+                                if (!importedOwnedUnit[baseUnitId].tmrMoogles) {
+                                    importedOwnedUnit[baseUnitId].tmrMoogles = [];
+                                }
+                            }
+                            importedOwnedUnit[baseUnitId].tmrMoogles.push(unit.tmr / 10);
+                        }
                     } else if (!unit.id.startsWith('9')) {
                         let baseUnitId = baseUnitIdBySpecificRarityUnitId[unit.id];
+                        let NVA = false;
                         if (!baseUnitId) {
-                            Modal.showMessage('unknown unit id : ' + unit.id);
-                            importedOwnedUnit = null;
+                            // Try for NVA
+                            if (unit.id.endsWith("17")) {
+                                baseUnitId = baseUnitIdBySpecificRarityUnitId[unit.id.substr(0, unit.id.length - 2) + "07"];
+                                NVA = true;
+                            }
+                        }
+                        if (!baseUnitId) {
+                            Modal.showMessage('unknown unit id : ' + unit.id + '. FFBE Equip data probably was not updated yet. Ignoring this unit.');
+                            //importedOwnedUnit = null;
                             return;
-                        }
-                        if (!importedOwnedUnit[baseUnitId]) {
-                            importedOwnedUnit[baseUnitId] = {"number":0,"farmable":0,"sevenStar":0,"farmableStmr":0};
-                        }
-                        if (unit.tmr < 1000) {
-                            importedOwnedUnit[baseUnitId].farmable++;
-                        }
-                        if (unit.id.endsWith("7")) {
-                            if (!importedOwnedUnit[baseUnitId].sevenStar) {
-                                importedOwnedUnit[baseUnitId].sevenStar = 0;
-                                importedOwnedUnit[baseUnitId].farmableStmr = 0;
-                            }
-                            importedOwnedUnit[baseUnitId].sevenStar++;
-                            if (unit.stmr < 1000) {
-                                importedOwnedUnit[baseUnitId].farmableStmr++;
-                            }
                         } else {
-                          importedOwnedUnit[baseUnitId].number++;
+                            if (!importedOwnedUnit[baseUnitId]) {
+                                importedOwnedUnit[baseUnitId] = {"number":0,"farmable":0,"sevenStar":0,"farmableStmr":0};
+                            }
+                            if (unit.tmr < 1000) {
+                                importedOwnedUnit[baseUnitId].farmable++;
+                            }
+                            if (NVA || units[baseUnitId].min_rarity === 'NV') {
+                                if (!importedOwnedUnit[baseUnitId].nv) {
+                                    importedOwnedUnit[baseUnitId].nv = 0;
+                                }
+                                importedOwnedUnit[baseUnitId].nv++;
+                            } else if (unit.id.endsWith("7")) {
+                                if (!importedOwnedUnit[baseUnitId].sevenStar) {
+                                    importedOwnedUnit[baseUnitId].sevenStar = 0;
+                                    importedOwnedUnit[baseUnitId].farmableStmr = 0;
+                                }
+                                importedOwnedUnit[baseUnitId].sevenStar++;
+                                if (unit.stmr < 1000) {
+                                    importedOwnedUnit[baseUnitId].farmableStmr++;
+                                }
+                            } else {
+                                importedOwnedUnit[baseUnitId].number++;
+                            }
                         }
                     }
                 }
@@ -1086,6 +1295,32 @@ function treatImportFile(evt) {
     };
     reader.readAsText(f);
     
+}
+
+function treatImportConsumablesFile(evt) {
+    var f = evt.target.files[0]; // FileList object
+
+    var reader = new FileReader();
+
+    reader.onload = function(){
+        try {
+            let temporaryResult = JSON.parse(reader.result);
+            var errors = importValidator.validate('consumables', temporaryResult);
+
+            // validation was successful
+            if (errors) {
+                Modal.showMessage("imported file doesn't have the correct form : " + JSON.stringify(errors));
+                return;
+            }
+            importedConsumables = {};
+            temporaryResult.forEach(data => importedConsumables[data.itemId] = parseInt(data.itemQty));
+            $('#importSummary').text('Consumables to import : ' + Object.keys(importedConsumables).length);
+        } catch(e) {
+            Modal.showError('imported file is not in json format', e);
+        }
+
+    };
+    reader.readAsText(f);
 }
 
 function onDataReady() {
@@ -1128,8 +1363,14 @@ function startPage() {
 	// Ajax calls to get the item and units data, then populate unit select, read the url hash and run the first update
     getStaticData("units", true, function(unitResult) {
         units = unitResult;
+        Object.keys(units).forEach(unitId => {
+           if (units[unitId].braveShifted) {
+               delete units[unitId];
+           }
+        });
         getStaticData("releasedUnits", false, function(releasedUnitResult) {
             releasedUnits = [];
+            releasedUnitIds = Object.keys(releasedUnitResult);
             for (var unitId in unitResult) {
                 if (releasedUnitResult[unitId]) {
                     unitResult[unitId].summon_type = releasedUnitResult[unitId].type;
@@ -1221,10 +1462,15 @@ function startPage() {
     $("#onlySevenStar").on('input', function () {
         $('body').toggleClass('onlySevenStar', $("#onlySevenStar").prop('checked'));
     });
+    $("#onlyTmrMoogles").on('input', function () {
+        $('body').toggleClass('onlyTmrMoogles', $("#onlyTmrMoogles").prop('checked'));
+    });
     $('body').toggleClass('onlyOwnedUnits', $("#onlyOwnedUnits").prop('checked'));
     $('body').toggleClass('onlyTimeLimited', $("#onlyTimeLimited").prop('checked'));
     $(".onlySevenStarInoutGroup").toggleClass('hidden', !$("#onlyOwnedUnits").prop('checked'));
     $('body').toggleClass('onlySevenStar', $("#onlySevenStar").prop('checked'));
+    $('body').toggleClass('onlyTmrMoogles', $("#onlyTmrMoogles").prop('checked'));
+    
 }
 
 // create new JJV environment
@@ -1248,6 +1494,42 @@ importValidator.addSchema('units', {
         maximum: 120
       },
       pots: {
+        type: 'object',
+        properties: {
+          hp: {
+            type: 'number',
+            minimum: 0,
+            maximum: 2000
+          },
+          mp: {
+            type: 'number',
+            minimum: 0,
+            maximum: 2000
+          },
+          atk: {
+            type: 'number',
+            minimum: 0,
+            maximum: 2000
+          },
+          def: {
+            type: 'number',
+            minimum: 0,
+            maximum: 2000
+          },
+          mag: {
+            type: 'number',
+            minimum: 0,
+            maximum: 2000
+          },
+          spr: {
+            type: 'number',
+            minimum: 0,
+            maximum: 2000
+          }
+        },
+        required: ['hp', 'mp', 'atk', 'def', 'mag', 'spr']
+      },
+      doors: {
         type: 'object',
         properties: {
           hp: {
@@ -1311,4 +1593,25 @@ importValidator.addSchema('units', {
       required: ['id', 'level', 'tmr']
     
   }
+});
+// Register a `user` schema
+importValidator.addSchema('consumables', {
+    type: 'array',
+    maxItems: 5000,
+    items: {
+        type: 'object',
+        properties: {
+            itemId: {
+                type: 'string',
+                minLength: 9,
+                maxLength: 10
+            },
+            itemQty: {
+                type: 'string',
+                minLength: 1,
+                maxLength: 10
+            }
+        },
+        required: ['itemId', 'itemQty']
+    }
 });

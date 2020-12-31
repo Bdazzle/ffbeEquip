@@ -14,7 +14,8 @@ const configSchema = Joi.object({
   googleOAuthFile: Joi.string().required(),
   firebaseConfFile: Joi.string().required(),
   firebaseBucketUri: Joi.string().required(),
-  firebaseDatabaseId: Joi.string().required()
+  firebaseDatabaseId: Joi.string().required(),
+  imgurClientId: Joi.string().required(),
 });
 
 const oauthSchema = Joi.object({
@@ -145,6 +146,14 @@ const setupConfig = (currentConfig) => {
         return !!value || `"${value}" is not valid`;
       },
     },
+    {
+      type: 'input',
+      name: 'imgurClientId',
+      message: 'Imgur Client Id',
+      validate: (value) => {
+        return !!value || `"${value}" is not valid`;
+      },
+    },
   ];
 
   return inquirer
@@ -158,7 +167,7 @@ const config = readJson(CONFIG_FILE);
 config.env = process.env.NODE_ENV || config.env;
 config.port = process.env.PORT || config.port;
 
-const validation = Joi.validate(config, configSchema);
+const validation = configSchema.validate(config);
 
 if (require.main === module && validation.error) {
   setupConfig(config).then((newConfig) => {

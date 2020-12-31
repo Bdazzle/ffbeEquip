@@ -16,13 +16,15 @@
         <link rel="stylesheet" type="text/css" href="css-img/equipments.css">
         <link rel="stylesheet" type="text/css" href="css-img/elements.css">
         <link rel="stylesheet" type="text/css" href="css-img/ailments.css">
+        <link rel="stylesheet" type="text/css" href="css-img/killers.css">
         <link rel="stylesheet" type="text/css" href="common.css">
         <link rel="stylesheet" type="text/css" href="languages.css">
         <link rel="stylesheet" type="text/css" href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css"
               integrity="sha384-yBEPaZw444dClEfen526Q6x4nwuzGO6PreKpbRVSLFCci3oYGE5DnD1pNsubCxYW" crossorigin="anonymous">
         <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+        <link rel="stylesheet" type="text/css" href="dark-mode.css"/>
     </head>
-    <body>
+    <body class="dark">
         <a href="#" id="scrollToTopButton" class="withToggleSelector" style="display: none;" title="Scroll back to the top"><span></span></a>
         
         <div id="header" class="headerRain">
@@ -108,6 +110,13 @@
                 </div>
             </div>
             <div class="headerTopButtons">
+                <div id="themeSelector">
+                    <span class="title">Theme :</span>
+                    <select class="form-control smallSelect">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
                 <div id="languages">
                     <span class="lang lang-sm" lang="en" onclick="switchToLanguage('en')"></span>
                     <span class="lang lang-sm" lang="zh" onclick="switchToLanguage('zh')"></span>
@@ -141,6 +150,7 @@
                             <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
                             <span class="collapsedHidden">Toggle stats</span>
                         </button>
+
                         <div class="stats hidden collapsedHidden">
                             <div class="statsGroup">
                                 <h4>All units</h4>
@@ -252,28 +262,36 @@
                 </div>
                 <div class="unitsContent">
                     <div id="units">
-                        <div id="exportLinks" class="dropdown">
-                            <a class="dropdown-toggle link" type="button" data-toggle="dropdown">
-                                <span class="glyphicon glyphicon-share-alt"></span>
-                                <span class="text hidden-xs hidden-sm">
-                                    Share unit collection<span class="caret"></span>
-                                </span>
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="link" onclick="exportAsImage();"><span class="glyphicon glyphicon-camera"></span> Export as image</a></li>
-                                <li><a class="link" onclick="exportAsImage(5);"><span class="glyphicon glyphicon-camera"></span> Export only 5*+ as image</a></li>
-                                <li><a class="link" onclick="exportAsImage(7);"><span class="glyphicon glyphicon-camera"></span> Export only 7* as image</a></li>
-                                <li><a class="link" onclick="exportAsCsv()"><span class="glyphicon glyphicon-list"></span> Export as CSV</a></li>
-                                <li><a class="link" onclick="exportAsText()"><span class="glyphicon glyphicon-list"></span> Export as simple text</a></li>
-                                <li><a class="link" onclick="showPublicUnitCollectionLink()"><span class="glyphicon glyphicon-link"></span> Get public unit collection link</a></li>
-                            </ul>
-                            <a id="importLink" class="link" onclick="importUnits();">
+                        <div class="linkActions">
+                            <div id="exportLinks" class="dropdown action">
+                                <a class="dropdown-toggle link" type="button" data-toggle="dropdown">
+                                    <span class="glyphicon glyphicon-share-alt"></span>
+                                    <span class="text">
+                                        Share unit collection<span class="caret"></span>
+                                    </span>
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="link" onclick="exportAsImage();"><span class="glyphicon glyphicon-camera"></span> Export as image</a></li>
+                                    <li><a class="link" onclick="exportAsImage(5);"><span class="glyphicon glyphicon-camera"></span> Export only 5*+ as image</a></li>
+                                    <li><a class="link" onclick="exportAsImage(7);"><span class="glyphicon glyphicon-camera"></span> Export only 7* as image</a></li>
+                                    <li><a class="link" onclick="exportAsCsv()"><span class="glyphicon glyphicon-list"></span> Export as CSV</a></li>
+                                    <li><a class="link" onclick="exportAsText()"><span class="glyphicon glyphicon-list"></span> Export as simple text</a></li>
+                                    <li><a class="link" onclick="showPublicUnitCollectionLink()"><span class="glyphicon glyphicon-link"></span> Get public unit collection link</a></li>
+                                </ul>
+                            </div>
+                            <a id="importLink" class="link action" onclick="importUnits();">
                                 <span class="glyphicon glyphicon-save"></span>
                                 <span class="text hidden-xs hidden-sm">
                                     Import unit collection
                                 </span>
                             </a>
-                            <a id="importLink" class="link" href="https://www.reddit.com/r/FFBraveExvius/comments/asd3ps/ffbe_data_exporter_its_back/?st=jsc28fu2&sh=a61614c2" target="_blank">
+                            <a id="importConsumablesLink" class="link action" onclick="importConsumables();">
+                                <span class="glyphicon glyphicon-save"></span>
+                                <span class="text hidden-xs hidden-sm">
+                                    Import consumables
+                                </span>
+                            </a>
+                            <a id="exportDataLink" class="link action" href="https://new.reddit.com/r/FFBraveExvius/comments/dd8ljd/ffbe_sync_is_back/" target="_blank">
                                 <span class="glyphicon glyphicon-export"></span>
                                 <span class="text hidden-xs hidden-sm">
                                     Export your data from the game
@@ -301,9 +319,22 @@
                                     <input id="searchBox" type="text" class="form-control" placeholder="Enter unit name"/>
                                 </div>
                                 <div class="col-xs-12 col-md-6 filterOptions">
-                                    <div class="checkboxGroup"><input id="onlyOwnedUnits" type="checkbox"/><label>Only show owned units</label></div>
-                                    <div class="checkboxGroup hidden onlySevenStarInoutGroup"><input id="onlySevenStar" type="checkbox"/><label>Only show 7★ units</label></div>
-                                    <div class="checkboxGroup"><input id="onlyTimeLimited" type="checkbox"/><label>Only time limited units</label></div>
+                                    <label class="checkbox-label">
+                                        <input id="onlyOwnedUnits" type="checkbox" class="checkbox"><span></span>
+                                        Only show owned units
+                                    </label>
+                                    <label class="checkbox-label onlySevenStarInoutGroup">
+                                        <input id="onlySevenStar" type="checkbox" class="checkbox"><span></span>
+                                        Only show 7★ units
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input id="onlyTimeLimited" type="checkbox" class="checkbox"><span></span>
+                                        Only time limited units
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input id="onlyTmrMoogles" type="checkbox" class="checkbox"><span></span>
+                                        Only units with TMR Moogles
+                                    </label>
                                 </div>
                                 <div id="results" class="col-xs-12 simpleMode">
 
@@ -328,8 +359,7 @@
                 </div>
             </div>
         </div>
-        <script src="https://code.jquery.com/jquery-3.1.0.min.js"
-                integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
+        <script src="lib/jquery-3.1.0.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
                 integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/mark.js/8.9.1/jquery.mark.min.js"

@@ -1,9 +1,12 @@
+const SELLABLE_ITEMS_ACCESS = ["shop", "recipe", "recipe-chest", "recipe-key", "recipe-quest", "recipe-shop"];
+const sellableExclusionList = ["1100000302"];
 var equipments;
 var materia;
 let itemsById = {};
 var stmrs = [];
 var lastItemReleases;
 var units;
+var visionCards;
 
 var currentEnhancementItem;
 var currentEnhancementItemPos;
@@ -14,6 +17,10 @@ var equipmentLastSearch = "";
 var materiaLastSearch = "";
 var farmableStmrLastSearch = "";
 
+let idToIgnoreOnImport = {
+    GL: ["409026200", "306002600"],
+}
+
 function beforeShow(clearTabSelection = true) {
     $("#pleaseWaitMessage").addClass("hidden");
     $("#loginMessage").addClass("hidden");
@@ -21,6 +28,8 @@ function beforeShow(clearTabSelection = true) {
     $("#itemEnhancement").addClass("hidden");
     $("#results").removeClass("hidden");
     $("#loadMore").addClass('hidden');
+    $('.sellableItemsHeader').addClass('hidden');
+    $('.enhancementCandidatesHeader').addClass('hidden');
     
     // Hidden by default, enabled by materia and equipment tabs
     $("#searchBox").addClass("hidden");
@@ -31,6 +40,8 @@ function beforeShow(clearTabSelection = true) {
         $(".nav-tabs li.equipment").removeClass("active");
         $(".nav-tabs li.materia").removeClass("active");
         $(".nav-tabs li.farmableStmr").removeClass("active");
+        $(".nav-tabs li.sellableItems").removeClass("active");
+        $(".nav-tabs li.enhancementCandidates").removeClass("active");
         $(".nav-tabs li.history").removeClass("active");
         $(".nav-tabs li.settings").removeClass("active");
     }
@@ -73,14 +84,41 @@ function showFarmableStmr() {
     $('.searchHeader .stmrMoogleAvailableDiv').removeClass("hidden");
 }
 
+function showSellableItems() {
+    $('body').addClass("computing");
+    beforeShow();
+    $('.sellableItemsHeader').removeClass('hidden');
+    
+    $(".nav-tabs li.sellableItems").addClass("active");
+    $("#sortType").text("");
+    // filter, sort and display the results
+    showSearch();
+    displayStats();
+    $('body').removeClass("computing");
+}
+
+function showEnhancementCandidates() {
+    $('body').addClass("computing");
+    beforeShow();
+    $('.enhancementCandidatesHeader').removeClass('hidden');
+    
+    $(".nav-tabs li.enhancementCandidates").addClass("active");
+    $("#sortType").text("");
+    // filter, sort and display the results
+    showSearch();
+    displayStats();
+    $('body').removeClass("computing");
+}
+
 function showSearch() {
     
     var inEquipment = $(".nav-tabs li.equipment").hasClass("active");
+    var inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+    let inEnhancementCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
 
-    $("#searchBox").removeClass("hidden");
     // filter, sort and display the results
     var textToSearch = $("#searchBox").val();
-    displayItems(sort(search(textToSearch)), inEquipment);
+    displayItems(sort(search(textToSearch)), inEquipment || inSellableItems || inEnhancementCandidates);
     if (textToSearch) {
         $("#sortType").text("");
     }
@@ -96,7 +134,6 @@ function showHistory() {
     var $resultDiv = $("#results").empty();
     displayId++;
     displayItemsByHistoryAsync(0, 4, displayId, $resultDiv);
-    afterShow();
 }
 
 function setTooltips() {
@@ -105,8 +142,23 @@ function setTooltips() {
         content: function() {
             let element = $(this);
             let itemDiv = element.closest('.item');
-            let itemId = itemDiv.prop('classList')[4]
-            let item = itemsById[itemId];
+            let itemIds = [];
+            for (let i = 0; i < itemDiv.prop('classList').length; i++) {
+                if (!isNaN(itemDiv.prop('classList')[i])) {
+                    itemIds.push(itemDiv.prop('classList')[i]);
+                }
+            }
+
+            let allItems = equipments.concat(materia);
+            let item;
+            itemEntryMatches = allItems.filter(i => i.id === itemIds[0]);
+            if (itemEntryMatches.length > 0) {
+                item = itemEntryMatches[0].item;
+            } else {
+                let itemEntry = allItems.filter(i => i.item.id === itemIds[1])[0];
+                item = itemEntry.item.originalItem || itemEntry.item;
+            }
+
             
             return '<div class="table notSorted items results"><div class="tbody"><div class="tr">' +  displayItemLine(item) + '</div></div></div>';
         },
@@ -194,18 +246,20 @@ function showSettings() {
 }
 
 // Construct HTML of the results. String concatenation was chosen for rendering speed.
-var displayItems = function(items, byType = false) {
+var displayItems = function(itemsEntries, byType = false) {
     var resultDiv = $("#results");
     resultDiv.empty();
     displayId++;
     var inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+    let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+    let inEnhancementCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
     if (byType) {
         // Jump list display
         htmlTypeJump = '<div class="typeJumpList" data-html2canvas-ignore>';
         htmlTypeJump += '<span>Jump to </span>';
         var currentItemType = null;
-        for (var index = 0, len = items.length; index < len; index++) {
-            var itemType = items[index].type;
+        for (var index = 0, len = itemsEntries.length; index < len; index++) {
+            var itemType = itemsEntries[index].item.type;
             if (itemType !== currentItemType) {
                 htmlTypeJump += '<a class="typeJump '+itemType+' disabled"><i class="img img-equipment-'+itemType+'"></i></a>';
                 currentItemType = itemType;
@@ -214,25 +268,25 @@ var displayItems = function(items, byType = false) {
         htmlTypeJump += '</div>';
         resultDiv.append(htmlTypeJump);
 
-        displayItemsByTypeAsync(items, 0, resultDiv, displayId, resultDiv.find('.typeJumpList'));
+        displayItemsByTypeAsync(itemsEntries, 0, resultDiv, displayId, resultDiv.find('.typeJumpList'), inFarmableStmr, inSellableItems, inEnhancementCandidates);
     } else {
-        displayItemsAsync(items, 0, resultDiv, displayId, inFarmableStmr);
+        displayItemsAsync(itemsEntries, 0, resultDiv, displayId, inFarmableStmr, inSellableItems);
     }
 };
 
-function displayItemsByTypeAsync(items, start, div, id, jumpDiv) {
+function displayItemsByTypeAsync(itemsEntries, start, div, id, jumpDiv, inFarmableStmr = false, inSellableItems = false, inEnhancementCandidates = false) {
     // Set item type for this run and various useful vars
-    var currentItemType = items[start].type;
+    var currentItemType = itemsEntries[start].item.type;
     var currentItemTypeImgHtml = '<i class="img img-equipment-' + currentItemType + '"/>';
 
     var html = '<div class="itemSeparator" id="' + currentItemType + '">' + currentItemTypeImgHtml + '</div>';
     html += '<div class="itemList">';
-    for (var index = start, len = items.length; index < len; index++) {
-        var item = items[index];
-        if (item === undefined || (item.id != "9999999999" && item.access.includes("not released yet") && !itemInventory[item.id])) continue;
+    for (var index = start, len = itemsEntries.length; index < len; index++) {
+        var itemEntry = itemsEntries[index];
+        if (itemEntry.item === undefined || (itemEntry.item.id != "9999999999" && itemEntry.item.access.includes("not released yet") && !itemInventory[itemEntry.item.id])) continue;
 
-        if (item.type === currentItemType) {
-            html += getItemDisplay(item);
+        if (itemEntry.item.type === currentItemType) {
+            html += getItemDisplay(itemEntry, inFarmableStmr, inSellableItems, inEnhancementCandidates);
         } else {
             break;
         }
@@ -245,50 +299,52 @@ function displayItemsByTypeAsync(items, start, div, id, jumpDiv) {
         // Enable jumper
         jumpDiv.find("a.typeJump." + currentItemType).attr('href', '#' + currentItemType).removeClass('disabled');
         // Update lazyloader only for first and last run
-        if (start === 0 || index >= items.length) lazyLoader.update();
+        if (start === 0 || index >= itemsEntries.length) lazyLoader.update();
         // Launch next run of type
-        if (index < items.length) {
-            setTimeout(displayItemsByTypeAsync, 0, items, index, div, id, jumpDiv);
+        if (index < itemsEntries.length) {
+            setTimeout(displayItemsByTypeAsync, 0, itemsEntries, index, div, id, jumpDiv, inFarmableStmr, inSellableItems, inEnhancementCandidates);
         } else {
             setTooltips();
         }
     }
 }
 
-function displayItemsAsync(items, start, div, id, showStmrRecipe = false, max = 20) {
+function displayItemsAsync(itemEntries, start, div, id, showStmrRecipe = false, inSellableItems = false, max = 20) {
     var html = '';
-    var end = Math.min(start + max, items.length);
+    var end = Math.min(start + max, itemEntries.length);
     for (var index = start; index < end; index++) {
-        if (items[index] === undefined || (items[index].id != "9999999999" && items[index].access.includes("not released yet") && !itemInventory[items[index].id])) continue;
-        html += getItemDisplay(items[index], showStmrRecipe);
+        if (itemEntries[index].item === undefined || (itemEntries[index].item.id != "9999999999" && itemEntries[index].item.access.includes("not released yet") && !itemInventory[itemEntries[index].item.id])) continue;
+        html += getItemDisplay(itemEntries[index], showStmrRecipe, inSellableItems);
     }
 
     if (id == displayId) {
         // Add items to the DOM
         div.append(html);
         // Update lazyloader only for first and last run
-        if (start === 0 || index >= items.length) lazyLoader.update();
+        if (start === 0 || index >= itemEntries.length) lazyLoader.update();
         // Launch next run of type
-        if (index < items.length) {
-            setTimeout(displayItemsAsync, 0, items, index, div, id, showStmrRecipe);
+        if (index < itemEntries.length) {
+            setTimeout(displayItemsAsync, 0, itemEntries, index, div, id, showStmrRecipe, inSellableItems);
         } else {
             setTooltips();
         }
     }
 }
 
-function getItemDisplay(item, showStmrRecipe = false)
+function getItemDisplay(itemEntry, showStmrRecipe = false, inSellableItems = false, inEnhancementsCandidates = false)
 {
     var html = "";
 
-    html += '<div class="col-xs-12 col-sm-6 col-lg-4 item ' + escapeName(item.id);
-    if (!itemInventory[item.id]) {
+    let item = itemEntry.item;
+
+    html += '<div class="col-xs-12 col-sm-6 col-lg-4 item ' + itemEntry.id + ' ' + escapeName(item.id);
+    if (!itemEntry.ownedNumber) {
         html += ' notOwned ';
     }
     if (item.tmrUnit && ownedUnits[item.tmrUnit] && ownedUnits[item.tmrUnit].farmable > 0) {
         html += ' farmable';
     }
-    if (itemInventory.enchantments[item.id]) {
+    if (itemEntry.enhanced) {
         html += ' enhanced';
     }
     if (itemInventory.excludeFromExpeditions && itemInventory.excludeFromExpeditions.includes(item.id)) {
@@ -297,34 +353,67 @@ function getItemDisplay(item, showStmrRecipe = false)
     if (itemInventory[item.id] && item.maxNumber && itemInventory[item.id] > item.maxNumber) {
         html += ' maxNumberOverflow';
     }
-    if (showStmrRecipe && item.stmrAccess) {
+    if (inSellableItems ||inSellableItems) {
+        html += '">';
+    } else if (showStmrRecipe && itemEntry.stmrAccess) {
         html += ' stmr">';
     } else {
-        html += '" onclick="addToInventory(\'' + escapeQuote(item.id) + '\')">';
+        html += '" onclick="addToInventory(\'' + itemEntry.id + '\')">';
     }
-    if (showStmrRecipe && item.stmrAccess) {
+
+    if (showStmrRecipe && itemEntry.stmrAccess) {
         html += '<div class="wrapperForStmr">'
     }
     if (itemInventory) {
         html+= '<div class="td inventory">';
-        html += '<span class="glyphicon glyphicon-plus" onclick="event.stopPropagation();addToInventory(\'' + escapeQuote(item.id) + '\')" />';
-        html += '<span class="number badge badge-success">';
-        if (itemInventory[item.id]) {
-            html += itemInventory[item.id];
+        if (!inSellableItems && !inEnhancementsCandidates) {
+            html += '<span class="glyphicon glyphicon-plus" onclick="event.stopPropagation();addToInventory(\'' + itemEntry.id + '\')" />';
         }
-        html += '</span>';
-        html += '<span class="glyphicon glyphicon-minus" onclick="event.stopPropagation();removeFromInventory(\'' + item.id + '\');" />';
-        html += '<img class="farmedButton" onclick="event.stopPropagation();farmedTMR(' + item.tmrUnit + ')" src="/img/units/unit_ills_904000105.png" title="TMR Farmed ! Click here to indicate you farmed this TMR. It will decrease the number you can farm and increase the number you own this TMR by 1"></img>';
-        if (weaponList.includes(item.type)) {
-            html += '<img class="itemWorldButton" onclick="event.stopPropagation();showItemEnhancements(' + item.id + ')" src="/img/icons/dwarf.png" title="Open item management popup"></img>';
-        }
-        html += '<img class="excludeFromExpeditionButton" onclick="event.stopPropagation();excludeFromExpedition(' + item.id + ')" src="/img/icons/excludeExpedition.png" title="Exclude this item from builds made for expeditions"></img>';
+        html += '<span class="number badge badge-success">' + itemEntry.ownedNumber + '</span>';
+        if (!inSellableItems && !inEnhancementsCandidates) {
+            html += '<span class="glyphicon glyphicon-minus" onclick="event.stopPropagation();removeFromInventory(\'' + itemEntry.id + '\');" />';
+            html += '<img class="farmedButton" onclick="event.stopPropagation();farmedTMR(' + item.tmrUnit + ')" src="/img/units/unit_ills_904000105.png" title="TMR Farmed ! Click here to indicate you farmed this TMR. It will decrease the number you can farm and increase the number you own this TMR by 1"></img>';
+            if (weaponList.includes(item.type)) {
+                html += '<img class="itemWorldButton" onclick="event.stopPropagation();modifyItemEnhancements(\'' + itemEntry.id + '\')" src="/img/icons/dwarf.png" title="Open item management popup"></img>';
+            }
+            html += '<img class="excludeFromExpeditionButton" onclick="event.stopPropagation();excludeFromExpedition(' + item.id + ')" src="/img/icons/excludeExpedition.png" title="Exclude this item from builds made for expeditions"></img>';
+        }   
         html += '</div>';
+        if (itemEntry.visionCard && itemEntry.visionCard.levels.length > 1) {
+
+            html += '<span class="vcLevelChange"><span class="vcLevelUp glyphicon glyphicon-arrow-up" onclick="event.stopPropagation();increaseVisionCardLevel(\'' + itemEntry.id + '\');" />';
+            html += '<span class="vcLevelDown glyphicon glyphicon-arrow-down" onclick="event.stopPropagation();decreaseVisionCardLevel(\'' + itemEntry.id + '\');" /></span>';
+        }
     }
+    if (inSellableItems) {
+        html += '<div class="td"><div class="sellableReasons">'
+        if (item.access.some(access => SELLABLE_ITEMS_ACCESS.includes(access))) {
+            if (item.access.includes("shop")) {
+                html += '<span class="betterItems" title="Can be bought in a shop"><i class="fas fa-shopping-cart"></i></span>';
+            } else {
+                html += '<span class="betterItems" title="Can be crafted"><i class="fas fa-scroll"></i></span>';
+            }
+        } 
+        if (betterItemsByIds[item.id] && !item.special) {
+            let betterItemsNumber = 0;
+            let betterItemsString = '';
+            Object.keys(betterItemsByIds[item.id]).forEach(id => {
+                let entry = betterItemsByIds[item.id][id];
+                betterItemsNumber += entry.available;
+                betterItemsString += ', ' + entry.name + ' x' + entry.available;
+            });
+            betterItemsString = betterItemsString.substr(2);
+            html += '<span class="betterItems" title="' + betterItemsString + '">' + betterItemsNumber + '<i class="fas fa-angle-double-up"></i></span>';
+        }
+        html += '</div></div>'
+    }
+    
     html += getImageHtml(item) + getNameColumnHtml(item);
     
-    if (showStmrRecipe && item.stmrAccess) {
+    if (showStmrRecipe && itemEntry.stmrAccess) {
         html += "</div>";
+        
+        
         html += '<div class="stmrRecipe">'
         html += '<div><img class="unitImage" src="/img/units/unit_icon_' + item.stmrUnit.substr(0, item.stmrUnit.length - 1) + 7 + '.png"/></div>';
         html += '<div class="column">'
@@ -332,21 +421,21 @@ function getItemDisplay(item, showStmrRecipe = false)
         html += '<div class="unitName">' + toLink(units[item.stmrUnit].name) + '</div>';
         
         html += '<div class="recipe">';
-        if (item.stmrAccess.base == "sixStar") {
+        if (itemEntry.stmrAccess.base == "sixStar") {
             html += '<i class="img img-crystal-rainbowCrystal"></i><i class="img img-crystal-rainbowCrystal"></i> &rArr; <i class="img img-crystal-sevenStarCrystal"></i><div class="then">then</div>'
         }
         html += '<i class="img img-crystal-sevenStarCrystal"></i>'
-        if (item.stmrAccess.sevenStar) {
+        if (itemEntry.stmrAccess.sevenStar) {
             html += ' + <i class="img img-crystal-sevenStarCrystal"></i>'
         }
-        if (item.stmrAccess.sixStar) {
+        if (itemEntry.stmrAccess.sixStar) {
             html += ' + '
-            for (let i = 0; i < item.stmrAccess.sixStar; i++) {
+            for (let i = 0; i < itemEntry.stmrAccess.sixStar; i++) {
                 html += '<i class="img img-crystal-rainbowCrystal"></i>'
             }
         }
-        if (item.stmrAccess.stmrMoogle) {
-            html += ' + ' + item.stmrAccess.stmrMoogle + '% <div style="position:relative;"><img class="stmrMoogle" src="/img/units/unit_ills_906000105.png"></div>'
+        if (itemEntry.stmrAccess.stmrMoogle) {
+            html += ' + ' + itemEntry.stmrAccess.stmrMoogle + '% <div style="position:relative;"><img class="stmrMoogle" src="/img/units/unit_ills_906000105.png"></div>'
         }
         html += '</div>';
         html += '</div>';
@@ -358,6 +447,43 @@ function getItemDisplay(item, showStmrRecipe = false)
     
 
     return html;
+}
+
+function increaseVisionCardLevel(itemEntryId) {
+    var itemEntry = equipments.filter(ie => ie.id === itemEntryId)[0];
+    let currentLevel = itemEntry.item.level;
+    let vc = itemEntry.visionCard;
+    if (currentLevel < vc.levels.length) {
+        itemEntry.item.level++;
+        itemInventory.visionCardsLevels[itemEntry.item.id][itemEntry.enhancementPos] = itemEntry.item.level;
+
+        var inventoryDiv = $(".item." + itemEntry.id);
+        let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+        let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+        let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
+        let html = getItemDisplay(itemEntry, inFarmableStmr, inSellableItems, inEnhancementsCandidates);
+        inventoryDiv.replaceWith(html);
+        lazyLoader.update();
+        willSave();
+    }
+}
+
+function decreaseVisionCardLevel(itemEntryId) {
+    var itemEntry = equipments.filter(ie => ie.id === itemEntryId)[0];
+    let currentLevel = itemEntry.item.level;
+    if (currentLevel > 1) {
+        itemEntry.item.level--;
+        itemInventory.visionCardsLevels[itemEntry.item.id][itemEntry.enhancementPos] = itemEntry.item.level;
+
+        var inventoryDiv = $(".item." + itemEntry.id);
+        let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+        let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+        let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
+        let html = getItemDisplay(itemEntry, inFarmableStmr, inSellableItems, inEnhancementsCandidates);
+        inventoryDiv.replaceWith(html);
+        lazyLoader.update();
+        willSave();
+    }
 }
 
 function excludeFromExpedition(id) {
@@ -378,32 +504,93 @@ function excludeFromExpedition(id) {
 }
 
 function findInventoryItemById(id) {
-    var inventoryItem = equipments.find(equip => equip.id === String(id));
+    var inventoryItem = equipments.find(equip => equip.item.id === String(id));
     if (!inventoryItem) {
-        inventoryItem = materia.find(m => m.id === String(id));
+        inventoryItem = materia.find(m => m.item.id === String(id));
     }
     return inventoryItem;
 }
 
-function addToInventory(id, showAlert = true) {
-    var inventoryDiv = $(".item." + escapeName(id));
-    if(itemInventory[id]) {
-        var item = findInventoryItemById(id);
-        if (item.maxNumber && itemInventory[id] >= item.maxNumber) {
+function addToInventory(itemEntryId, showAlert = true, force = false) {
+    var itemEntry = equipments.concat(materia).filter(ie => ie.id === itemEntryId)[0];
+    let itemId = itemEntry.item.id;
+
+    if(itemInventory[itemId]) {
+        if (!force && itemEntry.item.maxNumber && itemInventory[itemId] >= itemEntry.item.maxNumber) {
             if (showAlert) {
-                Modal.showMessage("Limited item", 'You can only have up to ' + item.maxNumber + ' of these');
+                Modal.confirm("Limited item", 'You can only have up to ' + itemEntry.item.maxNumber + ' of these. If you own more, please report it to correct that value. Do you want to add the item nonetheless?', () => {addToInventory(itemEntry.id, false, true)});
             }
             return false;
         } else {
-            itemInventory[id] = itemInventory[id] + 1;
-            inventoryDiv.find(".number").text(itemInventory[id]);
+            itemInventory[itemId] = itemInventory[itemId] + 1;
+            if (itemEntry.visionCard && itemEntry.visionCard.levels.length > 1) {
+                if (!itemInventory.visionCardsLevels[itemEntry.item.id]) {
+                    itemInventory.visionCardsLevels[itemEntry.item.id] = [];
+                }
+                itemInventory.visionCardsLevels[itemEntry.item.id].push(1);
+            }
         }
     } else {
-        itemInventory[id] = 1;
-        inventoryDiv.removeClass('notOwned');
-        inventoryDiv.find(".number").text(itemInventory[id]);
+        itemInventory[itemId] = 1;
+        if (itemEntry.visionCard && itemEntry.visionCard.levels.length > 1) {
+            itemInventory.visionCardsLevels[itemEntry.item.id] = [1];
+        }
         updateUnitAndItemCount();
     }
+
+    let itemEntries = equipments.concat(materia).filter(ie => ie.item.id === itemId);
+    if (itemEntry.enhanced) {
+        let notEnhancedItemEntries = itemEntries.filter(ie => !ie.enhanced);
+        if (notEnhancedItemEntries.length) {
+            itemEntry = notEnhancedItemEntries[0];
+        } else {
+            // no not enhanced itemEntry. Create a new one
+            itemEntry = getItemEntry(itemEntry.item.originalItem, 0);
+            if (itemEntry.item.type === "materia") {
+                materia.push(itemEntry);
+            } else {
+                equipments.push(itemEntry);
+            }
+
+            let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+            let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+            let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
+            let html = getItemDisplay(itemEntry, inFarmableStmr, inSellableItems, inEnhancementsCandidates)
+            let previousInventoryDiv = $(".item." + itemEntries[itemEntries.length - 1].id);
+            previousInventoryDiv.after(html);
+            lazyLoader.update();
+        }
+    }
+    if (itemEntry.visionCard && itemEntry.visionCard.levels.length > 1) {
+        let vc = itemEntry.visionCard;
+        itemEntry = getItemEntry(getCardInstance(itemEntry.visionCard, 1), 0, false, itemInventory.visionCardsLevels[itemEntry.item.id] - 1);
+        itemEntry.visionCard = vc;
+        equipments.push(itemEntry);
+
+        let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+        let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+        let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
+        let html = getItemDisplay(itemEntry, inFarmableStmr, inSellableItems, inEnhancementsCandidates)
+        let previousInventoryDiv = $(".item." + itemEntries[itemEntries.length - 1].id);
+        previousInventoryDiv.after(html);
+        if (!itemEntries[itemEntries.length - 1].owned) {
+            previousInventoryDiv.remove();
+            equipments = equipments.filter(ie => ie.id != itemEntries[itemEntries.length - 1].id);
+        }
+        lazyLoader.update();
+    }
+
+    if (itemEntry.ownedNumber) {
+        itemEntry.ownedNumber++;
+    } else {
+        itemEntry.ownedNumber = 1;
+    }
+    itemEntry.owned = true;
+    var inventoryDiv = $(".item." + itemEntry.id);
+    inventoryDiv.removeClass('notOwned');
+    inventoryDiv.find(".number").text(itemEntry.ownedNumber);
+
+
     willSave();
     displayStats();
     return true;
@@ -413,6 +600,7 @@ function willSave() {
     saveNeeded = true;
     if (saveTimeout) {clearTimeout(saveTimeout)}
     saveTimeout = setTimeout(saveUserData,3000, true, mustSaveUnits, false);
+
     $(".saveInventory").removeClass("hidden");
 }
 
@@ -456,7 +644,6 @@ function showRemoveAllToInventoryDialog() {
 var itemsAddedWithAddAll = [];
 
 function addAllToInventory(items, amount) {
-    var itemInventoryKeys = Object.keys(itemInventory);
     for (var index in items) {
         var item = items[index];
         var key = escapeName(item.id);
@@ -480,18 +667,96 @@ function undoAddAllToInventory() {
 }
 
 
-function removeFromInventory(id) {
-    if(itemInventory[id]) {
-        var inventoryDiv = $(".item." + escapeName(id));
-        if (itemInventory[id] == 1 ) {
-            delete itemInventory[id];
-            inventoryDiv.addClass('notOwned');
-            inventoryDiv.find(".number").text("");
+function removeFromInventory(itemEntryId) {
+    var itemEntry = equipments.concat(materia).filter(ie => ie.id === itemEntryId)[0];
+    let itemId = itemEntry.item.id;
+
+    if(itemInventory[itemId]) {
+        if (itemInventory[itemId] == 1 ) {
+            delete itemInventory[itemId];
+            if (itemInventory.enchantments[itemId]) {
+                delete itemInventory.enchantments[itemId];
+            }
+            if (itemInventory.visionCardsLevels[itemId]) {
+                delete itemInventory.visionCardsLevels[itemId];
+            }
             updateUnitAndItemCount();
         } else {
-            itemInventory[id] = itemInventory[id] - 1;
-            inventoryDiv.find(".number").text(itemInventory[id]);
+            itemInventory[itemId] = itemInventory[itemId] - 1;
+            if (itemEntry.enhanced) {
+                itemInventory.enchantments[itemId].splice(itemEntry.enhancementPos, 1);
+                equipments.filter(ie => ie.item.id === itemId && ie.enhanced && ie.enhancementPos > itemEntry.enhancementPos).forEach(ie => ie.enhancementPos--);
+            }
+            if (itemEntry.visionCard && itemEntry.visionCard.levels.length > 1) {
+                itemInventory.visionCardsLevels[itemId].splice(itemEntry.enhancementPos, 1);
+                equipments.filter(ie => ie.item.id === itemId && ie.enhancementPos > itemEntry.enhancementPos).forEach(ie => ie.enhancementPos--);
+            }
         }
+
+        var inventoryDiv = $(".item." + itemEntryId);
+
+        if (itemEntry.enhanced) {
+            if (!itemInventory[itemId]) {
+                // Need to add back a basic version of the item, not owned
+                itemEntry = getItemEntry(itemEntry.item.originalItem, 0);
+                let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+                let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+                let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
+                let html = getItemDisplay(itemEntry, inFarmableStmr, inSellableItems, inEnhancementsCandidates);
+
+                let itemEntries = equipments.concat(materia).filter(ie => ie.item.id === itemId);
+                let previousInventoryDiv = $(".item." + itemEntries[itemEntries.length - 1].id);
+                previousInventoryDiv.after(html);
+                lazyLoader.update();
+                if (itemEntry.item.type === "materia") {
+                    materia.push(itemEntry);
+                } else {
+                    equipments.push(itemEntry);
+                }
+            }
+            equipments = equipments.filter(e => e.id != itemEntryId);
+            inventoryDiv.remove(); // remove enhanced version.
+        } else if (itemEntry.visionCard) {
+            if (itemEntry.visionCard.levels.length > 1) {
+                if (!itemInventory[itemId]) {
+                    // Need to add back a basic version of the card, not owned
+                    let newItemEntry = getItemEntry(getCardInstance(itemEntry.visionCard, 1), 0);
+                    newItemEntry.visionCard = itemEntry.visionCard;
+
+                    let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+                    let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+                    let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
+                    let html = getItemDisplay(newItemEntry, inFarmableStmr, inSellableItems, inEnhancementsCandidates);
+
+                    let itemEntries = equipments.concat(materia).filter(ie => ie.item.id === itemId);
+                    let previousInventoryDiv = $(".item." + itemEntries[itemEntries.length - 1].id);
+                    previousInventoryDiv.after(html);
+                    equipments.push(newItemEntry);
+                }
+                equipments = equipments.filter(e => e.id != itemEntryId);
+                inventoryDiv.remove(); // remove card
+            } else {
+                if (!itemInventory[itemId]) {
+                    inventoryDiv.addClass('notOwned');
+                }
+                inventoryDiv.find(".number").text(itemInventory[itemId]);
+            }
+        } else {
+            let newNumber = (itemInventory[itemId] || 0) - (itemInventory.enchantments[itemId] || []).length;
+            inventoryDiv.find(".number").text(newNumber);
+            if (newNumber === 0) {
+                if ((itemInventory.enchantments[itemId] || []).length > 0) {
+                    // Only enhanced items remain, remove non enhanced entry
+                    inventoryDiv.remove();
+                    equipments = equipments.filter(e => e.id != itemEntryId);
+                } else {
+                    inventoryDiv.addClass('notOwned');
+                    inventoryDiv.removeClass('enhanced');
+                    inventoryDiv.find(".number").text("");
+                }
+            }
+        }
+
         mustSaveUnits = true;
         willSave();
         displayStats();
@@ -503,7 +768,8 @@ function farmedTMR(unitId) {
     for (var index = data.length; index--;) {
         if (data[index].tmrUnit && data[index].tmrUnit == unitId) {
             item = data[index];
-            addToInventory(item.id);
+            itemEntry = findInventoryItemById(item.id);
+            addToInventory(itemEntry.id);
             break;
         }
     }
@@ -522,6 +788,8 @@ function search(textToSearch) {
     let result = [];
     let inEquipment = $(".nav-tabs li.equipment").hasClass("active");
     let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+    let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+    let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
     let onlyTimeLimited = $('#onlyTimeLimited').prop('checked');
     
     var itemsToSearch = [];
@@ -535,6 +803,12 @@ function search(textToSearch) {
             itemsToSearch = itemsToSearch.filter(stmr => units[stmr.stmrUnit].summon_type === 'event')
         }
         farmableStmrLastSearch = textToSearch;
+    } else if (inSellableItems) {
+        textToSearch = "";
+        itemsToSearch = getSellableItems();
+    } else if (inEnhancementsCandidates) {
+        textToSearch = "";
+        itemsToSearch = getEnhancementCandidates();
     } else {
         // In materia tab
         itemsToSearch = materia;
@@ -543,9 +817,9 @@ function search(textToSearch) {
 
     if (textToSearch) {
         for (var index in itemsToSearch) {
-            var item = itemsToSearch[index];
-            if (containsText(textToSearch, item)) {
-                result.push(item);
+            var itemEntry = itemsToSearch[index];
+            if (containsText(textToSearch, itemEntry.item)) {
+                result.push(itemEntry);
             }
         }
     } else {
@@ -555,28 +829,209 @@ function search(textToSearch) {
     return result;
 }
 
-function keepOnlyOneOfEachEquipement() {
+function getEnhancementCandidates() {
+    let searchDepth = parseInt($('#enhancementCandidatesSearchDepth').val() || 1);
+    let enemyStats = {
+        "races": killerList,
+        "def": 100,
+        "spr": 100,
+        "elementalResists": {"dark": 0,"light": 0,"earth": 0,"wind": 0,"water": 0,"lightning": 0,"ice": 0,"fire": 0},
+        "breaks": {"atk": 0,"def": 0,"mag": 0,"spr": 0},
+        "buffs": {"atk": 0,"def": 0,"mag": 0,"spr": 0},
+        "breakability": {"atk": true,"def": true,"mag": true,"spr": true},
+        "imperils": {"fire": 0,"ice": 0,"lightning": 0,"water": 0,"earth": 0,"wind": 0,"light": 0,"dark": 0}
+    }
+    let involvedStats = baseStats.concat(["physicalKiller", "magicalKiller","meanDamageVariance", "evoMag", "jumpDamage", "lbDamage", "drawAttacks", "lbPerTurn", "evade.physical", "evade.magical", "mpRefresh"]).concat(ailmentList.map(a => 'resist|' + a + '.percent')).concat(elementList.map(e => 'resist|' + e + '.percent'));
+    
+    let candidateItemIds = [];
+    let itemEntriesToSearchIn = equipments.filter(ie => weaponList.includes(ie.item.type) && itemInventory[ie.item.id]);
+    let byTypeAndElements = {};
+    itemEntriesToSearchIn.forEach(entry => {
+        if (weaponList.includes(entry.item.type)) {
+            if (!byTypeAndElements[entry.item.type]) {
+                byTypeAndElements[entry.item.type] = {};
+            }
+            let elements = getItemElementsKey(entry.item);
+            if (!byTypeAndElements[entry.item.type][elements]) {
+                byTypeAndElements[entry.item.type][elements] = [];
+            }
+            byTypeAndElements[entry.item.type][elements].push(entry);
+        } else {
+            if (!byTypeAndElements[entry.item.type]) {
+                byTypeAndElements[entry.item.type] = [];
+            }
+            byTypeAndElements[entry.item.type].push(entry);
+        }
+    });
+    typeList.forEach(type => {
+        if (byTypeAndElements[type]) {
+            Object.keys(byTypeAndElements[type]).forEach(elements => treatTypeForEnhancementCandidates(byTypeAndElements[type][elements], involvedStats, enemyStats, candidateItemIds, searchDepth));
+        }
+    });
+    
+    return itemEntriesToSearchIn.filter(entry => itemInventory[entry.item.id] && (entry.item.partialDualWield || (entry.item.special && entry.item.special.includes('dualWield')) || candidateItemIds.includes(entry.id)));
+}
+
+function getSellableItems() {
+    let searchDepth = parseInt($('#betterItemsNumber').val() || 4);
+    let enemyStats = {
+        "races": killerList,
+        "def": 100,
+        "spr": 100,
+        "elementalResists": {"dark": 0,"light": 0,"earth": 0,"wind": 0,"water": 0,"lightning": 0,"ice": 0,"fire": 0},
+        "breaks": {"atk": 0,"def": 0,"mag": 0,"spr": 0},
+        "buffs": {"atk": 0,"def": 0,"mag": 0,"spr": 0},
+        "breakability": {"atk": true,"def": true,"mag": true,"spr": true},
+        "imperils": {"fire": 0,"ice": 0,"lightning": 0,"water": 0,"earth": 0,"wind": 0,"light": 0,"dark": 0}
+    }
+    let involvedStats = baseStats.concat(["physicalKiller", "magicalKiller","meanDamageVariance", "evoMag", "jumpDamage", "lbDamage", "drawAttacks", "lbPerTurn", "evade.physical", "evade.magical", "mpRefresh"]).concat(ailmentList.map(a => 'resist|' + a + '.percent')).concat(elementList.map(e => 'resist|' + e + '.percent'));
+    
+    let sellableItemIds = [];
+    let itemEntriesToSearchIn = equipments.concat(materia).filter(ie => !ie.item.exclusiveUnits && !ie.item.equipedConditions && itemInventory[ie.item.id]);
+    let byTypeAndElements = {};
+    itemEntriesToSearchIn.forEach(entry => {
+        if (weaponList.includes(entry.item.type)) {
+            if (!byTypeAndElements[entry.item.type]) {
+                byTypeAndElements[entry.item.type] = {};
+            }
+            let elements = getItemElementsKey(entry.item);
+            if (!byTypeAndElements[entry.item.type][elements]) {
+                byTypeAndElements[entry.item.type][elements] = [];
+            }
+            byTypeAndElements[entry.item.type][elements].push(entry);
+        } else {
+            if (!byTypeAndElements[entry.item.type]) {
+                byTypeAndElements[entry.item.type] = [];
+            }
+            byTypeAndElements[entry.item.type].push(entry);
+        }
+    });
+    typeList.forEach(type => {
+        if (byTypeAndElements[type]) {
+            if (weaponList.includes(type)) {
+                Object.keys(byTypeAndElements[type]).forEach(elements => treatTypeForSellableItems(byTypeAndElements[type][elements], involvedStats, enemyStats, sellableItemIds, searchDepth));
+            } else {
+                treatTypeForSellableItems(byTypeAndElements[type], involvedStats, enemyStats, sellableItemIds, searchDepth);
+            }
+        }
+    });
+    
+    let includeRecipeItems = $('#includeRecipeItems').prop('checked');
+    let accessToDisplay = (includeRecipeItems ? SELLABLE_ITEMS_ACCESS : ["shop"]);
+    
+    return itemEntriesToSearchIn.filter(entry => itemInventory[entry.item.id] && (entry.item.access.some(access => accessToDisplay.includes(access)) || !entry.item.partialDualWield && !entry.item.equipedConditions && !entry.item.allowUseOf && !entry.item.special && sellableItemIds.includes(entry.id)));
+}
+
+function getItemElementsKey(item) {
+    if (!item.element) {
+        return elements = "none";
+    } else {
+        return item.element.sort().join('-');
+    }
+}
+
+function treatTypeForEnhancementCandidates(items, involvedStats, enemyStats, candidateItemIds, searchDepth) {
+    let itemPool = new ItemPool(searchDepth +1, involvedStats, enemyStats, [], [], [], true, true);
+    itemPool.addItems(items);
+    itemPool.prepare();
+    let alreadyManagedGroupIds = [];
+    itemPool.keptItems.filter(ki => ki.active).forEach(group => {findEnhancementCandidates(itemPool, group, candidateItemIds, alreadyManagedGroupIds, searchDepth)});    
+}
+
+function treatTypeForSellableItems(items, involvedStats, enemyStats, sellableItemIds, searchDepth) {
+    let itemPool = new ItemPool(9999, involvedStats, enemyStats, [], [], [], true, true);
+    itemPool.addItems(items);
+    itemPool.prepare();
+    let alreadyManagedGroupIds = [];
+    itemPool.keptItems.filter(ki => ki.active).forEach(group => {findSellableItems(itemPool, group, sellableItemIds, alreadyManagedGroupIds, searchDepth)});    
+}
+
+let betterItemsByIds = {};
+
+function findEnhancementCandidates(itemPool, group, candidateItemIds, alreadyManagedGroupIds, searchDepth) {
+    if (alreadyManagedGroupIds.includes(group.id)) {
+        return;
+    }
+    alreadyManagedGroupIds.push(group.id);
+    let betterItemsNumbers = 0;
+    group.betterGroups.forEach(betterGroupId => {
+        betterItemsNumbers += itemPool.groupByIds[betterGroupId].available;
+    });
+    if (betterItemsNumbers <= searchDepth) {
+        group.equivalents.forEach(itemEntry => {
+            let id = itemEntry.id;
+            if (!candidateItemIds.includes(id)) {
+                candidateItemIds.push(id);
+            }
+        }) 
+    }
+    if (itemPool.lesserGroupsById[group.id]) {
+        itemPool.lesserGroupsById[group.id].forEach(id => {
+            findEnhancementCandidates(itemPool, itemPool.groupByIds[id], candidateItemIds, alreadyManagedGroupIds, searchDepth);
+        });
+    }
+}
+
+function findSellableItems(itemPool, group, sellableItemIds, alreadyManagedGroupIds, searchDepth) {
+    if (alreadyManagedGroupIds.includes(group.id)) {
+        return;
+    }
+    alreadyManagedGroupIds.push(group.id);
+    let betterItemsNumbers = 0;
+    group.betterGroups.forEach(betterGroupId => {
+        betterItemsNumbers += itemPool.groupByIds[betterGroupId].available;
+    });
+    if (betterItemsNumbers > searchDepth) {
+        let betterItems = {};
+        findBetterItemList(itemPool, group, betterItems);
+        group.equivalents.forEach(itemEntry => {
+            let id = itemEntry.id;
+            if (!sellableItemIds.includes(id)) {
+                sellableItemIds.push(id);
+                betterItemsByIds[id] = betterItems;
+            }
+        }) 
+    }
+    if (itemPool.lesserGroupsById[group.id]) {
+        itemPool.lesserGroupsById[group.id].forEach(id => {
+            findSellableItems(itemPool, itemPool.groupByIds[id], sellableItemIds, alreadyManagedGroupIds, searchDepth);
+        });
+    }
+}
+
+function findBetterItemList(itemPool, group, betterItems) {
+    if (group.betterGroups && group.betterGroups.length > 0) {
+        group.betterGroups.forEach(id => {
+            let betterGroup = itemPool.groupByIds[id];
+            betterGroup.equivalents.forEach(eq => {
+                if (!betterItems[eq.id]) {
+                    betterItems[eq.id] = eq;
+                }
+            });
+        });
+    }
+}
+
+function keepOnlyOneOfEach(data) {
     var tempResult = {};
     for (var index in data) {
         var item = data[index];
-        if (item.type != "materia") {
-            if (tempResult[item.id]) {
-                var alreadyPutItem = tempResult[item.id];
-                if (item.equipedConditions) {
-                    if (alreadyPutItem.equipedConditions) {
-                        if (item.equipedConditions.length > alreadyPutItem.equipedConditions.length) {
-                            tempResult[item.id] = item;
-                        }
-                    } else {
+        if (tempResult[item.id]) {
+            var alreadyPutItem = tempResult[item.id];
+            if (item.equipedConditions) {
+                if (alreadyPutItem.equipedConditions) {
+                    if (item.equipedConditions.length > alreadyPutItem.equipedConditions.length) {
                         tempResult[item.id] = item;
                     }
-                }
-                if (item.exclusiveUnits) {
+                } else {
                     tempResult[item.id] = item;
                 }
-            } else {
+            }
+            if (item.exclusiveUnits) {
                 tempResult[item.id] = item;
             }
+        } else {
+            tempResult[item.id] = item;
         }
     }
     
@@ -588,66 +1043,30 @@ function keepOnlyOneOfEachEquipement() {
     return result;
 }
 
-function keepOnlyOneOfEachMateria() {
-    var result = [];
-    
-    var tempResult = {};
-    for (var index in data) {
-        var item = data[index];
-        if (item.type == "materia") {
-            if (tempResult[item.id]) {
-                var alreadyPutItem = tempResult[item.id];
-                if (item.equipedConditions) {
-                    if (alreadyPutItem.equipedConditions) {
-                        if (item.equipedConditions.length > alreadyPutItem.equipedConditions.length) {
-                            tempResult[item.id] = item;
-                        }
-                    } else {
-                        tempResult[item.id] = item;
-                    }
-                }
-                if (item.exclusiveUnits) {
-                    tempResult[item.id] = item;
-                }
-            } else {
-                tempResult[item.id] = item;
-            }
-        }
-    }
-    
-    for (var index in tempResult) {
-        result.push(tempResult[index]);
-        itemsById[tempResult[index].id] = tempResult[index];
-    }
-    
-    return result;
-}
 
 function keepOnlyStmrs() {
-    stmrs = equipments.filter(item => {
-        return item.stmrUnit && ownedUnits[item.stmrUnit] && (ownedUnits[item.stmrUnit].farmableStmr > 0 || ownedUnits[item.stmrUnit].number >= 2)
+    stmrs = equipments.filter(itemEntry => {
+        return itemEntry.item.stmrUnit && ownedUnits[itemEntry.item.stmrUnit] && (ownedUnits[itemEntry.item.stmrUnit].farmableStmr > 0 || ownedUnits[itemEntry.item.stmrUnit].number >= 2)
     });
-    stmrs = stmrs.concat(materia.filter(item => item.stmrUnit && ownedUnits[item.stmrUnit] && (ownedUnits[item.stmrUnit].farmableStmr > 0 || ownedUnits[item.stmrUnit].number >= 2)));
+    stmrs = stmrs.concat(materia.filter(itemEntry => itemEntry.item.stmrUnit && ownedUnits[itemEntry.item.stmrUnit] && (ownedUnits[itemEntry.item.stmrUnit].farmableStmr > 0 || ownedUnits[itemEntry.item.stmrUnit].number >= 2)));
+    stmrs = stmrs.map(s => getItemEntry(s.item.originalItem || s.item, itemInventory[s.item.id] || 0));
     stmrs.forEach(stmr => {
-        if (stmr.stmrUnit == "100005805") {
-            console.log("!!");
-        }
         stmr.stmrAccess = {
             'base':"",
             'sevenStar': 0,
             'sixStar': 0,
             'stmrMoogle': 100
         }
-        if (ownedUnits[stmr.stmrUnit].farmableStmr) {
+        if (ownedUnits[stmr.item.stmrUnit].farmableStmr) {
             stmr.stmrAccess.base = "sevenStar";
         } else {
             stmr.stmrAccess.base = "sixStar";
         }
-        if (ownedUnits[stmr.stmrUnit].farmableStmr > 1) {
+        if (ownedUnits[stmr.item.stmrUnit].farmableStmr > 1) {
             stmr.stmrAccess.sevenStar = 1;
             stmr.stmrAccess.stmrMoogle = 0;
         } else {
-            let sixStarNumber = stmr.stmrAccess.base == "sixStar" ? ownedUnits[stmr.stmrUnit].number - 2 : ownedUnits[stmr.stmrUnit].number;
+            let sixStarNumber = stmr.stmrAccess.base == "sixStar" ? ownedUnits[stmr.item.stmrUnit].number - 2 : ownedUnits[stmr.item.stmrUnit].number;
             if (sixStarNumber >= 2) {
                 stmr.stmrAccess.sixStar = 2;
                 stmr.stmrAccess.stmrMoogle = 0;
@@ -672,10 +1091,12 @@ var sortOrderByType = {
     "accessory": ["def","spr","atk","mag","hp","mp", "sortId"],
     "materia": []
 }
-function sort(items) {
-    return items.sort(function (item1, item2){
-        var type1 = getStat(item1, "type");
-        var type2 = getStat(item2, "type");
+function sort(itemEntries) {
+    return itemEntries.sort(function (itemEntry1, itemEntry2){
+        let item1 = itemEntry1.item;
+        let item2 = itemEntry2.item;
+        let type1 = getStat(item1, "type");
+        let type2 = getStat(item2, "type");
         if (type1 == type2) {
             var sortOrder = sortOrderDefault;
             if (sortOrderByType[item1.type]) {
@@ -748,80 +1169,92 @@ function getStat(item, stat) {
     }
 }
 
-function showItemEnhancements(itemId) {
-    if (itemInventory[itemId]) {
-        var item = null;
-        for (var i = 0, len = equipments.length; i < len; i++) {
-            if (equipments[i].id == itemId) {
-                item = equipments[i];
-                break;
-            }
-        }
-        if (!item) { return; }
-        currentEnhancementItem = item;
-        var totalCount = itemInventory[itemId];
-        var notEnchantedCount = totalCount;
-        if (itemInventory.enchantments[itemId]) {
-            notEnchantedCount = totalCount - itemInventory.enchantments[itemId].length;
-        }
-        var html = '<div class="btn" onclick="showEquipments()"><span class="glyphicon glyphicon-chevron-left"></span>Back to list</div>';
-        if (notEnchantedCount > 0) {
-            html += '<div><div class="col-xs-6 item">';
-            html += '<div class="td inventory"><span class="number badge badge-success">' + notEnchantedCount + '</span><img class="itemWorldButton" onclick="event.stopPropagation();modifyItemEnhancements(' + item.id + ')" src="/img/icons/dwarf.png" title="Open item management popup"></div>';
-            html += getImageHtml(item) + getNameColumnHtml(item);
-            html += "</div></div>";
-        }
-        if (itemInventory.enchantments[itemId]) {
-            for (var i = 0, len = itemInventory.enchantments[itemId].length; i < len; i++) {
-                var enhancedItem = applyEnhancements(item, itemInventory.enchantments[itemId][i]);
-                html += '<div><div class="col-xs-6 item enhanced">';
-                html += '<div class="td inventory"><span class="number badge badge-success">1</span><img class="itemWorldButton" onclick="event.stopPropagation();modifyItemEnhancements(' + item.id + ', ' + i + ')" src="/img/icons/dwarf.png" title="Open item management popup"></div>';
-                html += getImageHtml(enhancedItem) + getNameColumnHtml(enhancedItem);
-                html += "</div></div>";
-            }
-        }
-        $("#results").addClass("hidden");
-        $("#itemEnhancement").html(html);
-        $("#itemEnhancement").removeClass("hidden");
-        var popupAlreadyDisplayed = ($("#modifyEnhancementModal").data('bs.modal') || {}).isShown
-        if (!popupAlreadyDisplayed && notEnchantedCount == totalCount) {
-            modifyItemEnhancements(item.id);
-        }
-        lazyLoader.update();
-    }
-}
 
-function modifyItemEnhancements(itemId, enhancementPos) {
+function modifyItemEnhancements(itemEntryId) {
+
+    let itemEntry = equipments.filter(ie => ie.id === itemEntryId)[0];
+    let itemId = itemEntry.item.id;
+    let enhancementItemPos = 0;
+    if (itemEntry.enhanced) {
+        sameItemEntryIds = equipments.filter(ie => ie.item.id === itemId && ie.enhanced).map(ie => ie.id);
+        enhancementItemPos = sameItemEntryIds.indexOf(itemEntry.id);
+    } else{
+        if (!itemInventory.enchantments[itemId]) {
+            itemInventory.enchantments[itemId] = [];
+        }
+        newItemEntry = getItemEntry(itemEntry.item, 1, true, itemInventory.enchantments[itemId].length);
+
+        itemInventory.enchantments[itemId].push([]);
+        enhancementItemPos = itemInventory.enchantments[itemId].length - 1;
+        equipments.push(newItemEntry);
+
+        var itemDiv = $(".item." + itemEntryId);
+        let newNumber = (itemInventory[itemId] || 0) - (itemInventory.enchantments[itemId] || []).length;
+        itemEntry.ownedNumber = newNumber;
+        itemDiv.find(".number").text(newNumber);
+
+        let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+        let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+        let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
+        let html = getItemDisplay(newItemEntry, inFarmableStmr, inSellableItems, inEnhancementsCandidates);
+        itemDiv.before(html);
+
+        if (newNumber === 0) {
+            itemDiv.remove();
+            equipments = equipments.filter(e => e.id != itemEntryId);
+        }
+        itemEntry = newItemEntry;
+
+    }
+    currentEnhancementItem = itemEntry;
     
-    currentEnhancementItemPos = enhancementPos;
+    currentEnhancementItemPos = enhancementItemPos;
     var popupAlreadyDisplayed = ($("#modifyEnhancementModal").data('bs.modal') || {}).isShown
     if (!popupAlreadyDisplayed) {
         $("#modifyEnhancementModal").modal();
     }
-    
+
+    updateItemEnhancementDisplay();
+}
+
+function updateItemEnhancementDisplay() {
+
     $("#modifyEnhancementModal .value").removeClass("selected");
-    var item = currentEnhancementItem;
-    if (typeof currentEnhancementItemPos != 'undefined') {
-        var enhancements = itemInventory.enchantments[currentEnhancementItem.id][currentEnhancementItemPos];
-        for (var i = enhancements.length; i--;) {
-            $("#modifyEnhancementModal .value." + enhancements[i]).addClass("selected");
-        }
-        item = applyEnhancements(currentEnhancementItem, enhancements);
+    let item = currentEnhancementItem.item;
+    let itemId = item.id;
+    var enhancements = itemInventory.enchantments[itemId][currentEnhancementItemPos];
+    for (var i = enhancements.length; i--;) {
+        $("#modifyEnhancementModal .value." + enhancements[i]).addClass("selected");
     }
-    $("#modifyEnhancementModal .modal-header .title").html(getImageHtml(item) + getNameColumnHtml(item));
+    item = applyEnhancements((currentEnhancementItem.item.originalItem ? currentEnhancementItem.item.originalItem : currentEnhancementItem.item), enhancements);
+    currentEnhancementItem.item = item;
+
+    $("#modifyEnhancementModal .modal-header .title").html('<span class="item ' + currentEnhancementItem.id + '">' + getImageHtml(item) + getNameColumnHtml(item) + '</span>');
     $("#modifyEnhancementModal .value.rare_3").html(itemEnhancementLabels["rare_3"][item.type]);
     $("#modifyEnhancementModal .value.rare_4").html(itemEnhancementLabels["rare_4"][item.type]);
+    if (itemEnhancementLabels["special_1"][item.id]) {
+        $("#modifyEnhancementModal .value.special_1").removeClass("hidden");
+        $("#modifyEnhancementModal .value.special_1").html(itemEnhancementLabels["special_1"][item.id]);
+    } else {
+        $("#modifyEnhancementModal .value.special_1").addClass("hidden");
+    }
+
+    var itemDiv = $(".item." + currentEnhancementItem.id);
+    let inFarmableStmr = $(".nav-tabs li.farmableStmr").hasClass("active");
+    let inSellableItems = $(".nav-tabs li.sellableItems").hasClass("active");
+    let inEnhancementsCandidates = $(".nav-tabs li.enhancementCandidates").hasClass("active");
+    let html = getItemDisplay(currentEnhancementItem, inFarmableStmr, inSellableItems, inEnhancementsCandidates);
+    itemDiv.before(html);
+    itemDiv.remove();
+
+    lazyLoader.update();
 }
 
 function toggleItemEnhancement(enhancement) {
-    if (!itemInventory.enchantments[currentEnhancementItem.id]) {
-        itemInventory.enchantments[currentEnhancementItem.id] = [];
+    if (!itemInventory.enchantments[currentEnhancementItem.item.id]) {
+        itemInventory.enchantments[currentEnhancementItem.item.id] = [];
     }
-    if (typeof currentEnhancementItemPos == 'undefined') {
-        itemInventory.enchantments[currentEnhancementItem.id].push([]);
-        currentEnhancementItemPos = itemInventory.enchantments[currentEnhancementItem.id].length - 1;
-    }
-    var enhancements = itemInventory.enchantments[currentEnhancementItem.id][currentEnhancementItemPos];
+    var enhancements = itemInventory.enchantments[currentEnhancementItem.item.id][currentEnhancementItemPos];
     if (enhancements.includes(enhancement)) {
         enhancements.splice(enhancements.indexOf(enhancement), 1);
         if (enhancements.length == 0) {
@@ -845,29 +1278,11 @@ function toggleItemEnhancement(enhancement) {
         
         enhancements.push(enhancement);
     }
-    modifyItemEnhancements(currentEnhancementItem.id, currentEnhancementItemPos);
-    showItemEnhancements(currentEnhancementItem.id);
-    if (itemInventory.enchantments[currentEnhancementItem.id]) {
-        $("#results .items." + currentEnhancementItem.id).addClass("enhanced");
-    } else {
-        $("#results .items." + currentEnhancementItem.id).removeClass("enhanced");
-    }
+    updateItemEnhancementDisplay();
+
     willSave();
 }
 
-
-function inventoryLoaded() {
-    if (data) {
-        showEquipments();
-        keepOnlyStmrs();
-    }
-}
-
-function notLoaded() {
-    $("#pleaseWaitMessage").addClass("hidden");
-    $("#loginMessage").removeClass("hidden");
-    $("#itemsWrapper").addClass("hidden");
-}
 
 function prepareSearch(data) {
     for (var index in data) {
@@ -882,6 +1297,13 @@ function prepareSearch(data) {
         if (item.stmrUnit && units[item.stmrUnit]) {
             item.searchString += "|" + units[item.stmrUnit].name;
         }
+    }
+}
+
+function prepareVisionCardSearch(vc) {
+    vc.searchString = vc.name;
+    if (vc.jpname) {
+        vc.searchString += "|" + vc.jpname;
     }
 }
 
@@ -901,19 +1323,26 @@ function prepareLastItemReleases() {
         }
     }
     var tmrs = {};
+    var stmrs = {};
     var events = {};
     var itemsById = {};
     var items = equipments.concat(materia);
     for (var index in items) {
-        if (items[index].tmrUnit && unitsToSearch.includes(items[index].tmrUnit)) {
-            tmrs[items[index].tmrUnit] = items[index];
+        if (items[index].item.tmrUnit && unitsToSearch.includes(items[index].item.tmrUnit)) {
+            tmrs[items[index].item.tmrUnit] = items[index];
         }
-        if (items[index].eventName && eventsToSearch.includes(items[index].eventName)) {
-            if (!events[items[index].eventName]) {events[items[index].eventName] = []}
-            events[items[index].eventName].push(items[index]);
+        if (items[index].item.stmrUnit && unitsToSearch.includes(items[index].item.stmrUnit)) {
+            stmrs[items[index].item.stmrUnit] = items[index];
         }
-        if (items[index].id && idsToSearch.includes(items[index].id)) {
-            itemsById[items[index].id] = items[index];
+        if (items[index].item.eventNames && items[index].item.eventNames.some(event => eventsToSearch.includes(event))) {
+            items[index].item.eventNames.forEach(eventNames => {
+                if (!events[eventNames]) {events[eventNames] = []}
+                events[eventNames].push(items[index]);
+            });
+
+        }
+        if (items[index].item.id && idsToSearch.includes(items[index].item.id)) {
+            itemsById[items[index].item.id] = items[index];
         }
     }
     for (var dateIndex in lastItemReleases) {
@@ -922,6 +1351,9 @@ function prepareLastItemReleases() {
                 lastItemReleases[dateIndex].sources[sourceIndex].items = [];
                 for (var unitIndex in lastItemReleases[dateIndex].sources[sourceIndex].units) {
                     lastItemReleases[dateIndex].sources[sourceIndex].items.push(tmrs[lastItemReleases[dateIndex].sources[sourceIndex].units[unitIndex]]);
+                    if (stmrs[lastItemReleases[dateIndex].sources[sourceIndex].units[unitIndex]]) {
+                        lastItemReleases[dateIndex].sources[sourceIndex].items.push(stmrs[lastItemReleases[dateIndex].sources[sourceIndex].units[unitIndex]]);
+                    }
                 }
             } else if (lastItemReleases[dateIndex].sources[sourceIndex].type == "event") {
                 lastItemReleases[dateIndex].sources[sourceIndex].items = events[lastItemReleases[dateIndex].sources[sourceIndex].name];
@@ -947,7 +1379,9 @@ function exportAsCsv() {
                 itemInventory.enchantments[item.id].forEach(enhancements => {
                     csv +=  "\"" + item.id + "\";" + "\"" + item.name + "\";" + "\"" + item.type + '";1;"' + (item.tmrUnit ? units[item.tmrUnit].name : "") + '";"' + item.access.join(", ") + '"';
                     enhancements.forEach(enhancement => {
-                        if (enhancement.startsWith('rare')) {
+                        if (enhancement === 'special_1') {
+                            csv += ';"' + itemEnhancementLabels[enhancement][item.id] + '"';
+                        } else if (enhancement.startsWith('rare')) {
                             csv += ';"' + itemEnhancementLabels[enhancement][item.type] + '"';
                         } else {
                             csv += ';"' + itemEnhancementLabels[enhancement] + '"';
@@ -980,7 +1414,9 @@ function exportAsJson() {
           itemInventory.enchantments[id].forEach(enh => {
             let enhancedItemResult = {"id" : id, "count": 1, "enhancements": [] }
             enhancedItemResult.enhancements = enh.map(e => {
-                if (e == 'rare_3' || e == 'rare_4') {
+                if (e === 'special_1') {
+                    return skillIdByItemEnhancement[e][id];
+                } else if (e == 'rare_3' || e == 'rare_4') {
                     return skillIdByItemEnhancement[e][typeById[id]];
                 } else {
                     return skillIdByItemEnhancement[e];
@@ -1012,7 +1448,7 @@ function importInventory() {
         title: "Import inventory",
         body: '<p class="label label-danger">This feature is a Work in Progress. It will override your inventory on FFBE Equip</p><br/><br/>' +
               '<input type="file" id="importFile" name="importFile" onchange="treatImportFile"/><br/>'+
-              '<p><a class="link" href="https://www.reddit.com/r/FFBraveExvius/comments/asd3ps/ffbe_data_exporter_its_back/?st=jsc28fu2&sh=a61614c2">Instructions to import your data directly from the game</a> (require +login to FFBE with Facebook for now. Google login will probably be supported later)</p><br>' +
+              '<p><a class="link" href="https://www.reddit.com/r/FFBraveExvius/comments/dd8ljd/ffbe_sync_is_back/">Instructions to import your data directly from the game</a> (require login to FFBE with Facebook or Google)</p><br>' +
               '<p id="importSummary"></p>',
         buttons: [{
             text: "Import",
@@ -1020,6 +1456,7 @@ function importInventory() {
                 if (importedItemInventory) {
                     itemInventory = importedItemInventory;
                     saveUserData(true, false, false);
+                    updateData();
                     showEquipments();
                 } else {
                     Modal.show("Please select a file to import");
@@ -1036,8 +1473,6 @@ let importedItemInventory;
 
 function treatImportFile(evt) {
     var f = evt.target.files[0]; // FileList object
-    
-    
   
     var reader = new FileReader();
     
@@ -1052,28 +1487,48 @@ function treatImportFile(evt) {
                 return;
             }
             importedItemInventory = {"enchantments":{}};
+            let visionCardIds = visionCards.map(vc => vc.id);
             temporaryResult.forEach(item => {
                 if (!item.id) {
                     Modal.showMessage("item doesn't have id : " + JSON.stringify(item));
                     importedOwnedUnit = null;
                     return;
                 } else {
-                    if (!dataIds.includes(item.id)) {
+                    if (idToIgnoreOnImport[server].includes(item.id)) return;
+                    if (dataIds.includes(item.id)) {
+                        if (!importedItemInventory[item.id]) {
+                            importedItemInventory[item.id] = 0;
+                        }
+                        importedItemInventory[item.id] += parseInt(item.count);
+
+                        if (item.enhancements) {
+                            if (!importedItemInventory.enchantments[item.id]) {
+                                importedItemInventory.enchantments[item.id] = [];
+                            }
+                            importedItemInventory.enchantments[item.id].push(item.enhancements.map(e => itemEnhancementBySkillId[e]));
+                        }
+                    } else if (visionCardIds.includes(item.id)) {
+                        if (!importedItemInventory[item.id]) {
+                            importedItemInventory[item.id] = 0;
+                        }
+                        importedItemInventory[item.id] += parseInt(item.count);
+                        let vc = visionCards.find(vc => vc.id == item.id);
+                        if (vc.levels.length > 1) {
+                            if (!importedItemInventory.visionCardsLevels) {
+                                importedItemInventory.visionCardsLevels = {};
+                            }
+                            if (!importedItemInventory.visionCardsLevels[item.id]) {
+                                importedItemInventory.visionCardsLevels[item.id] = [];
+                            }
+                            importedItemInventory.visionCardsLevels[item.id].push(item.level);
+                        }
+
+                    } else {
                         Modal.showMessage('unknown item id : ' + item.id);
                         importedOwnedUnit = null;
                         return;
                     }
-                    if (!importedItemInventory[item.id]) {
-                        importedItemInventory[item.id] = 0;
-                    }
-                    importedItemInventory[item.id] += parseInt(item.count);
-                    
-                    if (item.enhancements) {
-                        if (!importedItemInventory.enchantments[item.id]) {
-                            importedItemInventory.enchantments[item.id] = [];
-                        }
-                        importedItemInventory.enchantments[item.id].push(item.enhancements.map(e => itemEnhancementBySkillId[e]));
-                    }
+
                 }
             });
             $('#importSummary').text('Items to import : ' + Object.keys(importedItemInventory).length);
@@ -1089,8 +1544,12 @@ function treatImportFile(evt) {
 function displayStats() {
     var stats = {};
 
-    for (var index = 0, len = equipments.length; index < len; index++) {
-        var item = equipments[index];
+    let items = keepOnlyOneOfEach(data);
+    let eq = items.filter(i => i.type != 'materia');
+    let mat = items.filter(i => i.type == 'materia');
+
+    for (var index = 0, len = eq.length; index < len; index++) {
+        var item = eq[index];
 
         // Ini stats for item type if not existing
         if (stats[item.type] === undefined) {
@@ -1114,8 +1573,8 @@ function displayStats() {
         'total': 0,
         'number': 0
     };
-    for (index = 0, len = materia.length; index < len; index++) {
-        var item = materia[index];
+    for (index = 0, len = mat.length; index < len; index++) {
+        var item = mat[index];
 
         stats['materia'].total++;
 
@@ -1136,6 +1595,119 @@ function displayStats() {
     $(".itemsSidebar .hidden").removeClass("hidden");
 }
 
+function getItemsEntries(items) {
+    return items.map(i => getItemEntries(i)).reduce((acc, ar) => acc.concat(ar), []);
+}
+
+function getVisionCardsEntries(visionCards) {
+    let result = [];
+    visionCards.forEach(vc => {
+        if (itemInventory[vc.id]) {
+            if (vc.levels.length === 1) {
+                let cardInstance = getCardInstance(vc, 1);
+                let itemEntry = getItemEntry(cardInstance, itemInventory[vc.id]);
+                itemEntry.visionCard = vc;
+                result.push(itemEntry);
+            } else {
+                if (!itemInventory.visionCardsLevels[vc.id]) {
+                    itemInventory.visionCardsLevels[vc.id] = Array.from({length: itemInventory[vc.id]}, () => 1);
+                }
+                itemInventory.visionCardsLevels[vc.id].forEach((level, index) => {
+                    let cardInstance = getCardInstance(vc, level);
+                    let itemEntry = getItemEntry(cardInstance, itemInventory[vc.id], false, index);
+                    itemEntry.visionCard = vc;
+                    result.push(itemEntry);
+                });
+            }
+        } else {
+            let cardInstance = getCardInstance(vc, 1);
+            let itemEntry = getItemEntry(cardInstance, 0);
+            itemEntry.visionCard = vc;
+            result.push(itemEntry);
+        }
+    });
+    return result;
+}
+
+function getCardInstance(vc, level) {
+    let cardInstance = combineTwoItems(vc, vc.levels[level - 1]);
+    cardInstance.level = level;
+    prepareVisionCardSearch(cardInstance);
+    return cardInstance;
+}
+
+let itemEntryId = 0;
+function getItemEntries(item) {
+
+    let itemEntries = [];
+    if (itemInventory.enchantments[item.id]) {
+        itemInventory.enchantments[item.id].forEach((enhancements, index) => {
+            itemEntries.push(getItemEntry(applyEnhancements(item, enhancements), 1, true, index));
+        });
+        if (itemInventory[item.id] > itemInventory.enchantments[item.id].length) {
+            itemEntries.push(getItemEntry(item, itemInventory[item.id] - itemInventory.enchantments[item.id].length));
+        }
+    } else {
+        itemEntries.push(getItemEntry(item, itemInventory[item.id]));
+    }
+    return itemEntries;
+}
+
+function getItemEntry(item, number, enhanced = false, enhancementPos = 0) {
+    let itemEntry = {
+        "item":item,
+        "name":item.name,
+        "defenseValue":0,
+        "mpValue":0,
+        "available":number,
+        "owned": number > 0,
+        "ownedNumber": number,
+        "id": (itemEntryId++) + '',
+        "enhanced": enhanced,
+        "enhancementPos": enhancementPos
+    }
+    for (var index = 0, len = baseStats.length; index < len; index++) {
+        item['total_' + baseStats[index]] = item[baseStats[index] + '%'] || 0;
+    }
+    return itemEntry;
+}
+
+function inventoryLoaded() {
+    if (data) {
+        prepareData();
+        keepOnlyStmrs();
+    }
+}
+
+function notLoaded() {
+    $("#pleaseWaitMessage").addClass("hidden");
+    $("#loginMessage").removeClass("hidden");
+    $("#itemsWrapper").addClass("hidden");
+}
+
+function prepareData() {
+    updateData();
+    showEquipments();
+
+    getStaticData("lastItemReleases", false, function(result) {
+        lastItemReleases = result;
+        prepareLastItemReleases();
+    });
+    getStaticData("releasedUnits", false, function(releasedUnitResult) {
+        for (var unitId in units) {
+            if (releasedUnitResult[unitId]) {
+                units[unitId].summon_type = releasedUnitResult[unitId].type;
+            }
+        }
+    });
+}
+
+function updateData() {
+    equipments = getItemsEntries(keepOnlyOneOfEach(data.filter(d => d.type != "materia")))
+        .concat(getVisionCardsEntries(visionCards));
+    materia = getItemsEntries(keepOnlyOneOfEach(data.filter(d => d.type == "materia")));
+}
+
 // will be called by common.js at page load
 function startPage() {
 
@@ -1146,21 +1718,11 @@ function startPage() {
         data = result;
         getStaticData("units", true, function(unitResult) {
             units = unitResult;
-            prepareSearch(data);
-            equipments = keepOnlyOneOfEachEquipement();
-            materia = keepOnlyOneOfEachMateria();
-            if (itemInventory) {
-                showEquipments();
-            }
-            getStaticData("lastItemReleases", false, function(result) {
-                lastItemReleases = result;
-                prepareLastItemReleases();
-            });
-            getStaticData("releasedUnits", false, function(releasedUnitResult) {
-                for (var unitId in units) {
-                    if (releasedUnitResult[unitId]) {
-                        units[unitId].summon_type = releasedUnitResult[unitId].type;
-                    }
+            getStaticData("visionCards", false, function(visionCardsResult) {
+                visionCards = visionCardsResult;
+                prepareSearch(data);
+                if (itemInventory) {
+                    prepareData();
                 }
             });
         });
@@ -1189,6 +1751,10 @@ function startPage() {
     $("#searchBox").on("input", $.debounce(300,showSearch));
     $("#stmrMoogleAvailable").on("input", $.debounce(300,showSearch));
     $('#onlyTimeLimited').on("input", showSearch);
+    $('#betterItemsNumber').on("input", $.debounce(300,showSearch));
+    $('#enhancementCandidatesSearchDepth').on("input", $.debounce(300,showSearch));
+    $('#includeRecipeItems').on("input", showSearch);
+    
 
     // Start stats collapse for small screen
     if ($window.outerWidth() < 990) {

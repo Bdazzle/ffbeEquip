@@ -5,6 +5,7 @@ var units;
 var ownedUnits;
 var itemInventory;
 var ownedEspers;
+var ownedConsumables;
 var stat = '';
 var types = [];
 var elements = [];
@@ -27,6 +28,7 @@ var userSettings;
 var lazyLoader = (window.LazyLoad) ? new LazyLoad({
     elements_selector: 'img.lazyload'
 }) : null;
+let isMobile = window.matchMedia("only screen and (max-width: 991px)").matches;
 
 window.requestIdleCallback =
   window.requestIdleCallback ||
@@ -48,8 +50,7 @@ window.cancelIdleCallback =
             clearTimeout(id);
         }
 
-
-/* 
+/*
  * Check if localStorage is enable and available
  * Adapted from https://github.com/Modernizr/Modernizr/blob/master/feature-detects/storage/localstorage.js
  */
@@ -68,8 +69,39 @@ var localStorageAvailable = function(){
     return enabled;
 }();
 
+function onThemeChange() {
+    setTheme($('#themeSelector select').val());
+}
+
 function toggleTheme() {
-    $('body').toggleClass('dark');
+    let theme = 'dark';
+    if ($('body').hasClass('dark')) {
+        theme = 'light';
+    }
+    setTheme(theme);
+}
+
+function setTheme(theme) {
+    if (localStorageAvailable) {
+        localStorage.setItem("theme", theme);
+    }
+    if (theme === 'light') {
+        $('body').removeClass('dark');
+        $('#themeSelector select').val('light');
+    } else {
+        $('body').addClass('dark');
+        $('#themeSelector select').val('dark');
+    }
+}
+
+function loadTheme() {
+    let theme = 'light';
+    if (localStorageAvailable) {
+        if (localStorage.getItem("theme") === 'dark') {
+            theme = 'dark';
+        };
+    }
+    setTheme(theme);
 }
 
 function getImageHtml(item, actionOnImage = undefined) {
@@ -88,7 +120,7 @@ function getImageHtml(item, actionOnImage = undefined) {
     if (item.icon) {
         var src_attr = (lazyLoader !== null) ? 'data-src' : 'src';
         var class_attr = (lazyLoader !== null) ? 'icon lazyload' : 'icon';
-        
+
         html += "<img "+src_attr+"='img/items/" + item.icon + "' class='"+class_attr+"'></img>";
     } else if (item.type == "esper") {
         // no lazyload for espers (uses CSS background)
@@ -106,7 +138,7 @@ function getImageHtml(item, actionOnImage = undefined) {
 }
 
 function getNameColumnHtml(item) {
-    var html = '<div class="td name"><div>';
+    var html = '<div class="td name"><div class="itemName">';
 
     if (item.rarity) {
       html += '<span class="rarity">' + item.rarity + '★</span> ';
@@ -142,11 +174,11 @@ function getNameColumnHtml(item) {
     if (item.userPseudo) {
         html += "<div class='userPseudo'>item added by " + item.userPseudo + "</div>";
     }
-    
+
     if (item.enhancements) {
         html += getEnhancements(item);
     }
-    
+
     html += "</div>";
 
     return html;
@@ -165,27 +197,74 @@ function getElementHtml(elements) {
 }
 
 function getAilmentsHtml(item) {
-    var html = "<div class='specialValueGroup'>";
-    $(item.ailments).each(function(index, ailment) {
-        html += "<div class='specialValueItem'><div class='specialImg noWrap ailment-" + ailment + "'>"+
-                "<i class='img img-equipment-sword miniIcon'></i>"+
-                "<i class='img img-ailment-" + ailment.name + " imageWithText withMiniIcon'></i>"+
-                "</div><div class='specialValue'>" + ailment.percent + "%</div></div>";
-    });
-    html += "</div>";
+    var html = "";
+    if (item.ailments) {
+        let groupedByAilment = item.ailments.reduce((acc, ailment) => {
+            let valueGroup = (acc[ailment.percent] = acc[ailment.percent] || []);
+            if (!valueGroup.includes(ailment.name)) {
+                valueGroup.push(ailment.name)
+            }
+            return acc;
+        }, {});
+        html += '<div class="resistGroups">';
+        Object.keys(groupedByAilment).sort().reverse().forEach(percent => {
+            html += '<div class="resistGroup">';
+            groupedByAilment[percent].forEach(name => {
+                html += '<span class="resistValue"><i class="img img-equipment-sword miniIcon"></i><i class="img img-ailment-' + name + ' imageWithText withMiniIcon"></i></span>';
+            })
+            html += percent + '%</div>';
+        });
+        html += '</div>';
+    }
     return html;
+
+
+//    var html = "<div class='specialValueGroup'>";
+//    $(item.ailments).each(function(index, ailment) {
+//        html += "<div class='specialValueItem'><div class='specialImg noWrap ailment-" + ailment + "'>"+
+//                "<i class='img img-equipment-sword miniIcon'></i>"+
+//                "<i class='img img-ailment-" + ailment.name + " imageWithText withMiniIcon'></i>"+
+//                "</div><div class='specialValue'>" + ailment.percent + "%</div></div>";
+//    });
+//    html += "</div>";
+//    return html;
 }
 
 function getResistHtml(item) {
-    var html = "<div class='specialValueGroup'>";
-    $(item.resist).each(function(index, resist) {
-        var resistType = elementList.includes(resist.name) ? 'element' : 'ailment';
-        html += "<div class='specialValueItem'><div class='specialImg noWrap resist-" + resist.name + "'>"+
-                "<i class='img img-equipment-heavyShield miniIcon'></i>"+
-                "<i class='img img-"+resistType+"-" + resist.name + " imageWithText withMiniIcon'></i>"+
-                "</div><div class='specialValue'>" + resist.percent + "%</div></div>";
-    });
-    html += "</div>";
+    var html = "";
+    if (item.resist) {
+        let groupedByElementResist = item.resist.filter(resist => elementList.includes(resist.name)).reduce((acc, resist) => {
+            let valueGroup = (acc[resist.percent] = acc[resist.percent] || []);
+            if (!valueGroup.includes(resist.name)) {
+                valueGroup.push(resist.name)
+            }
+            return acc;
+        }, {});
+        html += '<div class="resistGroups">';
+        Object.keys(groupedByElementResist).sort().reverse().forEach(percent => {
+            html += '<div class="resistGroup">';
+            groupedByElementResist[percent].forEach(name => {
+                html += '<span class="resistValue"><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-' + name + ' imageWithText withMiniIcon"></i></span>';
+            })
+            html += percent + '%</div>';
+        });
+        html += '</div><div class="resistGroups">';
+        let groupedByAilmentResist = item.resist.filter(resist => ailmentList.includes(resist.name)).reduce((acc, resist) => {
+            let valueGroup = (acc[resist.percent] = acc[resist.percent] || []);
+            if (!valueGroup.includes(resist.name)) {
+                valueGroup.push(resist.name)
+            }
+            return acc;
+        }, {});
+        Object.keys(groupedByAilmentResist).sort().reverse().forEach(percent => {
+            html += '<div class="resistGroup">';
+            groupedByAilmentResist[percent].forEach(name => {
+                html += '<span class="resistValue"><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-ailment-' + name + ' imageWithText withMiniIcon"></i></span>';
+            })
+            html += percent + '%</div>';
+        });
+        html += '</div>';
+    }
     return html;
 }
 function getKillersHtml(item) {
@@ -210,14 +289,14 @@ function getKillersHtml(item) {
 function getExclusiveUnitsHtml(item) {
     html = "<div class='exclusive'>Only ";
     var first = true;
-    $(item.exclusiveUnits).each(function(index, exclusiveUnitId) {
+    item.exclusiveUnits.forEach(exclusiveUnitId => {
         if (first) {
             first = false;
         } else {
             html += ", ";
         }
         if (units[exclusiveUnitId]) {
-            html += toLink(units[exclusiveUnitId].name);
+            html += toUnitLink(units[exclusiveUnitId]);
         } else {
             html += "Not released yet unit";
         }
@@ -225,9 +304,27 @@ function getExclusiveUnitsHtml(item) {
     html += "</div>";
     return html;
 }
+
+function toUnitLink(unit) {
+
+    return '<a href="' + toUnitUrl(unit) + '" target="_blank" class="unitLink" rel="noreferrer" onclick="event.stopPropagation();" title="' + unit.name + '"><img src="' + getMaxRarityUnitIcon(unit) + '"/></a>'
+}
+
+function toUnitUrl(unit) {
+    let name = unit.name;
+    if (unit.name.endsWith(" BS")) {
+        name = name.substr(0, name.length - 3) + '#Brave_Shift';
+    }
+    return toUrl(name);
+}
+
+function getMaxRarityUnitIcon(unit) {
+    return 'img/units/unit_icon_' + unit.id.substr(0, unit.id.length -1) + (unit.max_rarity == 'NV' ? '7' : unit.max_rarity) + '.png';
+}
+
 function getSpecialHtml(item) {
     var special = "";
-    
+
     if (item.element) {
         special += getElementHtml(item.element);
     }
@@ -239,18 +336,20 @@ function getSpecialHtml(item) {
     }
 
     if (item.killers) {
-        special += getKillersHtml(item);
+        let killers = getKillerHtml(item.killers);
+        special += '<div>' + killers.physical + '</div>';
+        special += '<div>' + killers.magical + '</div>';
     }
-    
+
     if (item.special && item.special.includes("dualWield")) {
-        special += "<li>" + toHtml("[Dual Wield|ability_72.png]") + "</li>";
+        special += '<li><div class="skill">' + toHtml("[Dual Wield|ability_72.png]") + "</div></li>";
     }
     if (item.partialDualWield) {
-        special += "<li>" + toHtml("[Dual Wield|ability_72.png] of ")
+        special += '<li><div class="skill">' + toHtml("[Dual Wield|ability_72.png] of ")
         for (var index in item.partialDualWield) {
             special += "<i class='img img-equipment-" + item.partialDualWield[index] + " inline'></i>";
         }
-        special += "</li>";
+        special += "</div></li>";
     }
     if (item.allowUseOf) {
         if (Array.isArray(item.allowUseOf)) {
@@ -331,13 +430,55 @@ function getSpecialHtml(item) {
         special += "<li>Increase Esper summon damage by "+ item.evoMag + "%</li>";
     }
     if (item.esperStatsBonus) {
-        special += "<li>Increase esper's bonus stats ("+ item.esperStatsBonus.hp + "%)</li>";
+        Object.keys(item.esperStatsBonus).forEach(esper => {
+            if (esper === 'all') {
+                special += "<li>Increase esper's bonus stats ("+ item.esperStatsBonus.all.hp + "%)</li>";
+            } else {
+                special += "<li>Increase " + esper + "'s bonus stats ("+ item.esperStatsBonus[esper].hp + "%)</li>";
+            }
+        });
     }
     if (item.drawAttacks) {
         special += "<li>+" + item.drawAttacks + "% draw attacks</li>";
     }
     if (item.breakability && (item.breakability.atk || item.breakability.def || item.breakability.mag || item.breakability.spr)) {
         special += '<li>Vulnerable to <span class="uppercase">' + baseStats.filter(s => item.breakability[s]).join("/") + '</span> breaks</li>';
+    }
+    if (item.guts) {
+        special += '<li>' + item.guts.chance + '% chance to set HP to 1 upon fatal damage, if HP was above ' + item.guts.ifHpOver + '% (max '+ item.guts.time +' times)</li>';
+    }
+    if (item.evokeDamageBoost) {
+        Object.keys(item.evokeDamageBoost).forEach(e => {
+            if (e === 'all') {
+                special += '<li>+' + item.evokeDamageBoost[e] + '% damage for esper summons and evoke skills</li>';
+            } else {
+                special += '<li>+' + item.evokeDamageBoost[e] + '% ' + e + ' summon damage</li>';
+            }
+        });
+    }
+    if (item.counterSkills) {
+        item.counterSkills.forEach(counter => {
+            special += '<li>Counter ' + counter.counter + ' damage with <img class="icon" src="/img/items/' + counter.skill.icon + '">' + toLink(counter.skill.name) + ': ' + counter.skill.effects.map(effect => effect.desc).join(', ');
+            if (counter.maxTime) {
+                special += ' (max ' + counter.maxTime + '/turn)';
+            }
+            special += '</li>';
+        });
+    }
+    if (item.skills) {
+        item.skills.forEach(skill => {
+            special += '<li><div class="skill"><img class="icon" src="/img/items/' + skill.icon + '">' + toLink(skill.name) + ': ' + skill.effects.map(effect => effect.desc).join(', ') + '</div></li>';
+        });
+    }
+    if (item.autoCastedSkills) {
+        item.autoCastedSkills.forEach(skill => {
+            special += '<li>Cast at start of battle or when revived: <img class="icon" src="/img/items/' + skill.icon + '">' + toLink(skill.name) + ': ' + skill.effects.map(effect => effect.desc).join(', ') + '</li>';
+        });
+    }
+    if (item.startOfTurnSkills) {
+        item.startOfTurnSkills.forEach(skill => {
+            special += '<li>Cast at start of turn: <img class="icon" src="/img/items/' + skill.skill.icon + '">' + toLink(skill.skill.name) + ': ' + skill.skill.effects.map(effect => effect.desc).join(', ') + '</li>';
+        });
     }
     if (item.special) {
         $(item.special).each(function (index, itemSpecial) {
@@ -380,19 +521,29 @@ var getStatDetail = function(item) {
     var statBonusCoef = 1;
     if (item.type == "esper") {
         if (item.esperStatsBonus) {
-            statBonusCoef += item.esperStatsBonus["hp"] / 100;
+            if (item.esperStatsBonus.all) {
+                statBonusCoef += item.esperStatsBonus.all["hp"] / 100;
+            }
+            if (item.esperStatsBonus[item.id]) {
+                statBonusCoef += item.esperStatsBonus[item.id]["hp"] / 100;
+            }
         }
         if (builds && builds[currentUnitIndex] && builds[currentUnitIndex].build) {
             for (var i = 0; i < builds[currentUnitIndex].build.length; i++) {
                 if (i != 10) {
                     if (builds[currentUnitIndex].build[i] && builds[currentUnitIndex].build[i].esperStatsBonus) {
-                        statBonusCoef += builds[currentUnitIndex].build[i].esperStatsBonus["hp"] / 100;
+                        if (builds[currentUnitIndex].build[i].esperStatsBonus.all) {
+                            statBonusCoef += builds[currentUnitIndex].build[i].esperStatsBonus.all["hp"] / 100;
+                        }
+                        if (builds[currentUnitIndex].build[i].esperStatsBonus[item.id]) {
+                            statBonusCoef += builds[currentUnitIndex].build[i].esperStatsBonus[item.id]["hp"] / 100;
+                        }
                     }
                 }
             }
         }
         statBonusCoef = Math.min(3, statBonusCoef);
-    } 
+    }
     $(statsToDisplay).each(function(index, stat) {
         detail += "<span class='" + stat + "'>";
 
@@ -434,6 +585,8 @@ function getEnhancements(item) {
             html += itemEnhancementLabels["rare_3"][item.type];
         } else if (enhancement == "rare_4") {
             html += itemEnhancementLabels["rare_4"][item.type];
+        } else if (enhancement == "special_1") {
+            html += itemEnhancementLabels["special_1"][item.id];
         } else {
             html += itemEnhancementLabels[enhancement];
         }
@@ -476,11 +629,13 @@ function displayItemLine(item, actionOnImage = "") {
     html += "</div>";
 
     // special
-    html += '<div class="td special">';
+    html += '<div class="td special';
 
     let special = getSpecialHtml(item);
     if (special.length != 0) {
-        html += "<ul>" + special + "<ul>";
+        html += '"><ul>' + special + '<ul>';
+    } else {
+        html += ' empty">';
     }
     html += "</div>";
 
@@ -493,24 +648,24 @@ function displayItemLine(item, actionOnImage = "") {
 function getAccessHtml(item) {
     var html = '<div class="td access">';
     $(item.access).each(function(index, itemAccess) {
-        html += "<div";
+        html += '<div class="access';
         if (accessToRemove.length != 0 && !isAccessAllowed(accessToRemove, itemAccess)) {
-            html += " class='notSelected forbiddenAccess'";
+            html += ' notSelected forbiddenAccess';
         }
-        html += ">" + itemAccess + "</div>";
+        html += '">' + itemAccess + "</div>";
     });
     if (item.tmrUnit) {
         if (units[item.tmrUnit]) {
-            html += '<div>' + toLink(units[item.tmrUnit].name, units[item.tmrUnit].wikiEntry) + '</div>';
+            html += '<div class="unit">' + toLink(units[item.tmrUnit].name, units[item.tmrUnit].wikiEntry) + '</div>';
         } else {
-            html += '<div>TMR of not released yet unit</div>';
+            html += '<div class="unit">TMR of not released yet unit (' + item.tmrUnit + ')</div>';
         }
     }
     if (item.stmrUnit) {
         if (units[item.stmrUnit]) {
-            html += '<div>' + toLink(units[item.stmrUnit].name) + '</div>';
+            html += '<div class="unit">' + toLink(units[item.stmrUnit].name) + '</div>';
         } else {
-            html += '<div>STMR of not released yet unit</div>';
+            html += '<div class="unit">STMR of not released yet unit (' + item.stmrUnit + ')</div>';
         }
     }
     if (item.exclusiveUnits) {
@@ -535,28 +690,43 @@ var toHtml = function(text) {
         if (token.length == 1) {
             result += toLink(token[0]);
         } else if (token.length == 2) {
-            result += toLink(token[0]);
             result += "<img class='icon' src='/img/items/" + token[1] + "'></img>"
+            result += toLink(token[0]);
         } else if (token.length == 3) {
-            result += toLink(token[1], token[0]);
             result += "<img class='icon' src='/img/items/" + token[2] + "'></img>"
+            result += toLink(token[1], token[0]);
         }
-        
+
         return result;
     });
+    if (textWithAddedAnchors.startsWith('<img')) {
+        return '<span class="skill">' + textWithAddedAnchors +"</span>"
+    }
     return "<span>" + textWithAddedAnchors +"</span>";
 };
 
 // Return the wiki url corresponding to the name
 var toUrl = function(name) {
-    return wikiBaseUrl + encodeURIComponent(name.replace(/ /g, '_'));
+    if (!name) {
+        return "";
+    }
+    let link = wikiBaseUrl + encodeURIComponent(name.replace(/ /g, '_'));
+    if (server == 'JP') {
+        link += '/JP';
+    }
+    return link;
 };
 
-var toLink = function(text, link = text) {
+var toLink = function(text, link = text, forceLinkDisplay = false) {
     if (server == "GL") {
         return '<span>' + text + '</span><a href="' + toUrl(link) + '" target="_blank" rel="noreferrer" onclick="event.stopPropagation();"><span class="glyphicon glyphicon-new-window wikiLink"></span></a>';
     } else {
-        return "<span>" + text + "</span>";
+        if (forceLinkDisplay) {
+            return '<span>' + text + '</span><a href="' + toUrl(link) + '" target="_blank" rel="noreferrer" onclick="event.stopPropagation();"><span class="glyphicon glyphicon-new-window wikiLink"></span></a>';
+        } else {
+            return "<span>" + text + "</span>";
+        }
+
     }
 }
 
@@ -690,7 +860,7 @@ function loadInventory() {
                 text: "Continue",
                 onClick: function() {
                     // Reset localStorage on connection
-                    if (localStorageAvailable) localStorage.clear();
+                    if (localStorageAvailable) staticFileCache.clear();
                     // Redirect to GoogleAuth
                     window.location.href = result.url + "&state=" + encodeURIComponent(window.location.href.replace(".lyrgard.fr",".com"));
                 }
@@ -703,7 +873,7 @@ function loadInventory() {
 
 function unloadInventory() {
     // Reset localStorage on disconnection
-    if (localStorageAvailable) localStorage.clear();
+    if (localStorageAvailable) staticFileCache.clear();
     // Redirect to GoogleAuth
     location.href='/googleOAuthLogout';
 }
@@ -827,13 +997,37 @@ function updateLinks() {
     });
 }
 
+class ItemFilter {
+    constructor(values = [], matchAllValues = false) {
+        this.values = values;
+        this.matchAllValues = matchAllValues;
+    }
+}
+
 // Filter the items according to the currently selected filters. Also if sorting is asked, calculate the corresponding value for each item
-var filter = function(data, onlyShowOwnedItems = true, stat = "", baseStat = 0, searchText = "", selectedUnitId = null, 
-                      types = [], elements = [], ailments = [], physicalKillers = [], magicalKillers = [], accessToRemove = [], 
-                      additionalStat = "", showNotReleasedYet = false, showItemsWithoutStat = false) 
-{
-    var result = [];
-    for (var index = 0, len = data.length; index < len; index++) {
+function filter(data, onlyShowOwnedItems = true, stat = "", baseStat = 0, searchText = "", selectedUnitId = null,
+                      types = [], elements = [], ailments = [], physicalKillers = [], magicalKillers = [], accessToRemove = [],
+                      additionalStat = "", showNotReleasedYet = false, showItemsWithoutStat = false) {
+    var filters = [];
+    if (!showItemsWithoutStat && stat.length > 0) filters.push({type: 'stat', value: stat});
+    if (searchText) filters.push({type: 'text', value: searchText});
+    if (additionalStat.length > 0) filters.push({type: 'stat', value: additionalStat});
+    if (accessToRemove.length > 0) {
+        accessToRemove = accessToRemove.flatMap(a => a.split('/'));
+        let authorizedAccess = accessList.filter(a => !accessToRemove.some(forbiddenAccess => a.startsWith(forbiddenAccess) || a.endsWith(forbiddenAccess)));
+        filters.push(convertValuesToFilter(authorizedAccess, 'access'));
+    }
+    if (magicalKillers.length > 0) filters.push(convertValuesToFilter(magicalKillers, 'magicalKiller'));
+    if (physicalKillers.length > 0) filters.push(convertValuesToFilter(physicalKillers, 'physicalKiller'));
+    if (ailments.length > 0) filters.push(convertValuesToFilter(ailments, 'ailment'));
+    if (elements.length > 0) filters.push(convertValuesToFilter(elements, 'element'));
+    if (types.length > 0) filters.push(convertValuesToFilter(types, 'type'));
+    if (onlyShowOwnedItems) filters.push({type: 'onlyOwned'});
+
+    let filter = andFilters(...filters);
+
+    var result = filterItems(data, filter, showNotReleasedYet);
+    /*for (var index = 0, len = data.length; index < len; index++) {
         var item = data[index];
         if (!onlyShowOwnedItems || itemInventory && itemInventory[item.id]) {
             if (showNotReleasedYet || !item.access.includes("not released yet") || (selectedUnitId && item.tmrUnit == selectedUnitId) || (selectedUnitId && item.stmrUnit == selectedUnitId)) {
@@ -861,9 +1055,98 @@ var filter = function(data, onlyShowOwnedItems = true, stat = "", baseStat = 0, 
                 }
             }
         }
-    }
+    }*/
+    result.forEach(item => calculateValue(item, baseStat, stat, ailments, elements, killers));
     return result;
 };
+
+function convertValuesToFilter(values, type, logicalAssociation = 'or') {
+    let filter;
+    values.forEach(v => {
+        if (filter) {
+            filter = {
+                type: logicalAssociation,
+                value1: filter,
+                value2: {
+                    type: type,
+                    value: v
+                }
+            }
+        } else {
+            filter = {
+                type: type,
+                value: v
+            }
+        }
+
+    });
+    return filter
+}
+
+function andFilters(...filters) {
+    if (filters.length === 0) {
+        return {type: 'boolean', value: true};
+    } else {
+        let filter;
+        filters.forEach(f => {
+            if (filter) {
+                filter = {
+                    type: 'and',
+                    value1: filter,
+                    value2: f
+                }
+            } else {
+                filter = f;
+            }
+
+        });
+        return filter
+    }
+}
+
+
+function filterItems(items, filter, showNotReleasedYet) {
+    return items.filter(item => {
+        return (showNotReleasedYet || !item.access.includes("not released yet"))
+            && itemMatches(item, filter);
+    });
+}
+
+
+function itemMatches(item, filter) {
+    switch(filter.type) {
+        case 'and':
+            return itemMatches(item, filter.value1) && itemMatches(item, filter.value2);
+        case 'or':
+            return itemMatches(item, filter.value1) || itemMatches(item, filter.value2);
+        case 'not':
+            return !itemMatches(item, filter.value);
+        case 'type':
+            return filter.value === item.type;
+        case 'element':
+            return (item.element && item.element.includes(filter.value))
+            || (filter.value === 'noElement' && !item.element)
+            || (item.resist && item.resist.some(r => r.name === filter.value));
+        case 'ailment':
+            return (item.ailments && item.ailments.some(a => a.name === filter.value))
+            || (item.resist && item.resist.some(r => r.name === filter.value));
+        case 'physicalKiller':
+            return item.killers && item.killers.some(k => k.name === filter.value && k.physical);
+        case 'magicalKiller':
+            return item.killers && item.killers.some(k => k.name === filter.value && k.magical);
+        case 'access':
+            return item.access && item.access.includes(filter.value);
+        case 'text':
+            return containsText(filter.value, item);
+        case 'stat':
+            return hasStat(filter.value, item);
+        case 'onlyOwned':
+            return itemInventory && itemInventory[item.id];
+        case 'boolean':
+            return filter.value;
+    }
+}
+
 
 function hasKillers(killerType, killers, item)
 {
@@ -924,7 +1207,20 @@ var sort = function(items, unitId) {
             var typeIndex1 = typeListWithEsper.indexOf(item1.type);
             var typeIndex2 = typeListWithEsper.indexOf(item2.type);
             if (typeIndex1 == typeIndex2) {
-                return item1.name.localeCompare(item2.name);
+                if (item1.name) {
+                    if (item2.name) {
+                        return item1.name.localeCompare(item2.name);
+                    } else {
+                        return -1;
+                    }
+                } else {
+                    if (item2.name) {
+                        return 1;
+                    } else {
+                        return 0;
+                    }
+                }
+
             } else {
                 return typeIndex1 - typeIndex2;
             }
@@ -1114,7 +1410,7 @@ function addToKiller(killers, newKiller) {
     var race = newKiller.name;
     var physicalPercent = newKiller.physical || 0;
     var magicalPercent = newKiller.magical || 0;
-    
+
     var killerData = null;
     for (var index in killers) {
         if (killers[index].name == race) {
@@ -1122,7 +1418,7 @@ function addToKiller(killers, newKiller) {
             break;
         }
     }
-    
+
     if (!killerData) {
         killerData = {"name":race};
         killers.push(killerData);
@@ -1284,9 +1580,9 @@ function prepareSearch(data) {
         }
         if (item.allowUseOf) {
             if (Array.isArray(item.allowUseOf)) {
-                textToSearch += item.allowUseOf.map(allowUseOf => "|Allow use of " + item.allowUseOf).join("");       
+                textToSearch += item.allowUseOf.map(allowUseOf => "|Allow use of " + item.allowUseOf).join("");
             } else {
-                textToSearch += "|Allow use of " + item.allowUseOf;    
+                textToSearch += "|Allow use of " + item.allowUseOf;
             }
         }
         if (item.mpRefresh) {
@@ -1358,13 +1654,54 @@ function prepareSearch(data) {
             textToSearch += "|" + "Increase Esper summon damage by "+ item.evoMag + "%";
         }
         if (item.esperStatsBonus) {
-            textToSearch += "|" + "Increase esper's bonus stats ("+ item.esperStatsBonus.hp + "%)";
+            Object.keys(item.esperStatsBonus).forEach(esper => {
+                if (esper === 'all') {
+                    textToSearch += "|" + "Increase esper's bonus stats ("+ item.esperStatsBonus.all.hp + "%)";
+                } else {
+                    textToSearch += "|" + "Increase " + esper + "'s bonus stats ("+ item.esperStatsBonus[esper].hp + "%)";
+                }
+            });
         }
-        if (item["tmrUnit"] && units[item["tmrUnit"]]) {
-            textToSearch += "|" + units[item["tmrUnit"]].name;
+        if (item.guts) {
+            textToSearch += "|" + item.guts.chance + '% chance to set HP to 1 upon fatal damage, if HP was above ' + item.guts.ifHpOver + '% (max '+ item.guts.time +' times)';
         }
-        if (item["stmrUnit"] && units[item["stmrUnit"]]) {
-            textToSearch += "|" + units[item["stmrUnit"]].name;
+        if (item.evokeDamageBoost) {
+            Object.keys(item.evokeDamageBoost).forEach(e => {
+                if (e === 'all') {
+                    textToSearch += "|" + '+' + item.evokeDamageBoost[e] + '% damage for esper summons and evoke skills';
+                } else {
+                    textToSearch += "|" + '+' + item.evokeDamageBoost[e] + '% ' + e + ' summon damage';
+                }
+            });
+        }
+        if (item.skills) {
+            item.skills.forEach(skill => {
+                textToSearch += "|" + skill.name + ': ' + skill.effects.map(effect => effect.desc).join(', ');
+            });
+        }
+        if (item.autoCastedSkills) {
+            item.autoCastedSkills.forEach(skill => {
+                textToSearch += "|Cast at start of battle or when revived:" + skill.name + ': ' + skill.effects.map(effect => effect.desc).join(', ');
+            });
+        }
+         if (item.startOfTurnSkills) {
+            item.startOfTurnSkills.forEach(skill => {
+                textToSearch += '|Cast at start of turn: ' + skill.skill.name + ': ' + skill.skill.effects.map(effect => effect.desc).join(', ');
+            });
+        }
+        if (item["tmrUnit"]) {
+            if (units[item["tmrUnit"]]) {
+                textToSearch += "|" + units[item["tmrUnit"]].name;
+            } else {
+                textToSearch += "|" + item["tmrUnit"];
+            }
+        }
+        if (item["stmrUnit"]) {
+            if (units[item["stmrUnit"]]) {
+                textToSearch += "|" + units[item["stmrUnit"]].name;
+            } else {
+                textToSearch += "|" + item["stmrUnit"];
+            }
         }
         for (var index in item.access) {
             textToSearch += "|" + item.access[index];
@@ -1405,7 +1742,7 @@ function getLocalizedFileUrl(name) {
 }
 
 function onUnitsOrInventoryLoaded() {
-    if (itemInventory && ownedUnits && ownedEspers) {
+    if (itemInventory && ownedUnits && ownedEspers && ownedConsumables) {
         if (ownedUnits.version && ownedUnits.version < 3) {
             // before version 3, units were : {"unitId": number}
             // After, they are {"unitId": {"number":number,"farmable":number}
@@ -1485,17 +1822,17 @@ function isLinkId(value) {
     return value.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 }
 
-function saveUserData(mustSaveInventory, mustSaveUnits, mustSaveEspers = false) {
+function saveUserData(mustSaveInventory, mustSaveUnits, mustSaveEspers = false, mustSaveConsumables = false) {
     if (saveTimeout) {clearTimeout(saveTimeout)}
     $("#inventoryDiv").addClass("Inventoryloading").removeClass("Inventoryloaded");
     saveNeeded = false;
     if (mustSaveInventory) {
         if (mustSaveUnits) {
-            saveInventory(
-                function() {
-                    saveUnits(saveSuccess, saveError);
-                }
-            );
+            if (mustSaveConsumables) {
+                saveInventory(() => saveUnits(() => saveConsumables(saveSuccess, saveError)));
+            } else {
+                saveInventory(() => saveUnits(saveSuccess, saveError));
+            }
         } else {
             saveInventory(saveSuccess, saveError);
         }
@@ -1503,6 +1840,8 @@ function saveUserData(mustSaveInventory, mustSaveUnits, mustSaveEspers = false) 
         saveUnits(saveSuccess, saveError);
     } else if (mustSaveEspers) {
         saveEspers(saveSuccess, saveError);
+    } else if (mustSaveConsumables) {
+        saveConsumables(saveSuccess, saveError);
     }
 }
 
@@ -1565,6 +1904,18 @@ function saveInventory(successCallback, errorCallback) {
     });
 }
 
+function saveConsumables(successCallback, errorCallback) {
+    $.ajax({
+        url: server + '/consumables',
+        method: 'PUT',
+        data: JSON.stringify(ownedConsumables),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: successCallback,
+        error: errorCallback
+    });
+}
+
  function saveEspers(successCallback, errorCallback, forceSave = false) {
     if (!forceSave && (!ownedEspers || Object.keys(ownedEspers).length == 0)) {
         if (confirm("You're trying to save empty espers. Are you sure you want to erase your espers ?")) {
@@ -1605,33 +1956,33 @@ function getStaticData(name, localized, callback) {
         let start = Date.now();
         $.get(name, function(result) {
            requestIdleCallback(function() {
-                staticFileCache.store(name, result);       
+                staticFileCache.store(name, result);
            });
-        
+
             callback(result);
             let end = Date.now();
             if (end - start < 1000) {
                 setTimeout(function () {
-                    notification.trigger('notify-hide');    
+                    notification.trigger('notify-hide');
                 }, 1000);
             } else {
-                notification.trigger('notify-hide');    
+                notification.trigger('notify-hide');
             }
-            
+
         }, 'json').fail(function(jqXHR, textStatus, errorThrown ) {
             Modal.showErrorGet(this.url, errorThrown);
-        });    
+        });
     }
 }
 
 staticFileCache = {
-    /* 
+    /*
      * staticFileCache.store
      * Convert data to string, compress and store in localStorage
      */
     store: function(filename, data) {
         if (!localStorageAvailable) return;
-    
+
         try {
             // Convert to string if not already (may throw if bad data)
             if (typeof data !== 'string') {
@@ -1656,7 +2007,7 @@ staticFileCache = {
         }
     },
 
-    /* 
+    /*
      * staticFileCache.retrieve
      * Read from localStorage, decompress, convert to JS
      */
@@ -1680,7 +2031,7 @@ staticFileCache = {
         return data;
     },
 
-    /* 
+    /*
      * staticFileCache.clear
      * Clear a file or all files saved in localStorage
      */
@@ -1720,7 +2071,7 @@ staticFileCache = {
         localStorage.setItem("savedFiles", JSON.stringify(savedFiles));
     },
 
-    /* 
+    /*
      * staticFileCache.checkDataVersion
      * Compare the version, server and language as stored in localStorage
      */
@@ -1737,7 +2088,7 @@ staticFileCache = {
         return false;
     },
 
-    /* 
+    /*
      * staticFileCache.setDataVersion
      * Set the version, server and language to localStorage
      */
@@ -1772,7 +2123,7 @@ Modal = {
             ]
         }
         */
-    
+
         conf = $.extend({
             title: "Modal Title",
             body: "Modal body",
@@ -1782,11 +2133,11 @@ Modal = {
             withCancelButton: true,
             buttons: false
         }, conf);
-    
+
         conf.title = typeof conf.title === 'function' ? conf.title() : conf.title;
         conf.body = typeof conf.body === 'function' ? conf.body() : conf.body;
         var sizeClass = (conf.size === 'large' ? 'modal-lg' : (conf.size === 'small' ? 'modal-sm' : ''))
-    
+
         if (conf.buttons === false && conf.withCancelButton === false) {
             conf.buttons = [{
                 text: "Close",
@@ -1794,7 +2145,7 @@ Modal = {
                 onClick: function() {}
             }];
         }
-    
+
         var html = '<div class="modal temporaryModal" tabindex="-1" role="dialog">';
         html += '  <div class="modal-dialog '+sizeClass+'" role="document">';
         html += '    <div class="modal-content">';
@@ -1818,11 +2169,11 @@ Modal = {
         html += '    </div>';
         html += '  </div>';
         html += '</div>';
-    
+
         // Modal should be put last to be able to be above everything else
         var $modal = $('body').append(html).children().last();
         var $buttons = $modal.find("button[data-callback]");
-    
+
         // Enable modal mode, and add hidden event handler
         $modal.modal({ keyboard: false })
                 .on('hidden.bs.modal', function (e) {
@@ -1846,7 +2197,7 @@ Modal = {
                         $modal.modal('hide');
                     }
                 });
-    
+
         // Add buttons event handler
         $buttons.on('click', function (e) {
             var shouldHide = true;
@@ -1858,24 +2209,27 @@ Modal = {
                 $modal.modal('hide');
             }
         });
-        
+
         if (conf.onOpen) conf.onOpen($modal);
+        return $modal;
     },
-    
+
     hide: function() {
         if ($('.temporaryModal').length > 0) {
             $('.temporaryModal').modal('hide');
         }
     },
 
-    showWithBuildLink: function(name, link)
-    {
+    showWithBuildLink: function(name, link) {
+        if (!link.startsWith('http')) {
+            link = 'https://ffbeEquip.com/'+link;
+        }
         Modal.show({
             title: "Link to your " + name,
             body: "<p>This link will allow anyone to visualize your "+name+"</p>"+
-                  '<div class="input-group">' + 
+                  '<div class="input-group">' +
                     '<span class="input-group-addon">🔗</span>' +
-                    '<input class="form-control linkInput" type="text" value="https://ffbeEquip.com/'+link+'"/>' +
+                    '<input class="form-control linkInput" type="text" value="'+link+'"/>' +
                   '</div>'+
                   '<p class="hidden linkInputCopied">Link copied to your clipboard.</p>',
             withCancelButton: false,
@@ -1887,8 +2241,8 @@ Modal = {
             }
         });
     },
-    
-    showWithTextData: function(title, textData) 
+
+    showWithTextData: function(title, textData)
     {
         Modal.show({
             title: title,
@@ -1903,8 +2257,8 @@ Modal = {
             }
         });
     },
-    
-    confirm: function(title, question, onAccept) 
+
+    confirm: function(title, question, onAccept)
     {
         Modal.show({
             title: title,
@@ -1917,8 +2271,8 @@ Modal = {
             }]
         });
     },
-    
-    showMessage: function(title, message, onClose) 
+
+    showMessage: function(title, message, onClose)
     {
         Modal.show({
             title: title,
@@ -1927,7 +2281,7 @@ Modal = {
             withCancelButton: false
         });
     },
-    
+
     showError: function(text, error) {
         Modal.show({
             title: "Something went wrong, Kupo!",
@@ -1940,8 +2294,8 @@ Modal = {
             window.console.error(error);
         }
     },
-    
-    showErrorGet: function(filename, errorThrown) 
+
+    showErrorGet: function(filename, errorThrown)
     {
         if (typeof errorThrown !== 'string') error = JSON.stringify(errorThrown);
 
@@ -1958,7 +2312,7 @@ Modal = {
     }
 }
 
-function copyInputToClipboard($input) 
+function copyInputToClipboard($input)
 {
     var successful = false;
     try {
@@ -1983,16 +2337,109 @@ function adaptItemInventoryForMultipleRareEnchantments() {
 }
 
 let waitingCallbacks = [];
+let keysReady = [];
 function registerWaitingCallback(waitingKeys, callback) {
-    waitingCallbacks.push({"keys":waitingKeys, "callback":callback});
+    let keys = waitingKeys.filter(k => !keysReady.includes(k));
+    if (keys.length === 0) {
+        callback();
+    } else {
+        waitingCallbacks.push({"keys":keys, "callback":callback});
+    }
 }
 function waitingCallbackKeyReady(key) {
+    keysReady.push(key);
     waitingCallbacks.filter(wc => wc.keys.includes(key)).forEach(wc => {
         wc.keys.splice(wc.keys.indexOf(key), 1);
         if (wc.keys.length == 0) {
             wc.callback();
         }
     })
+}
+
+function getEsperLink(esper) {
+    let linkData = escapeName(esper.name) + '|' + esper.rarity + '|' + esper.level + '|';
+
+    let boardStateBin = importBoardConversion.map(coordinate => getEsperBoardPositionString(coordinate[0], coordinate[1])).map(positionString => (positionString === '0_0' || esper.selectedSkills.includes(positionString)) ? '1': '0').join('');
+    let boardState = bin2hex(boardStateBin);
+
+    linkData += boardState;
+    return "https://ffbeEquip.com/espers.html?server=" + server + '&o#' + linkData;
+}
+
+function getEsperBoardPositionString(x, y) {
+    var posString = "";
+    if (x < 0) {
+        posString += "m" + -x;
+    } else {
+        posString += x;
+    }
+    posString += "_"
+    if (y < 0) {
+        posString += "m" + -y;
+    } else {
+        posString += y;
+    }
+    return posString;
+}
+
+function hex2bin(hex){
+    let result = "";
+    [...hex].forEach(char => result += ("0000" + (parseInt(char, 16)).toString(2)).substr(-4));
+    return result;
+}
+
+function bin2hex(bin) {
+    let zeroToAdd = (4 - bin.length % 4) % 4;
+    for (let i = 0; i < zeroToAdd; i++) {
+        bin += '0';
+    }
+    return bin.match(/.{4}/g).map(bin4Char => parseInt(bin4Char, 2).toString(16)).join('');
+}
+
+function addCardsToData(cards, data) {
+    Object.keys(cards).forEach(cardId => {
+        let card = cards[cardId];
+        for (let level = 0; level < card.levels.length; level++) {
+            let cardInstance = combineTwoItems(card, card.levels[level]);
+            cardInstance.id = cardInstance.id + '-' + (level + 1);
+            cardInstance.level = level + 1;
+            let conditionals = card.levels[level].conditional || [];
+            computeConditionalCombinations(cardInstance, conditionals, (card) => {
+                data.push(card);
+            });
+        }
+    });
+}
+
+function computeConditionalCombinations(item, conditionals, onCombinationFound,index = 0) {
+    if (index === conditionals.length) {
+        onCombinationFound(item);
+    } else {
+        // First try without that condition
+        computeConditionalCombinations(item, conditionals, onCombinationFound, index + 1);
+        // Then with the condition
+        item = combineTwoItems(item, conditionals[index]);
+
+        if (conditionals[index].equipedConditions) {
+            if (!item.equipedConditions) item.equipedConditions = [];
+            item.equipedConditions = item.equipedConditions.concat(conditionals[index].equipedConditions).filter((c, i, a) => a.indexOf(c) === i);
+            if (!isEquipedConditionViable(item.equipedConditions)) {
+                return;
+            }
+        }
+        if (conditionals[index].exclusiveUnits) {
+            item.exclusiveUnits = conditionals[index].exclusiveUnits;
+        }
+        if (conditionals[index].exclusiveSex) {
+            item.exclusiveSex = conditionals[index].exclusiveSex;
+        }
+        computeConditionalCombinations(item, conditionals, onCombinationFound, index + 1);
+    }
+}
+
+function isEquipedConditionViable(equipedConditions) {
+    // TODO
+    return true;
 }
 
 $(function() {
@@ -2004,7 +2451,7 @@ $(function() {
             localStorage.clear();
             window.console && window.console.warn("Clearing the whole localStorage!");
         }
-    } catch (e) {}  
+    } catch (e) {}
 
 
     readUrlParams();
@@ -2029,15 +2476,18 @@ $(function() {
     }, 'json').fail(function(jqXHR, textStatus, errorThrown ) {
         Modal.showErrorGet(this.url, errorThrown);
     });
-    
-    if ((window.location.href.indexOf("&o") > 0 || window.location.href.indexOf("?o") > 0) && window.location.hash.length > 1) {
-    //if ((window.location.href.indexOf("&o") > 0 || window.location.href.indexOf("?o") > 0)) {
+
+    if ((window.location.href.indexOf("&o") > 0 || window.location.href.indexOf("?o") > 0)) {
+        $("#inventoryDiv").removeClass("Inventoryloading Inventoryloaded");
         notLoaded();
     } else {
         $.get(server + '/itemInventory', function(result) {
             itemInventory = result;
             if (!itemInventory.enchantments) {
                 itemInventory.enchantments = {};
+            }
+            if (!itemInventory.visionCardsLevels) {
+                itemInventory.visionCardsLevels = {};
             }
             adaptItemInventoryForMultipleRareEnchantments();
             sanitizeItemInventory();
@@ -2088,10 +2538,29 @@ $(function() {
         console.log("Starts to load owned espers");
         $.get(server + '/espers', function(result) {
             ownedEspers = result;
+
+            Object.keys(ownedEspers).forEach(esper => {
+                 if (ownedEspers[esper].esperStatsBonus && !ownedEspers[esper].esperStatsBonus.all) {
+                     ownedEspers[esper].esperStatsBonus = {"all":ownedEspers[esper].esperStatsBonus};
+                 }
+            });
+
             console.log("owned espers loaded");
             onUnitsOrInventoryLoaded();
         }, 'json').fail(function(jqXHR, textStatus, errorThrown ) {
             console.log("error loading owned espers");
+            $("#inventoryDiv").removeClass("Inventoryloading Inventoryloaded");
+            if (notLoaded) {
+                notLoaded();
+            }
+        });
+        console.log("Starts to load owned consumables");
+        $.get(server + '/consumables', function(result) {
+            ownedConsumables = result;
+            console.log("owned consumables loaded");
+            onUnitsOrInventoryLoaded();
+        }, 'json').fail(function(jqXHR, textStatus, errorThrown ) {
+            console.log("error loading owned consumables");
             $("#inventoryDiv").removeClass("Inventoryloading Inventoryloaded");
             if (notLoaded) {
                 notLoaded();
@@ -2107,51 +2576,57 @@ $(function() {
         e.preventDefault();
     });
 
+    let themeSelector = $('#themeSelector select');
+    if (themeSelector.length) {
+        themeSelector.change(onThemeChange);
+    }
+
     /* Back to top button feature */
     var $scroll = $('#scrollToTopButton');
     if ($scroll) {
         // Detect when user start to scroll down
-        $(window).scroll($.debounce(100, function(){ 
-            if ($(this).scrollTop() > 100) { 
+        $(window).scroll($.debounce(100, function(){
+            if ($(this).scrollTop() > 100) {
                 $scroll.fadeIn(200);
-            } else { 
+            } else {
                 $scroll.fadeOut(200);
-            } 
+            }
         }));
 
         // Back to top when clicking on link
-        $scroll.click(function(){ 
-            $("html, body").animate({ scrollTop: 0 }, 400); 
-            return false; 
-        }); 
+        $scroll.click(function(){
+            $("html, body").animate({ scrollTop: 0 }, 400);
+            return false;
+        });
     }
 });
 
 
-/* 
+/*
  * Conditional stylesheet loading at runtime with media queries
- * 
- * How to use: 
+ *
+ * How to use:
  *  <link rel="stylesheet" type="text/css" class="load-if-media-matches" data-href="url/to/file.css" media="min-width: 1024px">
- * 
+ *
  * By default, browser will load all stylesheets, even if the media query
  * in media attr doesn't match.
- * 
+ *
  * This script will load the stylesheet only if the media query matches.
  * Event when resized.
- * 
+ *
  * href is replaced by data-href
  * If media query matches, href will be set by the value of data-ref,
  * effectively loading the stylesheet
- * 
+ *
  * Done in vanillajs for performance
- * 
+ *
  * This is not done in document.ready (i.e. $(function(){}) for jQuery) because it should run ASAP
- * 
+ *
  * Inspired by https://christianheilmann.com/2012/12/19/conditional-loading-of-resources-with-mediaqueries/
- * 
+ *
  */
 (function(){
+    loadTheme();
     // queries: object holding all "media query" => [elements...]
     var queries = {};
 
@@ -2170,7 +2645,7 @@ $(function() {
             }
         }
     }
-    
+
     // Loop through the queries and check it
     var query, mql;
     for (query in queries) {
