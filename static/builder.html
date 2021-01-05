@@ -1,0 +1,1974 @@
+<!-- Doctype HTML5 -->
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>FFBE Equip - Builder</title>
+        <link rel="icon" type="image/png" href="img/icons/equipments/heavyArmor.png">
+
+        <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+              integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/css/select2.min.css"
+              integrity="sha384-HIipfSYbpCkh5/1V87AWAeR5SUrNiewznrUrtNz1ux4uneLhsAKzv/0FnMbj3m6g" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-theme/0.1.0-beta.10/select2-bootstrap.min.css"
+              integrity="sha384-gmcw+R0EXbFmHe5f/e/UutiOrxubA/LkUzBVH0Y7uvP+IqhUSNFp7HZKD6ztR12u" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" href="css-img/espers.css">
+        <link rel="stylesheet" type="text/css" href="css-img/equipments.css">
+        <link rel="stylesheet" type="text/css" href="css-img/elements.css">
+        <link rel="stylesheet" type="text/css" href="css-img/ailments.css">
+        <link rel="stylesheet" type="text/css" href="css-img/sorts.css">
+        <link rel="stylesheet" type="text/css" href="css-img/killers.css">
+        <link rel="stylesheet" type="text/css" href="css-img/slots.css">
+		<link rel="stylesheet" type="text/css" href="common.css">
+        <link rel="stylesheet" type="text/css" href="builder.css">
+        <link rel="stylesheet" type="text/css" href="languages.css">
+        <!--<link rel="stylesheet" type="text/css" href="lib/dark-bootstrap.min.css">-->
+        <link rel="stylesheet" type="text/css" href="dark-mode.css"/>
+        <link rel="stylesheet" type="text/css" href="lib/clusterize.css"/>
+    </head>
+    <body class="dark">
+        <div class="glassPanel"></div>
+        <a href="#" id="scrollToTopButton" class="withButtonSideBar" style="display: none;" title="Scroll back to the top"><span></span></a>
+
+        <div id="header" class="headerLid">
+            <div class="headerContent">
+                <div class="headerTitle">
+                    Builder
+                </div>
+                <div id="inventoryDiv" class="btn-group Inventoryloading" role="group">
+                    <button type="button" class="btn btn-default logOut" onclick="unloadInventory()">
+                        <span class="glyphicon glyphicon-off" title="logout"></span>
+                    </button>
+                    <button type="button" class="btn btn-default loadInventory" onclick="loadInventory()">
+                        Log in
+                    </button>
+                    <button type="button" class="btn btn-default inventoryStatus">
+                        <span class="status loading">Loading inventory</span>
+                        <span class="status loaded">Inventory loaded</span>
+                        <span class="status notLoaded">Inventory not loaded</span>
+                        <div class="loader"></div>
+                        <span class="label label-default unitsNumber">? units</span>
+                        <span class="label label-default itemsNumber">? items</span>
+                    </button>
+                </div>
+            </div>
+            <div class="navigationMenu">
+                <div class="desktop">
+                    <div class="menuLogo" onclick="window.location.href='/' + (server == 'GL' ? '' : '?server=' + server)" title="Return to homepage"></div>
+                    <a href="/" data-internal-link="/">Home</a>
+                    <a class="active" href="builder.html" data-internal-link="builder.html">Unit builder</a>
+                    <a href="encyclopedia.html" data-internal-link="encyclopedia.html">Encyclopedia</a>
+                    <a href="unitSearch.html" data-internal-link="unitSearch.html">Unit Search</a>
+                    <a href="inventory.html" data-internal-link="inventory.html">My inventory</a>
+                    <a href="units.html" data-internal-link="units.html">My units</a>
+                    <a href="espers.html" data-internal-link="espers.html">My Espers</a>
+                    <a href="contribute.html" data-internal-link="contribute.html">Contribute</a>
+                </div>
+                <div class="mobile">
+                    <div class="menuLogo dropdown-toggle" data-toggle="dropdown">
+                        <span class="glyphicon glyphicon-chevron-down"></span>
+                    </div>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a href="/" data-internal-link="/">
+                                <span class="glyphicon glyphicon-chevron-right"></span> Home
+                            </a>
+                        </li>
+                        <li class="active">
+                            <a href="builder.html" data-internal-link="builder.html">
+                                <span class="glyphicon glyphicon-chevron-right"></span> Unit builder
+                            </a>
+                        </li>
+                        <li>
+                            <a href="encyclopedia.html" data-internal-link="encyclopedia.html">
+                                <span class="glyphicon glyphicon-chevron-right"></span> Encyclopedia
+                            </a>
+                        </li>
+                        <li>
+                            <a href="unitSearch.html" data-internal-link="unitSearch.html">
+                                <span class="glyphicon glyphicon-chevron-right"></span> Unit Search
+                            </a>
+                        </li>
+                        <li>
+                            <a href="inventory.html" data-internal-link="inventory.html">
+                                <span class="glyphicon glyphicon-chevron-right"></span> My inventory
+                            </a>
+                        </li>
+                        <li>
+                            <a href="units.html" data-internal-link="units.html">
+                                <span class="glyphicon glyphicon-chevron-right"></span> My units
+                            </a>
+                        </li>
+                        <li>
+                            <a href="espers.html" data-internal-link="espers.html">
+                                <span class="glyphicon glyphicon-chevron-right"></span> My Espers
+                            </a>
+                        </li>
+                        <li>
+                            <a href="contribute.html" data-internal-link="contribute.html">
+                                <span class="glyphicon glyphicon-chevron-right"></span> Contribute
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="headerTopButtons">
+                <div id="themeSelector">
+                    <span class="title">Theme :</span>
+                    <select class="form-control smallSelect">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
+                <div id="languages">
+                    <span class="lang lang-sm" lang="en" onclick="switchToLanguage('en')"></span>
+                    <span class="lang lang-sm" lang="zh" onclick="switchToLanguage('zh')"></span>
+                    <span class="lang lang-sm" lang="ko" onclick="switchToLanguage('ko')"></span>
+                    <span class="lang lang-sm" lang="fr" onclick="switchToLanguage('fr')"></span>
+                    <span class="lang lang-sm" lang="de" onclick="switchToLanguage('de')"></span>
+                    <span class="lang lang-sm" lang="es" onclick="switchToLanguage('es')"></span>
+                </div>
+                <div class="switchServer btn-group">
+                    <button class="GL btn btn-default" onclick="switchTo('GL')">GL</button>
+                    <button class="JP btn btn-default" onclick="switchTo('JP')">JP</button>
+                </div>
+            </div>
+            <div class="bannerBackground"></div>
+            <div class="bannerPicture"></div>
+            <div class="bannerPicturePerson"></div>
+        </div>
+
+        <div class="container-fluid">
+            <div class="col-xs-12 center quotaWarning hidden"><span class="label label-warning">FFBE Equip is under heavy load, and exceeded its quota to access data, so you may encounter difficulties using it. I hope it will be solved soon.</span></div>
+            <button class="hidden-md hidden-lg sideBarButton" type="button" onclick="event.stopPropagation();document.body.scrollTop = 0; document.documentElement.scrollTop = 0; $('body').toggleClass('expanded'); $('#actionButtonIcon').toggleClass('glyphicon-tasks glyphicon-th-large');">
+                <span id="actionButtonIcon" class="glyphicon glyphicon-tasks"></span>
+            </button>
+            <div class="col-xs-12 col-md-6">
+                
+                <div class="panel panel-default with-nav-tabs goal">
+                    <div class="panel-heading">
+                        <ul class="nav nav-tabs">
+                            <li class="active"><a data-toggle="tab" href="#buildAUnit" onclick="onFeatureSelect('buildAUnit')">Build a unit</a></li>
+                            <li><a data-toggle="tab" href="#parameterChallenges" onclick="onFeatureSelect('parameterChallenges')">Parameter challenges</a></li>
+                        </ul>
+                    </div>
+                    <div class="panel-body">
+                        <div class="tab-content">
+                            <div class="tab-pane fade in active" id="buildAUnit">
+                                <div class="line">
+                                    <span class="goalLabel">Unit</span>
+                                    <div class="unitSelectDiv">
+                                        <select id="unitsSelect" name="units"></select>
+                                    </div>
+                                </div>
+                                <div class="line goalLine hidden">
+                                    <span class="normalGoalChoices goalLabel">Maximize</span>
+                                    <div class="normalGoalChoices select">
+                                        <select id="normalGoalChoice" class="form-control">
+                                            <option value="physicalDamage">Physical damage</option>
+                                            <option value="magicalDamage">Magical damage</option>
+                                            <option value="hybridDamage">Hybrid damage</option>
+                                            <option value="jumpDamage">Jump damage</option>
+                                            <option value="magDamageWithPhysicalMecanism">Physical type MAG damage</option>
+                                            <option value="sprDamageWithPhysicalMecanism">Physical type SPR damage</option>
+                                            <option value="defDamageWithPhysicalMecanism">Physical type DEF damage</option>
+                                            <option value="atkDamageWithMagicalMecanism">Magical type ATK damage</option>
+                                            <option value="sprDamageWithMagicalMecanism">Magical type SPR damage</option>
+                                            <option value="atkDamageWithFixedMecanism">Fixed type ATK damage</option>
+                                            <option value="physicalDamageMultiCast">Physical damage Multicast</option>
+                                            <option value="fixedDamageWithPhysicalMecanism">Physical type Fixed damage (1000)</option>
+                                            <option value="summonerSkill">Summoner skill</option>
+                                            <option value="physicaleHp">Physical eHP (HP * DEF)</option>
+                                            <option value="magicaleHp">Magical eHP (HP * SPR)</option>
+                                            <option value="def">DEF</option>
+                                            <option value="spr">SPR</option>
+                                            <option value="hp">HP</option>
+                                            <option value="mp">MP</option>
+                                            <option value="physicalEvasion">Physical evasion</option>
+                                            <option value="magicalEvasion">Magical evasion</option>
+                                            <option value="mpRefresh">MP/turn</option>
+                                            <option value="heal">Heal</option>
+                                        </select>
+                                    </div>
+                                    <span class="customGoalLinkSpan normalGoalChoices">or <a class="link" onclick="openCustomGoalModal()">Custom Goal</a></span>
+                                    <span class="customGoalChoice hidden goalLabel">Custom Goal: </span>
+                                    <a id="customGoalFormula" class="link customGoalChoice hidden" onclick="openCustomGoalModal()"></a>
+                                    <span class="link glyphicon glyphicon-remove customGoalChoice hidden" onclick="removeCustomGoal()" ></span>
+                                </div>
+                                <div id="multicastSkillsDiv">
+                                    <select id="multicastSelect0" class="hidden"></select>
+                                    <select id="multicastSelect1" class="hidden"></select>
+                                    <select id="multicastSelect2" class="hidden"></select>
+                                    <select id="multicastSelect3" class="hidden"></select>
+                                    <select id="multicastSelect4" class="hidden"></select>
+                                </div>
+                                <div class="unitStack line hidden">
+                                    <div class="goalLabel">Skill stack</div>
+                                    <div>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="simpleConditions hidden">
+                                    <a id="simpleConditionsButton" href="#simpleConditionsList" class="btn btn-default" data-toggle="collapse" aria-expanded="false"><div data-toggle="tooltip" data-original-title="Display/Hide additional build conditions"><span class="glyphicon glyphicon-plus"></span><span class="glyphicon glyphicon-minus"></span> options</div></a>
+                                    <div id="simpleConditionsList" class="collapse">
+                                        <div class="section chainMultiplier">
+                                            <span class="title">Chain Mult.</span>
+                                            <input type="text" class="choice form-control">
+                                            <span class="chainMultComments">
+                                                <div>('MAX' for max chain multiplier)</div>
+                                                <div class="ffbeChainLink">(calculate it on <a href="https://ffbe-chain.com/" target="_blank">FFBE-Chain</a>)</div>
+                                            </span>
+                                        </div>
+                                        <div class="section">
+                                            <span class="title">Force element</span>
+                                            <div class="btn-group choice" data-toggle="buttons" id="forcedElements"></div>
+                                        </div>
+                                        <div class="section">
+                                            <span class="title link" data-toggle="tooltip" data-original-title='Switch between "All ailment", "Disabling ailments" and "No ailments"' onclick="switchSimpleConditionAilments()">Ailment Immunity</span>
+                                            <div class="btn-group choice" data-toggle="buttons" id="ailmentImunities"></div>
+                                        </div>
+                                        <div class="section elementalResists">
+                                            <span class="title">Elemental resist</span>
+                                            <div class="elements">
+                                                <div class="element fire">
+                                                    <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-fire withMiniIcon"></i></div>
+                                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Fire resistance"/>
+                                                </div>
+                                                <div class="element ice">
+                                                    <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-ice withMiniIcon"></i></div>
+                                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Ice resistance"/>
+                                                </div>
+                                                <div class="element lightning">
+                                                    <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-lightning withMiniIcon"></i></div>
+                                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Lightning resistance"/>
+                                                </div>
+                                                <div class="element water">
+                                                    <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-water withMiniIcon"></i></div>
+                                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Water resistance"/>
+                                                </div>
+                                                <div class="element wind">
+                                                    <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-wind withMiniIcon"></i></div>
+                                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Wind resistance"/>
+                                                </div>
+                                                <div class="element earth">
+                                                    <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-earth withMiniIcon"></i></div>
+                                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Earth resistance"/>
+                                                </div>
+                                                <div class="element light">
+                                                    <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-light withMiniIcon"></i></div>
+                                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Light resistance"/>
+                                                </div>
+                                                <div class="element dark">
+                                                    <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-dark withMiniIcon"></i></div>
+                                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Dark resistance"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="section">
+                                            <span class="title">Various</span>
+                                            <div id="simpleConditionVarious" class="btn-group" data-toggle="buttons">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="parameterChallenges">
+                                <div class="notAvailableMessage hidden">Parameter Challenge feature is only available when logged-in</div>
+                                <div class="content">
+                                    <div class="line">
+                                        <div class="paramChallengeSelectDiv">
+                                            <select id="paramChallengeSelect" name="paramChallenge" class="form-control">
+                                                <option value="HP_25500">HP > 25500</option>
+                                                <option value="MP_1850">MP > 1850</option>
+                                                <option value="ATK_2650">ATK > 2650</option>
+                                                <option value="DEF_1650">DEF > 1650</option>
+                                                <option value="MAG_2000">MAG > 2000</option>
+                                                <option value="SPR_1850">SPR > 1850</option>
+                                                <option value="HP_14000">HP > 14000</option>
+                                                <option value="MP_1100">MP > 1100</option>
+                                                <option value="ATK_1650">ATK > 1650</option>
+                                                <option value="DEF_1000">DEF > 1000</option>
+                                                <option value="MAG_1200">MAG > 1200</option>
+                                                <option value="SPR_1100">SPR > 1100</option>
+                                            </select>
+                                        </div>
+                                        <button class="btn btn-primary" id="paramChallengeButton">Find a way !</button>
+
+                                    </div>
+                                    <div class="line">
+                                        <div>
+                                            <div><input type="radio" id="sevenStar" name="paramChallengeUnitChoice" value="sevenStar" checked> Only 7★ units</div>
+                                            <div><input type="radio" id="potentialSevenStar" name="paramChallengeUnitChoice" value="potentialSevenStar"> 7★ units and potential 7★ units (2 or more 5★ owned)</div>
+                                            <div><input type="radio" id="rainbows" name="paramChallengeUnitChoice" value="rainbows"> All rainbow units</div>
+                                        </div>
+                                    </div>
+                                    <div class="line">
+                                        <span>(Units will be assumed fully leveled, fully potted, and with relevent abilities enhanced)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-default unit hidden">
+                    <div class="panel-heading">
+                        <form class="form-inline">
+                            <div class="form-group flex-form-group">
+                                <img class="unitIcon" />
+                                
+                                <div class="unit-rarity">
+
+                                </div>
+                                <a id="unitLink" class="hidden" target="_blank" rel="noreferrer">Unit info</a>
+                                <span class="potSwitcher btn btn-default" onclick="switchPots()">pots</span>
+                                <span class="braveShiftButton" onclick="braveShift(currentUnitIndex)"><img src="img/icons/braveShift.png"/></span>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="panel-body">
+                        <span class="unitEquipable weapons1">
+                        </span>
+                        <span class="unitEquipable weapons2">
+                        </span>
+                        <span class="unitEquipable armors">
+                        </span>
+                        <div class="col-xs-12">
+                            <div id="unitLevel" class="hidden col-xs-6 form-inline">
+                                Unit level :
+                                <select class="form-control">
+                                    <option value="101">101</option>
+                                    <option value="102">102</option>
+                                    <option value="103">103</option>
+                                    <option value="104">104</option>
+                                    <option value="105">105</option>
+                                    <option value="106">106</option>
+                                    <option value="107">107</option>
+                                    <option value="108">108</option>
+                                    <option value="109">109</option>
+                                    <option value="110">110</option>
+                                    <option value="111">111</option>
+                                    <option value="112">112</option>
+                                    <option value="113">113</option>
+                                    <option value="114">114</option>
+                                    <option value="115">115</option>
+                                    <option value="116">116</option>
+                                    <option value="117">117</option>
+                                    <option value="118">118</option>
+                                    <option value="119">119</option>
+                                    <option value="120" selected>120</option>
+                                </select>
+                            </div>
+                            <div id="unitExAwakeningLevel" class="hidden col-xs-6 form-inline">
+                                Ex awakening :
+                                <select class="form-control">
+                                    <option value="0">Not EX awakened</option>
+                                    <option value="1">EX +1</option>
+                                    <option value="2">EX +2</option>
+                                    <option value="3">EX +3</option>
+                                </select>
+                            </div>
+                            <div id="unitEnhancements"></div>
+                        </div>
+                        <div class="unitStats">
+                            <div class="stat hp">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">HP</span>
+                                    <input type="text" class="form-control" placeholder="0" readonly data-toggle="tooltip" data-original-title="HP base stat"/>
+                                </div>
+                                <div class="inputWithIcon pots">
+                                    <span class="leftIcon glyphicon glyphicon-plus link" title="pots"></span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="HP pots"/>
+                                </div>
+                                <div class="inputWithIcon buff">
+                                    <span class="leftIcon fas fa-shield-alt link" title="HP barrier"></span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="HP barrier"/>
+                                </div>
+                            </div>
+                            <div class="stat mp">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">MP</span>
+                                    <input type="text" class="form-control" placeholder="0" readonly data-toggle="tooltip" data-original-title="MP base stat"/>
+                                </div>
+                                <div class="inputWithIcon pots">
+                                    <span class="leftIcon glyphicon glyphicon-plus link" title="pots"></span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="MP pots"/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff " style="visibility: hidden">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="MP buff"/>
+                                </div>
+                            </div>
+                            <div class="stat atk">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">ATK</span>
+                                    <input type="text" class="form-control" placeholder="0" readonly data-toggle="tooltip" data-original-title="ATK base stat"/>
+                                </div>
+                                <div class="inputWithIcon pots">
+                                    <span class="leftIcon glyphicon glyphicon-plus link" title="pots"></span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="ATK pots"/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="ATK buff"/>
+                                </div>
+                            </div>
+                            <div class="stat mag">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">MAG</span>
+                                    <input type="text" class="form-control" placeholder="0" readonly data-toggle="tooltip" data-original-title="MAG base stat"/>
+                                </div>
+                                <div class="inputWithIcon pots">
+                                    <span class="leftIcon glyphicon glyphicon-plus link" title="pots"></span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="MAG pots"/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="MAG buff"/>
+                                </div>
+                            </div>
+                            <div class="stat def">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">DEF</span>
+                                    <input type="text" class="form-control" placeholder="0" readonly data-toggle="tooltip" data-original-title="DEF base stat"/>
+                                </div>
+                                <div class="inputWithIcon pots">
+                                    <span class="leftIcon glyphicon glyphicon-plus link" title="pots"></span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="DEF pots"/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="DEF buff"/>
+                                </div>
+                            </div>
+                            <div class="stat spr">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">SPR</span>
+                                    <input type="text" class="form-control" placeholder="0" readonly data-toggle="tooltip" data-original-title="SPR base stat"/>
+                                </div>
+                                <div class="inputWithIcon pots">
+                                    <span class="leftIcon glyphicon glyphicon-plus link" title="pots"></span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="SPR pots"/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload"  title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0" data-toggle="tooltip" data-original-title="SPR buff"/>
+                                </div>
+                            </div>
+                            <div class="stat lbFillRate">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">LB gauge fill rate</span>
+                                    <input type="text" class="form-control" tabindex="-1" readonly/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload"  title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="stat lbShardsPerTurn">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">Expected LB shards per turn</span>
+                                    <input type="text" class="form-control" tabindex="-1" readonly/>
+                                </div>
+                                <div class="inputWithIcon buff">
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="stat pMitigation">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">Physical mitigation</span>
+                                    <input type="text" class="form-control"  tabindex="-1" readonly/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload"  title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="stat mMitigation">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">Magical mitigation</span>
+                                    <input type="text" class="form-control"  tabindex="-1" readonly/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload"  title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="stat mitigation">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">Global mitigation</span>
+                                    <input type="text" class="form-control" tabindex="-1" readonly/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload"  title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="stat drawAttacks">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">Draw attacks</span>
+                                    <input type="text" class="form-control" tabindex="-1" readonly/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="stat lbDamage">
+                                <div class="inputWithIcon baseStat">
+                                    <span class="leftIcon">+LB damage</span>
+                                    <input type="text" class="form-control" tabindex="-1" readonly/>
+                                </div>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="stat">
+                                <div id="killerBuffSwitch" class="btn btn-default" onclick="switchDisplayKillerBuffs()"><i class="fas fa-edit"></i>Killer buffs</div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 killerBuffsSummary">
+                            <div class="physical"></div>
+                            <div class="magical"></div>
+                        </div>
+                        <div class="col-xs-12 killerBuffs physical hidden">
+                            <div class="killerBuff aquatic">
+                                <i class="img img-killer-physical-aquatic" title="aquatic physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff beast">
+                                <i class="img img-killer-physical-beast" title="beast physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff bird">
+                                <i class="img img-killer-physical-bird" title="bird physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff bug">
+                                <i class="img img-killer-physical-bug" title="bug physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff demon">
+                                <i class="img img-killer-physical-demon" title="demon physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff dragon">
+                                <i class="img img-killer-physical-dragon" title="dragon physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff human">
+                                <i class="img img-killer-physical-human" title="human physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff machine">
+                                <i class="img img-killer-physical-machine" title="machine physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff plant">
+                                <i class="img img-killer-physical-plant" title="plant physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff undead">
+                                <i class="img img-killer-physical-undead" title="undead physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff stone">
+                                <i class="img img-killer-physical-stone" title="stone physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff spirit">
+                                <i class="img img-killer-physical-spirit" title="spirit physical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 killerBuffs magical hidden">
+                            <div class="killerBuff aquatic">
+                                <i class="img img-killer-magical-aquatic" title="aquatic magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff beast">
+                                <i class="img img-killer-magical-beast" title="beast magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff bird">
+                                <i class="img img-killer-magical-bird" title="bird magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff bug">
+                                <i class="img img-killer-magical-bug" title="bug magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff demon">
+                                <i class="img img-killer-magical-demon" title="demon magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff dragon">
+                                <i class="img img-killer-magical-dragon" title="dragon magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff human">
+                                <i class="img img-killer-magical-human" title="human magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff machine">
+                                <i class="img img-killer-magical-machine" title="machine magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff plant">
+                                <i class="img img-killer-magical-plant" title="plant magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff undead">
+                                <i class="img img-killer-magical-undead" title="undead magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff stone">
+                                <i class="img img-killer-magical-stone" title="stone magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="killerBuff spirit">
+                                <i class="img img-killer-magical-spirit" title="spirit magical killer buff"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 elementBuffs">
+                            <div class="elementBuff fire">
+                                <i class="img img-element-fire" title="Fire element damage boost"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="elementBuff ice">
+                                <i class="img img-element-ice" title="Ice element damage boost"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="elementBuff lightning">
+                                <i class="img img-element-lightning" title="Lightning element damage boost"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="elementBuff water">
+                                <i class="img img-element-water" title="Water element damage boost"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="elementBuff wind">
+                                <i class="img img-element-wind" title="Wind element damage boost"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="elementBuff earth">
+                                <i class="img img-element-earth" title="Earth element damage boost"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="elementBuff light">
+                                <i class="img img-element-light" title="Light element damage boost"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                            <div class="elementBuff dark">
+                                <i class="img img-element-dark" title="Dark element damage boost"></i>
+                                <div class="inputWithIcon withPercent buff">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <span class="rightIcon">%</span>
+                                    <input type="text" class="form-control" placeholder="0"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 unitAttackElement">
+                            <div class="col-xs-3 text-right">Imbue(s):</div>
+                            <div class="col-xs-9 btn-group elements choice" data-toggle="buttons" id="elements"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-default buildRules">
+                    <div class="panel-heading">
+                        Build rules
+                    </div>
+                    <div class="panel-body">
+                        <div class="col-xs-12 col-lg-6">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="forceDoublehand" class="checkbox"/><span></span>
+                                Force Doublehand build
+                            </label>
+                        </div>
+                        <div class="col-xs-12 col-lg-6">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="forceDualWield" class="checkbox"/><span></span>
+                                Force Dual Wield build
+                            </label>
+                        </div>
+                        <div class="col-xs-12 col-lg-6">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="tryEquipsources" class="checkbox"/><span></span>
+                                Try "Allow use of &lt;type&gt;" items
+                            </label>
+                        </div>
+                        <div class="col-xs-12">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="tryReduceOverCap" class="checkbox"/><span></span>
+                                Try to reduce overcap in favor of &nbsp;
+                            </label>
+                            <select id="tryReduceOverCapSelect" class="form-control smallSelect">
+                                <option value="hp" selected>HP</option>
+                                <option value="mp">MP</option>
+                                <option value="atk">ATK</option>
+                                <option value="def">DEF</option>
+                                <option value="mag">MAG</option>
+                                <option value="spr">SPR</option>
+                                <option value="lbPerTurn">LB/turn</option>
+                            </select>
+                        </div>
+                        <div id="forceTmrAbilityDiv" class="col-xs-12 hidden">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="forceTmrAbility" class="checkbox"/><span></span>
+                                <span class="experimentalTag">Experimental</span>
+                                Force use of TMR or STMR
+                            </label>
+                        </div>
+                        <div class="col-xs-12">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="useElementConditionedMateria" class="checkbox"/><span></span>
+                                Try element conditioned materia (like Electrifying Might)
+                            </label>
+                        </div>
+                        <div class="col-xs-12">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="useNewJpDamageFormula" class="checkbox"/><span></span>
+                                Use new damage formula
+                            </label>
+                        </div>
+                        <div class="col-xs-12 goalVarianceDiv">
+                            <span class="goalLabel">Damage variance</span>
+                            <select id="goalVariance" name="goalVariance" class="form-control smallSelect">
+                                <option value="min">Minimum</option>
+                                <option value="avg" selected="selected">Average</option>
+                                <option value="max">Maximum</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-default monster">
+                    <div class="panel-heading">
+                        <span>Monster</span>
+                        <a id="monsterListLink" class="buttonLink hidden" onclick="showMonsterList();">Monster list</a>
+                    </div>
+                    <div class="panel-body">
+                        <div id="negativeBreakImperilWarning" class="hidden"><span class="label label-danger"><span class="glyphicon glyphicon-warning-sign"></span> You entered negative breaks or imperils. Break and imperil usually are positive numbers. You are currently buffing the enemy</span></div>
+                        <div id="monsterStats">
+                            <div class="input-group atk">
+                                <span class="input-group-addon">ATK</span>
+                                <input type="text" class="form-control stat" placeholder="100" data-toggle="tooltip" data-original-title="Base ATK">
+                                <div class="inputWithIcon withPercent">
+                                    <span class="leftIcon glyphicon glyphicon-download breakIcon link" title="break" onclick="toogleMonsterBreakability('atk')"></span>
+                                    <input class="form-control break noRadius" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="ATK Break (positive)"/>
+                                    <span class="rightIcon">%</span>
+                                </div>
+                                <div class="inputWithIcon withPercent">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <input class="form-control buff rightRadius" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="ATK Buff (positive)"/>
+                                    <span class="rightIcon">%</span>
+                                </div>
+                            </div>
+                            <div class="input-group def">
+                                <span class="input-group-addon">DEF</span>
+                                <input type="text" class="form-control stat" placeholder="100" data-toggle="tooltip" data-original-title="Base DEF">
+                                <div class="inputWithIcon withPercent">
+                                    <span class="leftIcon glyphicon glyphicon-download breakIcon link" title="break" onclick="toogleMonsterBreakability('def')"></span>
+                                    <input class="form-control break noRadius" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="DEF Break (positive)"/>
+                                    <span class="rightIcon">%</span>
+                                </div>
+                                <div class="inputWithIcon withPercent">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <input class="form-control buff rightRadius" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="DEF Buff (positive)"/>
+                                    <span class="rightIcon">%</span>
+                                </div>
+                            </div>
+                            <div class="input-group mag">
+                                <span class="input-group-addon">MAG</span>
+                                <input type="text" class="form-control stat" placeholder="100" data-toggle="tooltip" data-original-title="Base MAG">
+                                <div class="inputWithIcon withPercent">
+                                    <span class="leftIcon glyphicon glyphicon-download breakIcon link" title="break" onclick="toogleMonsterBreakability('mag')"></span>
+                                    <input class="form-control break noRadius" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="MAG Break (positive)"/>
+                                    <span class="rightIcon">%</span>
+                                </div>
+                                <div class="inputWithIcon withPercent">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <input class="form-control buff rightRadius" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="MAG Buff (positive)"/>
+                                    <span class="rightIcon">%</span>
+                                </div>
+                            </div>
+                            <div class="input-group spr">
+                                <span class="input-group-addon">SPR</span>
+                                <input type="text" class="form-control stat" placeholder="100" data-toggle="tooltip" data-original-title="Base SPR">
+                                <div class="inputWithIcon withPercent">
+                                    <span class="leftIcon glyphicon glyphicon-download breakIcon link" title="break" onclick="toogleMonsterBreakability('spr')"></span>
+                                    <input class="form-control break noRadius" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="SPR Break (positive)"/>
+                                    <span class="rightIcon">%</span>
+                                </div>
+                                <div class="inputWithIcon withPercent">
+                                    <span class="leftIcon glyphicon glyphicon-upload" title="buff"></span>
+                                    <input class="form-control buff rightRadius" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="SPR Buff (positive)"/>
+                                    <span class="rightIcon">%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="btn-group races choice" data-toggle="buttons" id="races">
+                        </div>
+                        
+                        
+                        <div id="elementalResists">
+                            <div class="element fire">
+                                <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-fire withMiniIcon"></i></div>
+                                <div class="input-group">
+                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Fire resistance"/>
+                                    <div class="inputWithIcon">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="imperil"></span>
+                                        <input class="form-control imperil" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Fire imperil (positive)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="element ice">
+                                <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-ice withMiniIcon"></i></div>
+                                <div class="input-group">
+                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Ice resistance"/>
+                                    <div class="inputWithIcon">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="imperil"></span>
+                                        <input class="form-control imperil" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Ice imperil (positive)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="element lightning">
+                                <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-lightning withMiniIcon"></i></div>
+                                <div class="input-group">
+                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Lightning resistance"/>
+                                    <div class="inputWithIcon">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="imperil"></span>
+                                        <input class="form-control imperil" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Lightning imperil (positive)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="element water">
+                                <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-water withMiniIcon"></i></div>
+                                <div class="input-group">
+                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Water resistance"/>
+                                    <div class="inputWithIcon">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="imperil"></span>
+                                        <input class="form-control imperil" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Water imperil (positive)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="element wind">
+                                <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-wind withMiniIcon"></i></div>
+                                <div class="input-group">
+                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Wind resistance"/>
+                                    <div class="inputWithIcon">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="imperil"></span>
+                                        <input class="form-control imperil" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Wind imperil (positive)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="element earth">
+                                <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-earth withMiniIcon"></i></div>
+                                <div class="input-group">
+                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Earth resistance"/>
+                                    <div class="inputWithIcon">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="imperil"></span>
+                                        <input class="form-control imperil" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Earth imperil (positive)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="element light">
+                                <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-light withMiniIcon"></i></div>
+                                <div class="input-group">
+                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Light resistance"/>
+                                    <div class="inputWithIcon">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="imperil"></span>
+                                        <input class="form-control imperil" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Light imperil (positive)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="element dark">
+                                <div><i class="img img-equipment-heavyShield miniIcon"></i><i class="img img-element-dark withMiniIcon"></i></div>
+                                <div class="input-group">
+                                    <input class="form-control elementalResist" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Base Dark resistance"/>
+                                    <div class="inputWithIcon">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="imperil"></span>
+                                        <input class="form-control imperil" type="text" placeholder="0" onkeypress="return isNumberOrMinus(event)" data-toggle="tooltip" data-original-title="Dark imperil (positive)"/>
+                                    </div>
+                                </div>  
+                            </div>
+                        </div>
+                        <div class="weaponImperilsContainer">
+                            <div class="line">
+                                <div id="weaponImperilsSwitch" class="btn btn-default" onclick="switchDisplayWeaponImperils()"><i class="fas fa-edit"></i>Weapon imperils</div>
+                                <div class="col-xs-12 weaponImperilsSummary"></div>
+                            </div>
+                            <div class="col-xs-12 weaponImperils hidden">
+                                <div class="weaponImperil dagger">
+                                    <i class="img img-equipment-dagger" title="dagger imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil sword">
+                                    <i class="img img-equipment-sword" title="sword imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil greatSword">
+                                    <i class="img img-equipment-greatSword" title="great sword imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil katana">
+                                    <i class="img img-equipment-katana" title="katana imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil staff">
+                                    <i class="img img-equipment-staff" title="staff imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil rod">
+                                    <i class="img img-equipment-rod" title="rod imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil bow">
+                                    <i class="img img-equipment-bow" title="bow imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil axe">
+                                    <i class="img img-equipment-axe" title="axe imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil hammer">
+                                    <i class="img img-equipment-hammer" title="hammer imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil spear">
+                                    <i class="img img-equipment-spear" title="spear imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil harp">
+                                    <i class="img img-equipment-harp" title="harp imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil whip">
+                                    <i class="img img-equipment-whip" title="whip imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil throwing">
+                                    <i class="img img-equipment-throwing" title="throwing weapon imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil gun">
+                                    <i class="img img-equipment-gun" title="gun imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil mace">
+                                    <i class="img img-equipment-mace" title="mace imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                                <div class="weaponImperil fist">
+                                    <i class="img img-equipment-fist" title="fist imperil"></i>
+                                    <div class="inputWithIcon withPercent debuff">
+                                        <span class="leftIcon glyphicon glyphicon-download" title="debuf"></span>
+                                        <span class="rightIcon">%</span>
+                                        <input type="text" class="form-control" placeholder="0"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="monsterAttack">
+                            <span>Monster attack:</span>
+                            <span class="monsterAttackFormula link" onclick="changeMonsterAttack();">1 * P_DAMAGE</span>
+                            <span class="link glyphicon glyphicon-remove reset" onclick="resetMonsterAttack()" ></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-default equipments">
+                    <div class="panel-heading">
+                        <form class="form-inline">
+                            <div class="form-group flex-form-group">
+                                <span>Equipments</span>
+                                <select class="form-control">
+                                    <option value="all">All equipments</option>
+                                    <option value="owned" disabled>Only owned equipments</option>
+                                    <option value="ownedAvailableForExpedition" disabled>Only owned equipments available for expedition</option>
+                                    <option value="shopRecipe">Only unlimited equipments (not event shop/recipe)</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="panel-body">
+                        <div class="options">
+                            <label class="checkbox-label hidden"><input id="includeEasilyObtainableItems" type="checkbox" class="checkbox"><span></span>Include easily obtainable items (from chests, shops, quests, keys, and non-event recipes)</label>
+                            <label class="checkbox-label hidden"><input id="includeChocoboItems" type="checkbox" class="checkbox"><span></span>Include items sold by the Chocobo vendors</label>
+                            <label class="checkbox-label hidden"><input id="includeTMROfOwnedUnits" type="checkbox" class="checkbox"><span></span>Include TMR of owned units not farmed yet</label>
+                            <label class="checkbox-label hidden"><input id="includeSTMROfOwnedUnits" type="checkbox" class="checkbox"><span></span>Include STMR of owned units not farmed yet</label>
+                            <label class="checkbox-label hidden"><input id="includeTmrMoogles" type="checkbox" class="checkbox"><span></span>Include TMR that could be prism-moogled</label>
+                            <label class="checkbox-label hidden"><input id="includeTrialRewards" type="checkbox" class="checkbox"><span></span>Include Trial rewards not acquired yet</label>
+                            <label class="checkbox-label"><input id="exludeEvent" type="checkbox" class="checkbox"><span></span>Exclude event items</label>
+                            <label class="checkbox-label"><input id="excludePremium" type="checkbox" class="checkbox"/><span></span>Exclude Premium items</label>
+                            <label class="checkbox-label"><input id="excludeTMR5" type="checkbox" class="checkbox"/><span></span>Exclude TMR of base 5* units</label>
+                            <label class="checkbox-label"><input id="excludeSTMR" type="checkbox" class="checkbox"/><span></span>Exclude STMR</label>
+                            <label class="checkbox-label"><input id="excludeNotReleasedYet" type="checkbox" checked="true" class="checkbox"><span></span>Exclude unreleased equipment</label>
+                            <div id="defaultWeaponEnhancement" class="item">Weapon enhancement : <span class="display"></span><button class="btn btn-default" onclick="modifyDefaultWeaponEnhancement()">Set default</button></div>
+                            <div id="defaultVisionCardLevelDiv" >Default Vision Card level :
+                                <select id="defaultVisionCardLevel">
+                                    <option value="1">Lvl 1</option>
+                                    <option value="2">Lvl 2</option>
+                                    <option value="3">Lvl 3</option>
+                                    <option value="4">Lvl 4</option>
+                                    <option value="5">Lvl 5</option>
+                                    <option value="6">Lvl 6</option>
+                                    <option value="7">Lvl 7</option>
+                                    <option value="8">Lvl 8</option>
+                                    <option value="9">Lvl 9</option>
+                                    <option value="10" selected="selected">Lvl 10</option>
+                                </select>
+                            </div>
+
+                            <div class="itemInclusionDiv">
+                                <div><a class="link" onclick="displayEquipableItemList(ClickBehaviors.INCLUDE);">Select items to include</a></div>
+                                <div><a class="link" onclick="showIncludedItems();"><span class="includedItemNumber"></span> specifically included item(s)</a></div>
+                            </div>
+                            <div class="itemExclusionDiv">
+                                <div><a class="link" onclick="displayEquipableItemList(ClickBehaviors.EXCLUDE);">Select items to exclude</a></div>
+                                <div><a class="link" onclick="showExcludedItems();"><span class="excludedItemNumber"></span> specifically excluded item(s)</a></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-12 col-md-6">
+                <div id="savedTeamPanel" class="panel panel-default hidden">
+                    <div class="panel-heading">
+                        <span class="savedTeamName">New team</span>
+                        <div>
+                            <div id="saveTeamButton" class="btn hidden" onclick="saveTeam()" title="Save"><i class="fas fa-save"></i></div>
+                            <div id="saveTeamAsButton" class="btn hidden" onclick="showSaveAsPopup()" title="Save as..."><span class="fas fa-plus-square"></span></div>
+                            <div id="openSavedTeamsButton" class="btn" onclick="showSavedTeams()" title="Show saved teams list"><span class="fas fa-list"></span></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="buildDiv" class="hidden panel panel-default with-nav-tabs">
+                    <div class="panel-heading">
+                        <ul id="unitTabs" class="nav nav-tabs">
+                            <li class="active tab_0"><a href="#" onclick="selectUnitTab(0)">Select unit</a></li>
+                            <li id="addNewUnitButton" onclick="addNewUnit()"><a><span class="glyphicon glyphicon-plus"/></a></li>
+                        </ul>
+                    </div>
+                    <div class="panel-body result-tab-pane">
+                        <div class="panel-body" style="padding:0;">
+                            <div id="pleaseSelectUnitMessage" class="hidden">Please select a unit</div>
+                            <div class="buildDiv">
+                                <button id="buildButton" class="btn btn-primary">Build !</button>
+                                <div id="buildProgressBar" class="progressBarDiv">
+                                    <div class="progressBar">0%</div>
+                                </div>
+                                <div id="coreUsage">
+                                    <span>Use </span>
+                                    <input type="number" onkeypress="return isNumber(event)"/>
+                                    <span> cores</span>
+                                </div>
+                            </div>
+                            <div class="buildCounterDiv hidden row">Builds tried : <span id="buildCounter"></span></div>
+                            <div id="resultStats" class="hidden row" >
+                                <div class="col-xs-5 hp"><div class="col-xs-4 stat">HP</div><div class="col-xs-4 value text-right"></div><div class="col-xs-4 bonus text-right"></div></div><div class="col-xs-1"></div>
+                                <div class="col-xs-5 mp"><div class="col-xs-4 stat">MP</div><div class="col-xs-4 value text-right"></div><div class="col-xs-4 bonus text-right"></div></div>
+                                <div class="col-xs-5 atk"><div class="col-xs-4 stat">ATK</div><div class="col-xs-4 value text-right"></div><div class="col-xs-4 bonus text-right"></div></div><div class="col-xs-1"></div>
+                                <div class="col-xs-5 def"><div class="col-xs-4 stat">DEF</div><div class="col-xs-4 value text-right"></div><div class="col-xs-4 bonus text-right"></div></div>
+                                <div class="col-xs-5 mag"><div class="col-xs-4 stat">MAG</div><div class="col-xs-4 value text-right"></div><div class="col-xs-4 bonus text-right"></div></div><div class="col-xs-1"></div>
+                                <div class="col-xs-5 spr"><div class="col-xs-4 stat">SPR</div><div class="col-xs-4 value text-right"></div><div class="col-xs-4 bonus text-right"></div></div>
+                                <div class="col-xs-5 physicaleHp"><div class="col-xs-6 stat" title="Physical eHP : HP x DEF / (1 - Mitigation)">P. eHP</div><div class="col-xs-6 value text-right"></div></div><div class="col-xs-1"></div>
+                                <div class="col-xs-5 magicaleHp"><div class="col-xs-6 stat" title="Magical eHP : HP x SPR / (1 - Mitigation)">M. eHP</div><div class="col-xs-6 value text-right"></div></div><div class="col-xs-1"></div>
+                                <div class="evade_physical"><div class="col-xs-5"><div class="col-xs-7 stat" title="Physical Evade">P. Evade</div><div class="col-xs-5 text-right"><span class="value"></span>%</div></div><div class="col-xs-1"></div></div>
+                                <div class="evade_magical"><div class="col-xs-5"><div class="col-xs-7 stat" title="Magical Evade">M. Evade</div><div class="col-xs-5 text-right"><span class="value"></span>%</div></div><div class="col-xs-1"></div></div>
+                                <div class="mpRefresh"><div class="col-xs-5"><div class="col-xs-6 stat">MP/turn</div><div class="col-xs-6 text-right value"></div></div><div class="col-xs-1"></div></div>
+                                <div class="lbPerTurn"><div class="col-xs-5"><div class="col-xs-6 stat">LB/turn</div><div class="col-xs-6 text-right value"></div></div><div class="col-xs-1"></div></div>
+                                <div class="lbFillRate"><div class="col-xs-5"><div class="col-xs-7 stat">Lb fill rate</div><div class="col-xs-5 text-right"><span class="value"></span>%</div></div><div class="col-xs-1"></div></div>
+                                <div class="evoMag"><div class="col-xs-5"><div class="col-xs-7 stat">EVO Mag</div><div class="col-xs-5 text-right"><span class="value"></span>%</div></div><div class="col-xs-1"></div></div>
+                                <div class="evokeDamageBoost_all"><div class="col-xs-5"><div class="col-xs-7 stat">Evoke Dmg</div><div class="col-xs-5 text-right"><span class="value"></span>%</div></div><div class="col-xs-1"></div></div>
+                                <div class="accuracy"><div class="col-xs-5"><div class="col-xs-7 stat">Accuracy</div><div class="col-xs-5 text-right"><span class="value"></span>%</div></div><div class="col-xs-1"></div></div>
+                                <div class="drawAttacks"><div class="col-xs-5"><div class="col-xs-6 stat">D. Attacks</div><div class="col-xs-6 text-right value"></div></div><div class="col-xs-1"></div></div>
+                                <div class="jumpDamage"><div class="col-xs-5"><div class="col-xs-6 stat">Jump D.</div><div class="col-xs-6 text-right value"></div></div><div class="col-xs-1"></div></div>
+                                <div class="lbDamage"><div class="col-xs-5"><div class="col-xs-6 stat">LB Damage</div><div class="col-xs-6 text-right value"></div></div><div class="col-xs-1"></div></div>
+                                <div class="resists">
+                                    <div class="elements"></div>
+                                    <div class="ailments"></div>
+                                </div>
+                                <div class="killers">
+                                    <div class="physical"></div>
+                                    <div class="magical"></div>
+                                </div>
+                                <div class="resultLine buildResult hidden"><span class="resultLabel">Build goal calculated value: </span><span class="calcValue"></span></div>
+                                <div class="resultLine damageTaken"><span class="resultLabel">Damage taken: </span><span class="calcValue"></span></div>
+                                <div class="resultLine physicalDamageResult hidden">Physical damage on a <span class="monsterDefValue"></span> DEF enemy with a <span class="damageCoef"></span> skill: <span class="calcValue"></span></div>
+                                <div class="resultLine magicalDamageResult hidden">Magical damage on a <span class="monsterSprValue"></span> SPR enemy with a <span class="damageCoef"></span> skill: <span class="calcValue"></span></div>
+                                <div class="resultLine hybridDamageResult hidden">Hybrid damage on a <span class="monsterDefValue"></span> DEF <span class="monsterSprValue"></span> SPR enemy with a <span class="damageCoef"></span> skill: <span class="calcValue"></span></div>
+                                <div class="resultLine healingResult hidden">Healing coef: <span class="calcValue"></span></div>
+                                <div id="exportForBattle" class="hidden" style="display:flex; justify-content: center;"><button class="btn btn-primary" onclick="exportUnitForCombat();">Export for Battle</button></div>
+                            </div>
+                            <div class="buildLinks hidden">
+                                <div id="detailedViewLink" class="link text-center">
+                                    <a onclick="switchView(false);"><span class="glyphicon glyphicon-zoom-in"></span> Detailed View</a>
+                                </div>
+                                <div id="conciseViewLink" class="hidden link text-center">
+                                    <a onclick="switchView(true);"><span class="glyphicon glyphicon-zoom-out"></span> Concise View</a>
+                                </div>
+                                <div id="shareLinksMenu" class="text-center">
+                                    <div class="dropdown">
+                                        <a class=" dropdown-toggle link" type="button" data-toggle="dropdown">
+                                            <span class="glyphicon glyphicon-share-alt"></span> 
+                                            Share <span class='hidden-xs'>this build</span> <span class="caret"></span>
+                                        </a>
+                                        <ul class="dropdown-menu dropdown-menu-right">
+                                            <li>
+                                                <a class="buildLink link" onclick="showBuildLink(true)">
+                                                    <span class="glyphicon glyphicon-link"></span> FFBE Equip link (this unit only)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="buildLink link" onclick="showBuildLink(false)">
+                                                    <span class="glyphicon glyphicon-link"></span> FFBE Equip link (all units)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="buildAsText link" onclick="showBuildAsText()">
+                                                    <span class="glyphicon glyphicon-list"></span> Build as text
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="buildAsText link" onclick="showAllBuildsAsText()">
+                                                    <span class="glyphicon glyphicon-list"></span> Builds as text (all units)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="buildAsImage link" onclick="showExportAsImage()">
+                                                    <span class="glyphicon glyphicon-picture"></span> Builds as image
+                                                </a>
+                                            </li>
+                                            
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div id="clearBuildMenu" class="link text-center">
+                                    <div class="dropdown">
+                                        <a class=" dropdown-toggle link" type="button" data-toggle="dropdown">
+                                            <span class="glyphicon glyphicon-trash"></span> 
+                                            Clear <span class='hidden-xs'>items</span> <span class="caret"></span>
+                                        </a>
+                                        <ul class="dropdown-menu dropdown-menu-right">
+                                            <li>
+                                                <a class="link" onclick="clearItemsFromBuild(true)">
+                                                    <span class="glyphicon glyphicon-trash"></span> Clear not pinned items (for this build)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="link" onclick="clearItemsFromBuild()">
+                                                    <span class="glyphicon glyphicon-trash"></span> Clear <strong>all</strong> items (for this build)
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="buildResult" class="notSorted items results">
+                                <div class="line">
+                                    <div class='buildLine buildLine_0 item'></div>
+                                    <div class='buildLine buildLine_1 item'></div>
+                                </div>
+                                <div class="line">
+                                    <div class='buildLine buildLine_2 item'></div>
+                                    <div class='buildLine buildLine_3 item'></div>
+                                </div>
+                                <div class="line">
+                                    <div class='buildLine buildLine_4 item'></div>
+                                    <div class='buildLine buildLine_5 item'></div>
+                                </div>
+                                <div class="line">
+                                    <div class='buildLine buildLine_6 item'></div>
+                                    <div class='buildLine buildLine_7 item'></div>
+                                </div>
+                                <div class="line">
+                                    <div class='buildLine buildLine_8 item'></div>
+                                    <div class='buildLine buildLine_9 item'></div>
+                                </div>
+                                <div class="line">
+                                    <div class='buildLine buildLine_10'></div>
+                                    <div class='buildLine buildLine_11'></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="help">
+                    <h3>How to use this:</h3>
+                    <h4>Basic Usage (BiS builds using all items)</h4>
+                    <ol>
+                        <li>Select a unit to build BiS for</li>
+                        <li>Select a skill or a goal</li>
+                        <li>Click on the Build button</li>
+                        <li>???</li>
+                        <li>Profit</li>
+                    </ol>
+                    <h4>Advanced Usage</h4>
+
+                    <h5>More options</h5>
+                    <ul>
+                        <li>If you plan to use an attack with innate element(s) or your unit has been imbued with an element, you can select the corresponding element(s) in the "Skill innate element(s)" section (for instance, you'll want to select Ice if you plan to use Fryevia's Frost Flower Blitz.</li>
+                        <li>Fill information on the monster you're facing, its race(s) and its elemental resistance (negative number for elemental weakness).</li>
+                        <li>Take into account the elemental debufs you'll give it (for instance, if using Orlandeau's Divine Ruination, substract 50 from the light elemental resistance).</li>
+                        <li>You can adjust the DEF/SPR of the monster to account for breaks.</li>
+                        <li>Custom Formula allows to create tailored-made builds. More information on how to use it when you click on it.</li>
+                        <li>Some pre-set custom formula can be found on the custom formula popup. Click on the arrow on the left of the text field to get access to various healing and expedition custom formula.</li>
+                    </ul>
+
+                    <h5>Equipment selection :</h5>
+                    <ul>
+                        <li>All Equipments :
+                            <ul>
+                                <li>All available Equipment, unless limited by available options.</li>
+                                <li>Espers at Maximum rarity and level, with only Killers unlocked.</li>
+                            </ul>
+                        </li>
+                        <li>Only owned equipments :
+                            <ul>
+                                <li>Only available when logged in.</li>
+                                <li>All equipments inputed in the inventory page.</li>
+                                <li>If espers are inputed in the Espers page, will use that, else default to the same espers as All Equipments.</li>
+                            </ul>
+                        </li>
+                        <li>Only owned equipments available to expedition :
+                            <ul>
+                                <li>Only available when logged in.</li>
+                                <li>Same as Only owned equipment, but exlude items marked as excluded from expedition in the inventory page.</li>
+                                <li>No esper will be automatically selected.</li>
+                                <li>For ease of use, pre-set custom formula can be found on the custom formula popup. Click on the arrow on the left of the text field to get access to the expedition custom formula</li>
+                            </ul>
+                        </li>
+                        <li>Only unlimited equipments (not event shop/recipe) :
+                            <ul>
+                                <li>Only items available at will from shop/recipe and not from event will be used.</li>
+                                <li>No esper will be automatically selected.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <h5>Why log in ?</h5>
+                    <ul>
+                        <li>To make builds tailored just for your available equipments :
+                            <ul>
+                                <li>Log in and go to the Inventory page.</li>
+                                <li>Take the time to input your inventory, and update it as necessary.</li>
+                            </ul>
+                        </li>
+                        <li>To allow this tool to suggest you TMR to farm :
+                            <ul>
+                                <li>Log in and go to the Units page.</li>
+                                <li>Take the time to input your units, and adjust the available TMRs.</li>
+                                <li>When building with "Only owned equipments", select "Include TMR of owned units not farmed yet"</li>
+                            </ul>
+                        </li>
+                        <li>To be able to use your own esper builds and not the default ones :
+                            <ul>
+                                <li>Log in and go to the Espers page.</li>
+                                <li>Take the time to input your esper information.</li>
+                                <li>Note: The Espers page uses "path finding." This allows you to select objects on the outer-most ring, and claim all objects along that path. For example, Selecting Ifrit's 75% Beast Killer selects a total of 9 objects, starting with Fire, for a total of 370 SP.</li>
+                                <li>Note: To remove an added object, simply click on it again. Path finding works here as well, allowing entire sets of objects to be removed. For example, Ifrit's Beast killer can be trimmed back to the 50% killer by clicking on the ATK + 100 object that follows the 50% killer.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div class="footerButtons">
+                    <div>
+                        <a class="buttonLink" href="https://www.reddit.com/message/compose/?to=lyrgard" target="_blank" rel="noreferrer">Send me a message on reddit</a>
+                        <a class="buttonLink" href="https://discord.gg/rgXnjhP" target="_blank" rel="noreferrer">Chat on FFBE Equip discord server</a>
+                        <a class="buttonLink" href="https://github.com/lyrgard/ffbeEquip" target="_blank" rel="noreferrer">See code on GitHub</a>
+                    </div>
+                    <div>
+                        <a class="buttonLink" href='https://ko-fi.com/Lyrgard' target="_blank" rel="noreferrer">Buy me a coffee</a>
+                        <a class="buttonLink" href='https://www.patreon.com/Lyrgard' target="_blank" rel="noreferrer">Become my patron on Patreon</a>
+                    </div>
+                    <div>
+                        <a class="buttonLink" data-server="JP" href='https://exviusdb.com/' target="_blank" rel="noreferrer">JP units and items images are a courtesy of EXVIUS DB</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="fixItemModal" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="searchBoxAndSortDiv">
+                            <input type="text" class="form-control" id="searchText">
+                            <div class="dropdown stat">
+                                <i class="img img-sort-a-z dropdown-toggle statChoice" type="button" data-toggle="dropdown"></i>
+                                <div class="dropdown-menu pull-right">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="options">
+                            <label id="onlyOwnedItems" class="checkbox-label">
+                                <input type="checkbox" class="checkbox"><span></span>
+                                Only show owned equipment
+                            </label>
+                            <label id="excludeNotReleasedYetOption" class="checkbox-label">
+                                <input type="checkbox" class="checkbox"><span></span>
+                                Exclude not released yet
+                            </label>
+                        </div>
+                        <a id="backToAllItems" class="link" onclick="updateSearchResult();"><span class="glyphicon glyphicon-chevron-left"></span> Back to item list</a>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="nav nav-tabs type">
+                        </ul>
+                        <div id="results" class="notSorted items results">
+							
+                            <div id="fixItemResults">
+                                <div id="resultsContent" class="tbody clusterize-content">
+                                    <div class="clusterize-no-data">No results…</div>
+                                </div>
+                            </div>
+                        </div>
+                        <a class="link customEnchantment" onclick="selectEnchantement();">
+                            Custom enchantment<img src="img/icons/dwarf.png"/>
+                        </a>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="customFormulaModal" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <span><b>Custom Formula</b></span>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display:flex;">
+                            <div style="display: flex;flex-direction: column;height: 68px;justify-content: space-around;align-items: flex-end;padding-right: 5px;">
+                                <span>Maximize </span>
+                                <span>With </span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; flex:1;">
+                                <div class="inputDiv">
+                                    <span style="display:flex;">
+                                        <input type="text" class="form-control" id="formulaInput" placeholder="Enter value to maximize (for instance, HP * DEF) - mandatory">
+                                        <div class="dropdown">
+                                            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown"><span class="caret"></span></button>
+                                            <ul class="dropdown-menu dropdown-menu-right">
+                                                <li class="dropdown-submenu firstLevel">
+                                                    <a class="test" tabindex="-1" href="#">Healing<span class="caret-right"></span></a>
+                                                    <ul class="dropdown-menu">
+                                                        <li><a tabindex="-1" href="#" onclick="addToCustomFormula('2500 + 9*SPR + 1.8*MAG')">Curaja</a></li>
+                                                        <li><a tabindex="-1" href="#" onclick="addToCustomFormula('1000 + 1.7*SPR + 0.34*MAG')">Curaga</a></li>
+                                                        <li><a tabindex="-1" href="#" onclick="addToCustomFormula('0.5*SPR + 0.1*MAG')">Base healing coef</a></li>
+                                                    </ul>
+                                                </li>
+                                                <li class="dropdown-submenu firstLevel">
+                                                    <a class="test" tabindex="-1" href="#">Expeditions<span class="caret-right"></span></a>
+                                                    <ul class="dropdown-menu">
+                                                        <li class="dropdown-submenu">
+                                                            <a class="test" tabindex="-1" href="#">D Rank<span class="caret-right"></span></a>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1')">Relic Hunting Craze I</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1')">Relic Hunting Craze II</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1')">Relic Hunting Craze III</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/3.12')">Strange Encounters</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('DEF/3.12 + SPR/Equippable: Clothes')">Shirts and Skins</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/3.12')">Put to the Test</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MAG/3.12')">Needle in a Haystack</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/104 + DEF/4.16')">Merchant Guard</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/104 + DEF/4.16')">Guard Duty</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('SPR/3.12')">Mouse Trapped</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MAG/3.12 + SPR/Black Magic: 2')">Farmer's Dismay</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/3.9')">Cause for Celebration</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('SPR/3.12')">What Might Happen?</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MAG/3.12')">Flame Fighters</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/3.9')">Devilish Arms</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MAG/3.12')">Can't Beat Free</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('DEF/3.12')">To the Rescue</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('DEF/3.12')">Heavy Objects Collide</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('SPR/3.12')">Lightning Rod</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/5.2 + SPR/4.16')">Dream Job</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/5.2 + SPR/4.16')">No Sheep to Count</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MAG/4.16 + SPR/4.16')">Poker Tournament</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/104 + MP/5.2')">Winter Retreat</a></li>
+                                                            </ul>
+                                                        </li>
+                                                        <li class="dropdown-submenu">
+                                                            <a class="test" tabindex="-1" href="#">C Rank<span class="caret-right"></span></a>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/7.76')">Buzzkill</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/17.25 + MAG/13.8')">Just Cause</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/13.8 + DEF/13.8')">Bad to the Bone</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MAG/7.76')">Volcano on Ice</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/7.76')">Leave No Stones Unturned</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/345 + ATK/13.8')">Precious Lumber</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/423 + ATK/16.92 + DEF/16.92')">Test Your Strength</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/423 + DEF/16.92 + SPR/16.92')">Targeted</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/13.8 + DEF/13.8')">Call to Arms</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/17.25')">Grand Theft Carriage</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('SPR/7.76')">Paging All White Mages</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MAG/7.76')">The Mage-Off</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/345 + MP/17.25')">Crab Battle</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/17.25 + SPR/13.8')">None Shall Starve</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/13.8 + MAG/13.8')">Stop the Horde!</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('DEF/13.8 + SPR/13.8')">Arms on Fire!</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/423 + DEF/16.92 + SPR/16.92')">Lost in Fantasy</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/423 + DEF/16.92 + SPR/16.92Series: FFBE')">Time to Relax</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/8.62 + DEF/17.24')">Parley?</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MAG/8.62 + SPR/17.24')">Lightning Returns?</a></li>
+                                                            </ul>
+                                                        </li>
+                                                        <li class="dropdown-submenu">
+                                                            <a class="test" tabindex="-1" href="#">B Rank<span class="caret-right"></span></a>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/39.72 + DEF/39.72 + SPR/39.72')">Plumbers Paradise</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/993 + ATK/39.72 + MAG/39.72')">Spelunking Splendor</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/505.5 + MP/50.55')">Will to Survive</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/49.65 + MAG/39.72 + SPR/39.72')">Unpleasant Dreams</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/993 + ATK/39.72 + MAG/39.72')">Egg Hunt</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/49.65 + MAG/39.72 + SPR/39.72')">Back to the Sands</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/993 + MP/49.65 + SPR/39.72')">Weathering the Weather</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/505.5 + ATK/40.44')">Quarry Quickness</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1159 + MP/28.98 + SPR/46.36')">Cat Lost</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/49.65 + ATK/39.72 + MAG/39.72')">Monster Tamer</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/20.22 + MAG/40.44')">Run, Cactuar, Run</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1011 + ATK/20.22')">A Certain Set of Skills</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/993 + ATK/39.72 + DEF/39.72')">Basher's Brawl</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/50.55 + SPR/20.22')">Undead Rising</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/50.55 + MAG/20.22')">Will It Hold?</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/993 + MP/49.65 + SPR/39.72')">Crying Over Spilt Milk</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1159 + ATK/23.18 + DEF/46.36')">Sword in the Stone</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1165 + MP/58.25 + ATK/46.6 + DEF/46.6')">Join the Circus</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/57.95 + MAG/23.18 + SPR/46.36')">Hot Topic</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/46.6 + DEF/46.6 + MAG/46.6 + SPR/46.6')">Impact from Above</a></li>
+                                                            </ul>
+                                                        </li>
+                                                        <li class="dropdown-submenu">
+                                                            <a class="test" tabindex="-1" href="#">A Rank<span class="caret-right"></span></a>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/55.1 + SPR/29.39')">General Hospitality</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/55.1 + MAG/29.39')">Stranger Stuff</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2142 + MP/53.55 + MAG/85.68 + SPR/85.68')">He Who Smelt It</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2164 + MP/54.1 + SPR/43.28')">Full House</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/108.2 + ATK/43.28 + MAG/43.28')">A Beast's Bounty</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1082 + ATK/43.28 + DEF/86.56')">Child's Play</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2172 + MP/108.6 + ATK/86.88 + DEF/86.88 + MAG/86.88')">A Priest, a Monk, and a Paladin</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/54.1 + MAG/86.56 + SPR/43.28')">Shopping for Medicine</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2142 + MP/107.1 + MAG/42.84 + SPR/85.68')">The Missing Key</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2142 + MP/53.55 + MAG/85.68 + SPR/85.68')">Across the Desert</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2389 + MP/119.45 + ATK/95.56 + MAG/47.78 + SPR/95.56')">Cook Off</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2429 + MP/121.45 + ATK/97.16 + DEF/97.16 + MAG/97.16 + SPR/97.16')">Tavern Cleanup</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2389 + ATK/47.78 + DEF/95.56 + MAG/95.56 + SPR/95.56')">Too Many Coeurls</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1190 + ATK/95.2 + DEF/47.6 + SPR/95.2')">Lost in the Dark</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2389 + MP/119.45 + DEF/95.56 + MAG/95.56 + SPR/47.78')">Anger Management</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2389 + MP/119.45 + DEF/95.56 + MAG/47.78 + SPR/95.56')">Wrath in the Wreckage</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1190 + MP/59.5 + DEF/95.2 + SPR/95.2')">Seven Years Bad Luck</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2389 + MP/119.45 + DEF/95.56 + MAG/95.56 + SPR/47.78')">Ghost Busted</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2389 + MP/119.45 + DEF/95.56 + MAG/47.78 + SPR/95.56')">What's Her Secret?</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1190 + MP/59.5 + DEF/95.2 + SPR/95.2')">Braving the Elements</a></li>
+                                                            </ul>
+                                                        </li>
+                                                        <li class="dropdown-submenu">
+                                                            <a class="test" tabindex="-1" href="#">S Rank<span class="caret-right"></span></a>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2298 + MP/229.8 + ATK/91.92 + DEF/91.92')">Lost in the World</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4447 + MP/222.35 + ATK/59.29 + DEF/177.88 + SPR/177.88')">Hotline Grandshelt</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4596 + MP/114.9 + MAG/91.92 + SPR/91.92')">Break Time</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4575 + MP/228.75 + ATK/91.5 + DEF/91.5 + SPR/183')">Reinventing the Wheel</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/114.9 + DEF/183.84 + MAG/91.92 + SPR/91.92')">Winter is Coming</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4447 + MP/222.35 + ATK/59.29 + DEF/177.88 + SPR/177.88')">Hide your wallets!</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4575 + MP/114.38 + ATK/183 + MAG/91.5 + SPR/183')">Paper, Please!</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/2298 + MP/229.8 + ATK/91.92 + DEF/91.92')">Wherefore Art Thou, Father</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4447 + MP/222.35 + ATK/59.29 + DEF/177.88 + SPR/177.88')">A "Legendary" Challenge</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4596 + MP/114.9 + MAG/91.92 + SPR/91.92')">Where's My Mommy?</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4575 + MP/228.75 + ATK/91.5 + DEF/91.5 + SPR/183')">Be the Best</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('MP/114.9 + DEF/183.84 + MAG/91.92 + SPR/91.92')">Hot Ice</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4447 + MP/222.35 + ATK/59.29 + DEF/177.88 + SPR/177.88')">Save the Children</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/4575 + MP/114.38 + ATK/183 + MAG/91.5 + SPR/183')">Magi in Danger</a></li>
+                                                            </ul>
+                                                        </li>
+                                                        <li class="dropdown-submenu">
+                                                            <a class="test" tabindex="-1" href="#">Supercite<span class="caret-right"></span></a>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1165 + ATK/46.6 + MAG/46.6 + SPR/46.6')">Supercites of Red and Blue</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/1165 + MP/58.25 + MAG/46.6 + SPR/46.6')">Supercites of Violet and Yellow</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('ATK/23.18 + DEF/46.36')">Supercites of Orange and White</a></li>
+                                                                <li><a tabindex="-1" href="#" onclick="addToCustomFormula('HP/579.5 + DEF/46.6 + SPR/46.6')">Supercites of Green and Black</a></li>
+                                                            </ul>
+                                                        </li>
+                                                    </ul>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <input type="text" class="form-control" id="formulaConditionInput" placeholder="Enter condition(s) to meet (for instance, R_FIRE > 50 AND I_PARALYSIS) - optional">
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" style="margin-left:10px;" onclick="chooseCustomFormula()">OK</button>
+                        </div>
+
+                        <h4>How to use this:</h4>
+                        <ul>
+                            <li>The "Maximize" field must contain an <span class="code">EXPRESSION</span>, that the builder will try to maximize</li>
+                            <li>The "With" field can contain a <span class="code">CONDITION</span> that the builder will try to meet</li>
+                            <li>An <span class="code">EXPRESSION</span> must resolve to a number, so it can only contain <span class="code">+ - * /</span> and <span class="code">VALUE VARIABLES</span>, no <span class="code">OR AND</span> or <span class="code">CONDITIONS</span></li>
+                            <li>A <span class="code">CONDITION</span> must resolve to true or false. It can contain <span class="code">CONDITIONS</span> assembled by <span class="code">AND OR</span>, or be of the form <span class="code">EXPRESSION &gt; CONSTANT</span></li>
+                            <li>
+                                <h5>Some valid formula :</h5>
+                                <div class="tokenList">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr><td class="token"><span class="code">Maximize HP</span></td><td>Maximize HP</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize DEF * HP</span></td><td>Maximize the product of HP by DEF (physical eHP)</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize SPR * HP</span></td><td>Maximize the product of HP by SPR (magical eHP)</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize MP * MP_REFRESH</span></td><td>Maximize the number of MP regained each turn</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize M_DAMAGE With HP > 6000</span></td><td>Maximize Magical Damage while keeping HP > 6000</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize P_DAMAGE With P_EVADE > 100 AND HP > 5000</span></td><td>Maximize Physical Damage while reaching 100% physical evade and HP > 5000</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize P_DAMAGE With I_PHYSICAL AND HP > 5000</span></td><td>Maximize Physical Damage while reaching 100% physical evade and HP > 5000</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize HP With LB > 12</span></td><td>Maximize HP while insuring at least 12 LB points per turn</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize P_DAMAGE With I_PHYSICAL AND i_PARALYSIS AND I_DEATH AND E_LIGHT</span></td><td>Formula to carry Gilgamesh trial. 100% evasion, immunity to paralysis and death, Light elemental weapon and then maximize damage</td></tr>
+                                            <tr><td class="token"><span class="code">Maximize P_DAMAGE With E_LIGHT OR E_FIRE</span></td><td>Maximize physical damage with a light or fire weapon (or both)</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </li>
+                            <li><span class="glyphicon glyphicon-warning-sign"></span> The more different variables you use in your formula, the more time the calculations will take</li>
+                            <li>
+                                <h5>Available variables :</h5>
+                                <div class="tokenList">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr><td class="token">HP, MP, ATK, DEF, MAG, SPR</td><td>Value of the corresponding basic stat</td></tr>
+                                            <tr><td class="token">ACCURACY</td><td>Accuracy</td></tr>
+                                            <tr><td class="token">MP_REFRESH</td><td>% of MP refresh per turn (values are in the 0.01 range)</td></tr>
+                                            <tr><td class="token">P_DAMAGE</td><td>This is the total physical damage, taking into account the ATK, the elements, the killers, the damage variance, ...</td></tr>
+                                            <tr><td class="token">M_DAMAGE</td><td>Same as P_DAMAGE but for magical damage</td></tr>
+                                            <tr><td class="token">H_DAMAGE</td><td>Same as P_DAMAGE but for hybrid damage</td></tr>
+                                            <tr><td class="token">J_DAMAGE</td><td>Same as P_DAMAGE but for jump damage</td></tr>
+                                            <tr><td class="token">S_DAMAGE</td><td>Same as P_DAMAGE but for summon damage</td></tr>
+                                            <tr><td class="token">F_DAMAGE</td><td>Physical type Fixed damage. Assume fixed damage of 1000</td></tr>
+                                            <tr><td class="token">P_DAMAGE_MAG</td><td>Same as P_DAMAGE but use MAG scalling</td></tr>
+                                            <tr><td class="token">P_DAMAGE_SPR</td><td>Same as P_DAMAGE but use SPR scalling</td></tr>
+                                            <tr><td class="token">M_DAMAGE_ATK</td><td>Same as M_DAMAGE but use ATK scalling</td></tr>
+                                            <tr><td class="token">M_DAMAGE_SPR</td><td>Same as M_DAMAGE but use SPR scalling</td></tr>
+                                            <tr><td class="token">F_DAMAGE_ATK</td><td>Fixed damage that use ATK scalling</td></tr>
+                                            <tr><td class="token">P_DAMAGE_MULTICAST</td><td>Physical damage used with W- or T-ability. Multiply it by 2 for W-cast, or by 3 for T-cast</td></tr>
+                                            <tr><td class="token">P_DAMAGE_MAG_MULTICAST, P_DAMAGE_SPR_MULTICAST, P_DAMAGE_DEF_MULTICAST</td><td>Same as P_DAMAGE_MULTICAST, but respectively MAG, SPR or DEF scaling</td></tr>
+                                            <tr><td class="token">LB_XXX</td><td>Same as XXX, but treated as a Limit Burst. For instance : LB_P_DAMAGE_MULTICAST for physical LB (they are not affected by DW)</td></tr>
+                                            <tr><td class="token">P_EVADE</td><td>Physical evade</td></tr>
+                                            <tr><td class="token">M_EVADE</td><td>Magical evade</td></tr>
+                                            <tr><td class="token">EVO_MAG</td><td>Boost to Evocation damage</td></tr>
+                                            <tr><td class="token">LB</td><td>Number of LB point generated each turn. Note that this number is heavilly dependant on the expected number of LB shards gained per turn.</td></tr>
+                                            <tr><td class="token">R_FIRE, R_ICE, R_LIGHTNING, R_WATER, R_EARTH, R_WIND, R_LIGHT, R_DARK</td><td>Corresponding elemental resistance</td></tr>
+                                            <tr><td class="token">R_POISON, R_BLIND, R_SLEEP, R_SILENCE, R_PARALYSIS, R_CONFUSION, R_DISEASE, R_PETRIFICATION, R_DEATH</td><td>Corresponding ailment resistance</td></tr>
+                                            <tr><td class="token">DRAW_ATTACKS</td><td>draw attacks</td></tr>
+                                            
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </li>
+                            <li>
+                                <h5>Condition variables and Condition shortcuts</h5>
+                                <div class="tokenList">
+                                    <table class="table">
+                                        <tbody>
+                                            <tr><td class="token">I_PHYSICAL</td><td>Shortcut for P_EVADE > 100</td></tr>
+                                            <tr><td class="token">I_POISON, I_BLIND, I_SLEEP, I_SILENCE, I_PARALYSIS, I_CONFUSION, I_DISEASE, I_PETRIFICATION, I_DEATH</td><td>I_XXX is a shortcut for R_XXX > 100</td></tr>
+                                            <tr><td class="token">I_AILMENTS</td><td>This condition is a shortcut for all R_&lt;ailment&gt; > 100</td></tr>
+                                            <tr><td class="token">I_DISABLE</td><td>This condition is a shortcut for I_SLEEP; I_PARALYSIS; I_CONFUSION; I_PETRIFICATION</td></tr>
+                                            <tr><td class="token">E_FIRE, E_ICE, E_LIGHTNING, E_WATER, E_EARTH, E_WIND, E_LIGHT, E_DARK</td><td>Those special conditions will force the resulting build to have the corresponding element(s) and no other elements</td></tr>
+                                            <tr><td class="token">E_NONE</td><td>Force a none elemental build. This condition is not compatible with E_FIRE, E_ICE, ...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="monsterAttackFormulaModal" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <span><b>Monster Attack Formula</b></span>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" class="form-control" id="monsterAttackInput" placeholder="Enter monster damage formula">
+                        <button class="btn btn-primary" style="margin-left:10px;" onclick="chooseMonsterAttackFormula()">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modifyEnhancementModal" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <span class="title item"></span>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="enhancementTypes">
+                            <div class="enhancementType">
+                                <div class="title">Rare</div>
+                                <div class="rareEnhancement value rare_3" onclick="toggleItemEnhancement('rare_3')">HP/ATK +15%</div>
+                                <div class="rareEnhancement value rare_4" onclick="toggleItemEnhancement('rare_4')">HP/ATK +20%</div>
+                                <div class="rareEnhancement value special_1" onclick="toggleItemEnhancement('special_1')">ATK/Fire resist +20%</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">HP</div>
+                                <div class="value hp_15" onclick="toggleItemEnhancement('hp_15')">15%</div>
+                                <div class="value hp_12" onclick="toggleItemEnhancement('hp_12')">12%</div>
+                                <div class="value hp_10" onclick="toggleItemEnhancement('hp_10')">10%</div>
+                                <div class="value hp_7" onclick="toggleItemEnhancement('hp_7')">7%</div>
+                                <div class="value hp_5" onclick="toggleItemEnhancement('hp_5')">5%</div>
+                                <div class="value hp_3" onclick="toggleItemEnhancement('hp_3')">3%</div>
+                                <div class="value hp_1" onclick="toggleItemEnhancement('hp_1')">1%</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">MP</div>
+                                <div class="value mp_15" onclick="toggleItemEnhancement('mp_15')">15%</div>
+                                <div class="value mp_12" onclick="toggleItemEnhancement('mp_12')">12%</div>
+                                <div class="value mp_10" onclick="toggleItemEnhancement('mp_10')">10%</div>
+                                <div class="value mp_7" onclick="toggleItemEnhancement('mp_7')">7%</div>
+                                <div class="value mp_5" onclick="toggleItemEnhancement('mp_5')">5%</div>
+                                <div class="value mp_3" onclick="toggleItemEnhancement('mp_3')">3%</div>
+                                <div class="value mp_1" onclick="toggleItemEnhancement('mp_1')">1%</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">ATK</div>
+                                <div class="value atk_15" onclick="toggleItemEnhancement('atk_15')">15%</div>
+                                <div class="value atk_12" onclick="toggleItemEnhancement('atk_12')">12%</div>
+                                <div class="value atk_10" onclick="toggleItemEnhancement('atk_10')">10%</div>
+                                <div class="value atk_7" onclick="toggleItemEnhancement('atk_7')">7%</div>
+                                <div class="value atk_5" onclick="toggleItemEnhancement('atk_5')">5%</div>
+                                <div class="value atk_3" onclick="toggleItemEnhancement('atk_3')">3%</div>
+                                <div class="value atk_1" onclick="toggleItemEnhancement('atk_1')">1%</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">DEF</div>
+                                <div class="value def_15" onclick="toggleItemEnhancement('def_15')">15%</div>
+                                <div class="value def_12" onclick="toggleItemEnhancement('def_12')">12%</div>
+                                <div class="value def_10" onclick="toggleItemEnhancement('def_10')">10%</div>
+                                <div class="value def_7" onclick="toggleItemEnhancement('def_7')">7%</div>
+                                <div class="value def_5" onclick="toggleItemEnhancement('def_5')">5%</div>
+                                <div class="value def_3" onclick="toggleItemEnhancement('def_3')">3%</div>
+                                <div class="value def_1" onclick="toggleItemEnhancement('def_1')">1%</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">MAG</div>
+                                <div class="value mag_15" onclick="toggleItemEnhancement('mag_15')">15%</div>
+                                <div class="value mag_12" onclick="toggleItemEnhancement('mag_12')">12%</div>
+                                <div class="value mag_10" onclick="toggleItemEnhancement('mag_10')">10%</div>
+                                <div class="value mag_7" onclick="toggleItemEnhancement('mag_7')">7%</div>
+                                <div class="value mag_5" onclick="toggleItemEnhancement('mag_5')">5%</div>
+                                <div class="value mag_3" onclick="toggleItemEnhancement('mag_3')">3%</div>
+                                <div class="value mag_1" onclick="toggleItemEnhancement('mag_1')">1%</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">SPR</div>
+                                <div class="value spr_15" onclick="toggleItemEnhancement('spr_15')">15%</div>
+                                <div class="value spr_12" onclick="toggleItemEnhancement('spr_12')">12%</div>
+                                <div class="value spr_10" onclick="toggleItemEnhancement('spr_10')">10%</div>
+                                <div class="value spr_7" onclick="toggleItemEnhancement('spr_7')">7%</div>
+                                <div class="value spr_5" onclick="toggleItemEnhancement('spr_5')">5%</div>
+                                <div class="value spr_3" onclick="toggleItemEnhancement('spr_3')">3%</div>
+                                <div class="value spr_1" onclick="toggleItemEnhancement('spr_1')">1%</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">Auto-Regen</div>
+                                <div class="value autoRegen_4" onclick="toggleItemEnhancement('autoRegen_4')">Lvl. 4</div>
+                                <div class="value autoRegen_3" onclick="toggleItemEnhancement('autoRegen_3')">Lvl. 3</div>
+                                <div class="value autoRegen_2" onclick="toggleItemEnhancement('autoRegen_2')">Lvl. 2</div>
+                                <div class="value autoRegen_1" onclick="toggleItemEnhancement('autoRegen_1')">Lvl. 1</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">Auto-Refresh</div>
+                                <div class="value autoRefresh_2" onclick="toggleItemEnhancement('autoRefresh_2')">Lvl. 2</div>
+                                <div class="value autoRefresh_1" onclick="toggleItemEnhancement('autoRefresh_1')">Lvl. 1</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">Auto-Protect</div>
+                                <div class="value autoProtect_5" onclick="toggleItemEnhancement('autoProtect_5')">Lvl. 5</div>
+                                <div class="value autoProtect_4" onclick="toggleItemEnhancement('autoProtect_4')">Lvl. 4</div>
+                                <div class="value autoProtect_3" onclick="toggleItemEnhancement('autoProtect_3')">Lvl. 3</div>
+                                <div class="value autoProtect_2" onclick="toggleItemEnhancement('autoProtect_2')">Lvl. 2</div>
+                                <div class="value autoProtect_1" onclick="toggleItemEnhancement('autoProtect_1')">Lvl. 1</div>
+                            </div>
+                            <div class="enhancementType">
+                                <div class="title">Auto-Shell</div>
+                                <div class="value autoShell_5" onclick="toggleItemEnhancement('autoShell_5')">Lvl. 5</div>
+                                <div class="value autoShell_4" onclick="toggleItemEnhancement('autoShell_4')">Lvl. 4</div>
+                                <div class="value autoShell_3" onclick="toggleItemEnhancement('autoShell_3')">Lvl. 3</div>
+                                <div class="value autoShell_2" onclick="toggleItemEnhancement('autoShell_2')">Lvl. 2</div>
+                                <div class="value autoShell_1" onclick="toggleItemEnhancement('autoShell_1')">Lvl. 1</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" onclick="pinChosenEnchantment();">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="exportAsImageModal" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <span class="title">Export as image</span>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <canvas id="exportAsImageCanvas" width="730" height="235"></canvas>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" onclick="uploadToImgur();">Export to Imgur</button>
+                        <button type="button" class="btn btn-default" onclick="exportAsImage();">Download</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://kit.fontawesome.com/a68d75f74a.js" crossorigin="anonymous"></script>
+        <script src="lib/jquery-3.1.0.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+                integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/mark.js/8.9.1/jquery.mark.min.js"
+                integrity="sha384-xm3smXFeZSfehvsiwVXkVZQU/NWHntXE7a/CYQNE/fnBnZi01iu4DRiv+wObGSwn" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/js/select2.min.js"
+                integrity="sha384-xMX6VHK1HYyCMM8zHAVkLHgg2rIDhN01+z4rI70RV2dwzzVlHP95uaDOc5ds7Pow" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"
+                integrity="sha384-+pWnyi8LtZx+cgXfD2arWgUX7pHIaEL215cEPPk9WrsegNlgvDL9DNjaqsceQq6o" crossorigin="anonymous"></script>
+        <script src="lib/clusterize.min.js"></script>
+		<script src="lib/jquery.ba-throttle-debounce.min.js"></script>
+        <script src="lib/notify.min.js"></script>
+        <script src="lib/jjv.js"></script>
+        <script src="/clientConfig"></script>
+        <script src="virtualScroll.js"></script>
+        <script src="constants.js"></script>
+        <script src="common.js"></script>
+        <script src="builder/common.js"></script>
+        <script src="lib/FileSaver.min.js"></script>
+        <script src="formula.js"></script>
+        <script src="builder/unitShift.js"></script>
+        <script src="builder/unitBuild.js"></script>
+        <script src="builder/dataStorage.js"></script>
+        <script src="builder/bestiary.js"></script>
+        <script src="builder/ennemyStats.js"></script>
+        <script src="builder/treeComparator.js"></script>
+        <script src="builder/esperTreeComparator.js"></script>
+        <script src="builder/buildOptimizer.js"></script>
+        <script src="builder/externalSites.js"></script>
+        <script src="builder/typeCombinationGenerator.js"></script>
+        <script src="builder/itemPool.js"></script>
+        <script src="builder.js"></script>
+        <script src="exportBuildAsImage.js"></script>
+        <script src="googleAnalytics.js"></script>
+        <script src="builder/links.js"></script>
+        
+    </body>
+</html>

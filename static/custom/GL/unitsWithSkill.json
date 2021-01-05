@@ -1,0 +1,40 @@
+{
+
+	"777700004": {
+		"name":"Holiday Hero",
+		"id":"777700004",
+		"max_rarity":"5",
+		"min_rarity":"4",
+		"sex":"female",
+		"stats": {
+			"maxStats":{"hp":4000,"mp":200,"atk":150,"def":130,"mag":150,"spr":130},
+			"minStats":{"hp":1500,"mp":50,"atk":50,"def":40,"mag":50,"spr":40},
+			"pots":{"hp":450,"mp":75,"atk":30,"def":30,"mag":30,"spr":30}
+		},
+		"stats_pattern":1,
+		"equip":["dagger","sword","greatSword","katana","staff","rod","bow","axe","hammer","spear","harp","whip","throwing","gun","mace","fist","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","robe"],
+		"lb": {"name":"Reset Game Crashed","minEffects":[{"effect":{"randomlyUse":[{"skill":{"id":777007,"name":"Crashed","icon":"ability_38.png","effects":[{"effect":{"noUse":true,"area":"SELF","target":"SELF"},"desc":"Instant KO (100%) to caster (ignores death resist)"}],"type":"ability","mpCost":0},"percent":50},{"skill":{"id":777008,"name":"Worked","icon":"ability_92.png","effects":[{"effect":null,"desc":"Restore 100% HP/MP to caster"}],"type":"ability","mpCost":0},"percent":50}]}}],"maxEffects":[{"effect":{"randomlyUse":[{"skill":{"id":777007,"name":"Crashed","icon":"ability_38.png","effects":[{"effect":{"noUse":true,"area":"SELF","target":"SELF"},"desc":"Instant KO (100%) to caster (ignores death resist)"}],"type":"ability","mpCost":0},"percent":10},{"skill":{"id":777008,"name":"Worked","icon":"ability_92.png","effects":[{"effect":null,"desc":"Restore 100% HP/MP to caster"}],"type":"ability","mpCost":0},"percent":90}]}}],"move":"none"},
+		"passives": [
+			{"name":"Warrior Training","id":"777001","icon":"ability_77.png","effects":[{"effect":{"hp%":10, "atk%":20},"desc":"Increase ATK by 20% and HP by 10%"}],"rarity":4,"level":10},
+            {"name":"Mage Training","id":"777002","icon":"ability_77.png","effects":[{"effect":{"mp%":10, "mag%":20},"desc":"Increase MAG by 20% and MP by 10%"}],"rarity":4,"level":35},
+            {"name":"Healer Training","id":"777004","icon":"ability_77.png","effects":[{"effect":{"mp%":10, "spr%":20},"desc":"Increase SPR by 20% and MP by 10%"}],"rarity":4,"level":60},
+            {"name":"Tank Training","id":"777003","icon":"ability_77.png","effects":[{"effect":{"hp%":10, "def%":20},"desc":"Increase DEF by 20% and HP by 10%"}],"rarity":5,"level":20},
+            {"name":"Green Mage Training","id":"777005","icon":"ability_77.png","effects":[{"effect":{"mp%":10, "mag%":10, "spr%":10},"desc":"Increase MP/MAG/SPR by 10%"}],"rarity":5,"level":40},
+            {"name":"Warlock Training","id":"777006","icon":"ability_77.png","effects":[{"effect":{"hp%":10, "atk%":10, "def%":10},"desc":"Increase SPR by 30%"}],"rarity":5,"level":60},
+            {"name":"Lightning's Tank","id":"101190","icon":"ability_69.png","effects":[{"effect":{"noUse":true},"desc":"15% chance to intercept attacks on Lightning"}],"rarity":5,"level":80}
+		],
+		"actives": [
+            {"id":"200440","name":"Bladeblitz","icon":"ability_53.png","effects":[{"effect":{"damage":{"mecanism":"physical","damageType":"body","coef":1.4},"area":"AOE","target":"ENEMY", "frames":[0], "repartition":[100]},"desc":"Physical damage (1.4x, ATK) to all enemies"}],"frames":[0],"move":"walk","type":"ability","mpCost":14,"rarity":4,"level":10}
+		],
+		"magics": [
+            {"id":"20010","name":"Fire","icon":"ability_21.png","effects":[{"effect":{"damage":{"mecanism":"magical","damageType":"mind","coef":1.2,"elements":["fire"]},"area":"ST","target":"ENEMY", "frames":[80], "repartition":[100]},"desc":"Magic fire damage (1.2x, MAG) to one enemy"}],"magic":"black","frames":[80],"move":"none","type":"ability","mpCost":3},
+            {"id":"20020","name":"Blizzard","icon":"ability_22.png","effects":[{"effect":{"damage":{"mecanism":"magical","damageType":"mind","coef":1.2,"elements":["ice"]},"area":"ST","target":"ENEMY", "frames":[130], "repartition":[100]},"desc":"Magic ice damage (1.2x, MAG) to one enemy"}],"magic":"black","frames":[130],"move":"none","type":"ability","mpCost":3},
+            {"id":"20030","name":"Thunder","icon":"ability_20.png","effects":[{"effect":{"damage":{"mecanism":"magical","damageType":"mind","coef":1.2,"elements":["lightning"]},"area":"ST","target":"ENEMY", "frames":[70], "repartition":[100]},"desc":"Magic lightning damage (1.2x, MAG) to one enemy"}],"magic":"black","frames":[70],"move":"none","type":"ability","mpCost":3},
+            {"id":"10020","name":"Cure","icon":"ability_4.png","effects":[{"effect":{"heal":{"base":150,"coef":3},"area":"ST","target":"ANY","frames":[90],"repartition":[100]},"desc":"Restore 150 (+3x, Heal) HP to target"}],"magic":"white","type":"ability","mpCost":3},
+            {"id":"30090","name":"Protect","icon":"ability_77.png","effects":[{"effect":{"statsBuff":{"def":20},"turns":3,"area":"ST","target":"ALLY"},"desc":"Increase DEF by 20% for 3 turns to one ally"}],"magic":"green","type":"ability","mpCost":4},
+            {"id":"30140","name":"Shell","icon":"ability_77.png","effects":[{"effect":{"statsBuff":{"spr":20},"turns":3,"area":"ST","target":"ALLY"},"desc":"Increase SPR by 20% for 3 turns to one ally"}],"magic":"green","type":"ability","mpCost":4},
+            {"id":"30150","name":"Deprotect","icon":"ability_39.png","effects":[{"effect":{"break":{"def":20},"turns":3,"area":"ST","target":"ENEMY"},"desc":"Reduce DEF by 20% for 3 turns to one enemy"}],"magic":"green","type":"ability","mpCost":4},
+            {"id":"30160","name":"Deshell","icon":"ability_39.png","effects":[{"effect":{"break":{"spr":20},"turns":3,"area":"ST","target":"ENEMY"},"desc":"Reduce SPR by 20% for 3 turns to one enemy"}],"magic":"green","type":"ability","mpCost":4}
+		]
+	}
+}

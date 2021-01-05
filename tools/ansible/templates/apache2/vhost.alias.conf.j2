@@ -1,0 +1,21 @@
+<VirtualHost *:{{ http_port }}>
+	ServerName {{ item|lower }}
+
+	RewriteEngine On
+	RewriteCond %{REQUEST_URI} !^/\.well\-known/acme\-challenge/
+	RewriteRule (.*) https://{{ server_name|lower }}%{REQUEST_URI} [R=301,L]
+</VirtualHost>
+<VirtualHost *:{{ https_port }}>
+	ServerName {{ item|lower }}
+	
+	# Remove the footer from error pages
+	ServerSignature Off
+
+	SSLEngine On
+	SSLCertificateFile /etc/apache2/ssl/{{ item|lower }}.fullchain.cer
+	SSLCertificateKeyFile /etc/apache2/ssl/{{ item|lower }}.key
+
+	RewriteEngine On
+	RewriteCond %{REQUEST_URI} !^/\.well\-known/acme\-challenge/
+	RewriteRule (.*) https://{{ server_name|lower }}%{REQUEST_URI} [R=301,L]
+</VirtualHost>
