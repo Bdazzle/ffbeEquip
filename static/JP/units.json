@@ -2019,7 +2019,7 @@
 		}
 	},
 	"100010027": {
-		"name":"レーゲン BS",
+		"name":"Raegen BS",
 		"jpname":"レーゲン BS",
 		"id":"100010027",
 		"braveShifted":"100010005",
@@ -3159,17 +3159,73 @@
 		"name":"Zile",
 		"jpname":"ザイル",
 		"id":"100015204",
-		"max_rarity":"6",
+		"braveShift":"100015227",
+		"exAwakening": [{"hp":625,"mp":25,"atk":27,"def":20,"mag":16,"spr":20},{"hp":480,"mp":19,"atk":21,"def":15,"mag":13,"spr":16},{"hp":336,"mp":13,"atk":14,"def":10,"mag":9,"spr":11}],
+		"fragmentId": "250000910",
+		"max_rarity":"NV",
 		"min_rarity":"4",
 		"sex":"male",
 		"stats": {
-			"maxStats":{"hp":3699,"mp":150,"atk":149,"def":119,"mag":100,"spr":123},
-			"minStats":{"hp":1221,"mp":50,"atk":49,"def":39,"mag":33,"spr":41},
-			"pots":{"hp":390,"mp":65,"atk":34,"def":26,"mag":26,"spr":26}
+			"maxStats":{"hp":4809,"mp":195,"atk":214,"def":155,"mag":130,"spr":160},
+			"minStats":{"hp":1587,"mp":64,"atk":71,"def":51,"mag":43,"spr":53},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
 		},
-		"stats_pattern":1,
-		"equip":["sword","gun","lightShield","heavyShield","hat","helm","clothes","lightArmor"],
-		"enhancementSkills":["オートリジェネ","砲撃士の心得","景気づけの空砲"]
+		"stats_pattern":4,
+		"equip":["sword","gun","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","robe","visionCard"],
+		"enhancementSkills":["オートリジェネ","砲撃士の心得","景気づけの空砲","炎氷封じの砲弾"],
+		"6_form": {
+			"name":"Zile",
+			"jpname":"ザイル",
+			"id":"100015204",
+			"sixStarForm":true,
+			"max_rarity":"6",
+			"min_rarity":"4",
+			"sex":"male",
+			"stats": {
+				"maxStats":{"hp":3699,"mp":150,"atk":149,"def":119,"mag":100,"spr":123},
+				"minStats":{"hp":1221,"mp":50,"atk":49,"def":39,"mag":33,"spr":41},
+				"pots":{"hp":390,"mp":65,"atk":34,"def":26,"mag":26,"spr":26}
+			},
+			"stats_pattern":1,
+			"equip":["sword","gun","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","robe"],
+			"enhancementSkills":["オートリジェネ","砲撃士の心得","景気づけの空砲","炎氷封じの砲弾"]
+		},
+		"7_form": {
+			"name":"Zile",
+			"jpname":"ザイル",
+			"id":"100015204",
+			"sevenStarForm":true,
+			"max_rarity":"7",
+			"min_rarity":"4",
+			"sex":"male",
+			"stats": {
+				"maxStats":{"hp":4809,"mp":195,"atk":194,"def":155,"mag":130,"spr":160},
+				"minStats":{"hp":1587,"mp":64,"atk":64,"def":51,"mag":43,"spr":53},
+				"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+			},
+			"stats_pattern":4,
+			"equip":["sword","gun","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","robe"],
+			"enhancementSkills":["オートリジェネ","砲撃士の心得","景気づけの空砲","炎氷封じの砲弾"]
+		}
+	},
+	"100015227": {
+		"name":"ザイル BS",
+		"jpname":"ザイル BS",
+		"id":"100015227",
+		"braveShifted":"100015204",
+		"exAwakening": [{"hp":625,"mp":25,"atk":27,"def":20,"mag":16,"spr":20},{"hp":480,"mp":19,"atk":21,"def":15,"mag":13,"spr":16},{"hp":336,"mp":13,"atk":14,"def":10,"mag":9,"spr":11}],
+		"fragmentId": "250000910",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":4329,"mp":215,"atk":236,"def":140,"mag":117,"spr":176},
+			"minStats":{"hp":1429,"mp":71,"atk":78,"def":46,"mag":39,"spr":58},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["sword","gun","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","robe","visionCard"],
+		"enhancementSkills":["炎氷封じの砲弾","悪魔討伐の空砲"]
 	},
 	"100015303": {
 		"name":"Lucille",
@@ -5225,7 +5281,7 @@
 		},
 		"stats_pattern":4,
 		"equip":["dagger","staff","rod","harp","mace","hat","clothes","lightArmor","robe"],
-		"enhancementSkills":["メルティダウン・水風","メルティダウン・水光","メルティダウン・風光","フォーチュン・チョコクッキー","トリコロール・キャンディコート","チョコに乗せた想い"],
+		"enhancementSkills":["トッピング・水","トッピング・風","トッピング・光","メルティダウン・水風","メルティダウン・水光","メルティダウン・風光","フォーチュン・チョコクッキー","トリコロール・キャンディコート","チョコに乗せた想い"],
 		"6_form": {
 			"name":"Sweet Luka",
 			"jpname":"スウィートルルカ",
@@ -5241,7 +5297,7 @@
 			},
 			"stats_pattern":1,
 			"equip":["dagger","staff","rod","harp","mace","hat","clothes","lightArmor","robe"],
-			"enhancementSkills":["メルティダウン・水風","メルティダウン・水光","メルティダウン・風光","フォーチュン・チョコクッキー","トリコロール・キャンディコート","チョコに乗せた想い"]
+			"enhancementSkills":["トッピング・水","トッピング・風","トッピング・光","メルティダウン・水風","メルティダウン・水光","メルティダウン・風光","フォーチュン・チョコクッキー","トリコロール・キャンディコート","チョコに乗せた想い"]
 		}
 	},
 	"100024305": {
@@ -8108,6 +8164,220 @@
 			"stats_pattern":1,
 			"equip":["staff","rod","throwing","hat","clothes"]
 		}
+	},
+	"100033907": {
+		"name":"コラール",
+		"jpname":"コラール",
+		"id":"100033907",
+		"braveShift":"100033917",
+		"exAwakening": [{"hp":575,"mp":31,"atk":61,"def":24,"mag":20,"spr":23},{"hp":442,"mp":24,"atk":47,"def":18,"mag":15,"spr":17},{"hp":309,"mp":17,"atk":33,"def":13,"mag":10,"spr":12}],
+		"fragmentId": "250000840",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":4428,"mp":246,"atk":236,"def":186,"mag":154,"spr":177},
+			"minStats":{"hp":1461,"mp":81,"atk":78,"def":61,"mag":51,"spr":58},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["whip","hat","helm","clothes","lightArmor","heavyArmor","robe","visionCard"],
+		"enhancementSkills":["アビスウィップ","カッティングパニッシュ"]
+	},
+	"100033917": {
+		"name":"コラール BS",
+		"jpname":"コラール BS",
+		"id":"100033917",
+		"braveShifted":"100033907",
+		"exAwakening": [{"hp":575,"mp":31,"atk":61,"def":24,"mag":20,"spr":23},{"hp":442,"mp":24,"atk":47,"def":18,"mag":15,"spr":17},{"hp":309,"mp":17,"atk":33,"def":13,"mag":10,"spr":12}],
+		"fragmentId": "250000840",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":4871,"mp":271,"atk":260,"def":168,"mag":139,"spr":160},
+			"minStats":{"hp":1607,"mp":89,"atk":86,"def":55,"mag":46,"spr":53},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["whip","hat","helm","clothes","lightArmor","heavyArmor","robe","visionCard"],
+		"enhancementSkills":["アビスウィップ","スパイラルシャドウウィップ"]
+	},
+	"100034005": {
+		"name":"ベルメーラ",
+		"jpname":"ベルメーラ",
+		"id":"100034005",
+		"max_rarity":"7",
+		"min_rarity":"5",
+		"sex":"female",
+		"stats": {
+			"maxStats":{"hp":4722,"mp":246,"atk":212,"def":182,"mag":142,"spr":175},
+			"minStats":{"hp":1558,"mp":81,"atk":70,"def":60,"mag":47,"spr":58},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","throwing","gun","fist","hat","helm","clothes","lightArmor","heavyArmor","robe"],
+		"6_form": {
+			"name":"ベルメーラ",
+			"jpname":"ベルメーラ",
+			"id":"100034005",
+			"sixStarForm":true,
+			"max_rarity":"6",
+			"min_rarity":"5",
+			"sex":"female",
+			"stats": {
+				"maxStats":{"hp":3632,"mp":189,"atk":163,"def":140,"mag":109,"spr":134},
+				"minStats":{"hp":1199,"mp":62,"atk":54,"def":46,"mag":36,"spr":44},
+				"pots":{"hp":390,"mp":65,"atk":34,"def":26,"mag":26,"spr":26}
+			},
+			"stats_pattern":1,
+			"equip":["dagger","throwing","gun","fist","hat","helm","clothes","lightArmor","heavyArmor","robe"]
+		}
+	},
+	"100034107": {
+		"name":"ディベル",
+		"jpname":"ディベル",
+		"id":"100034107",
+		"braveShift":"100034117",
+		"exAwakening": [{"hp":637,"mp":33,"atk":23,"def":20,"mag":24,"spr":62},{"hp":490,"mp":25,"atk":18,"def":16,"mag":19,"spr":48},{"hp":343,"mp":17,"atk":12,"def":11,"mag":13,"spr":33}],
+		"fragmentId": "250000850",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":4900,"mp":255,"atk":180,"def":160,"mag":190,"spr":240},
+			"minStats":{"hp":1617,"mp":84,"atk":59,"def":53,"mag":63,"spr":79},
+			"pots":{"hp":540,"mp":90,"atk":40,"def":40,"mag":40,"spr":65}
+		},
+		"stats_pattern":4,
+		"equip":["throwing","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","robe","visionCard"],
+		"enhancementSkills":["クレイヒートアップ","ダメージフォール"]
+	},
+	"100034117": {
+		"name":"ディベル BS",
+		"jpname":"ディベル BS",
+		"id":"100034117",
+		"braveShifted":"100034107",
+		"exAwakening": [{"hp":637,"mp":33,"atk":23,"def":20,"mag":24,"spr":62},{"hp":490,"mp":25,"atk":18,"def":16,"mag":19,"spr":48},{"hp":343,"mp":17,"atk":12,"def":11,"mag":13,"spr":33}],
+		"fragmentId": "250000850",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":4750,"mp":262,"atk":180,"def":160,"mag":265,"spr":200},
+			"minStats":{"hp":1568,"mp":86,"atk":59,"def":53,"mag":87,"spr":66},
+			"pots":{"hp":540,"mp":90,"atk":40,"def":40,"mag":40,"spr":65}
+		},
+		"stats_pattern":4,
+		"equip":["throwing","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","robe","visionCard"],
+		"enhancementSkills":["クレイヒートアップ","アビスサモン"]
+	},
+	"100034205": {
+		"name":"コンチェ",
+		"jpname":"コンチェ",
+		"id":"100034205",
+		"max_rarity":"7",
+		"min_rarity":"5",
+		"sex":"female",
+		"stats": {
+			"maxStats":{"hp":4377,"mp":266,"atk":148,"def":133,"mag":167,"spr":194},
+			"minStats":{"hp":1444,"mp":88,"atk":49,"def":44,"mag":55,"spr":64},
+			"pots":{"hp":540,"mp":150,"atk":40,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["harp","hat","helm","clothes","lightArmor","heavyArmor","robe"],
+		"6_form": {
+			"name":"コンチェ",
+			"jpname":"コンチェ",
+			"id":"100034205",
+			"sixStarForm":true,
+			"max_rarity":"6",
+			"min_rarity":"5",
+			"sex":"female",
+			"stats": {
+				"maxStats":{"hp":3366,"mp":204,"atk":113,"def":102,"mag":128,"spr":149},
+				"minStats":{"hp":1111,"mp":67,"atk":37,"def":34,"mag":42,"spr":49},
+				"pots":{"hp":390,"mp":85,"atk":26,"def":26,"mag":26,"spr":26}
+			},
+			"stats_pattern":1,
+			"equip":["harp","hat","helm","clothes","lightArmor","heavyArmor","robe"]
+		}
+	},
+	"100034307": {
+		"name":"Shielding Blade Charlotte",
+		"jpname":"守護の剣シャルロット",
+		"id":"100034307",
+		"braveShift":"100034317",
+		"exAwakening": [{"hp":651,"mp":35,"atk":69,"def":24,"mag":22,"spr":28},{"hp":501,"mp":27,"atk":53,"def":18,"mag":17,"spr":21},{"hp":350,"mp":19,"atk":37,"def":13,"mag":12,"spr":15}],
+		"fragmentId": "250000890",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"female",
+		"stats": {
+			"maxStats":{"hp":5011,"mp":274,"atk":268,"def":188,"mag":172,"spr":216},
+			"minStats":{"hp":1654,"mp":90,"atk":88,"def":62,"mag":57,"spr":71},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","sword","greatSword","katana","staff","rod","mace","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","visionCard"],
+		"enhancementSkills":["シェルガ","フリージングストライク"]
+	},
+	"100034317": {
+		"name":"Shielding Blade Charlotte BS",
+		"jpname":"守護の剣シャルロット BS",
+		"id":"100034317",
+		"braveShifted":"100034307",
+		"exAwakening": [{"hp":651,"mp":35,"atk":69,"def":24,"mag":22,"spr":28},{"hp":501,"mp":27,"atk":53,"def":18,"mag":17,"spr":21},{"hp":350,"mp":19,"atk":37,"def":13,"mag":12,"spr":15}],
+		"fragmentId": "250000890",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"female",
+		"stats": {
+			"maxStats":{"hp":5011,"mp":280,"atk":265,"def":182,"mag":190,"spr":210},
+			"minStats":{"hp":1654,"mp":92,"atk":87,"def":60,"mag":63,"spr":69},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","sword","greatSword","katana","staff","rod","mace","lightShield","heavyShield","hat","helm","clothes","lightArmor","heavyArmor","visionCard"],
+		"enhancementSkills":["雪雹落刃","風花落刃"]
+	},
+	"100034407": {
+		"name":"Emperor Vlad",
+		"jpname":"皇帝ヴラド",
+		"id":"100034407",
+		"braveShift":"100034417",
+		"exAwakening": [{"hp":613,"mp":39,"atk":19,"def":20,"mag":62,"spr":28},{"hp":472,"mp":30,"atk":14,"def":15,"mag":48,"spr":21},{"hp":330,"mp":21,"atk":10,"def":10,"mag":33,"spr":15}],
+		"fragmentId": "250000900",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":4722,"mp":300,"atk":147,"def":156,"mag":242,"spr":218},
+			"minStats":{"hp":1558,"mp":99,"atk":49,"def":51,"mag":80,"spr":72},
+			"pots":{"hp":540,"mp":90,"atk":40,"def":40,"mag":65,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","staff","rod","lightShield","hat","clothes","lightArmor","robe","visionCard"],
+		"enhancementSkills":["ファイガ","サンダガ","フラッド","独・明鏡","怨・明鏡"]
+	},
+	"100034417": {
+		"name":"Emperor Vlad BS",
+		"jpname":"皇帝ヴラド BS",
+		"id":"100034417",
+		"braveShifted":"100034407",
+		"exAwakening": [{"hp":613,"mp":39,"atk":19,"def":20,"mag":62,"spr":28},{"hp":472,"mp":30,"atk":14,"def":15,"mag":48,"spr":21},{"hp":330,"mp":21,"atk":10,"def":10,"mag":33,"spr":15}],
+		"fragmentId": "250000900",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":4896,"mp":300,"atk":162,"def":181,"mag":285,"spr":210},
+			"minStats":{"hp":1616,"mp":99,"atk":53,"def":60,"mag":94,"spr":69},
+			"pots":{"hp":540,"mp":90,"atk":40,"def":40,"mag":65,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","staff","rod","lightShield","hat","helm","clothes","lightArmor","heavyArmor","robe","visionCard"],
+		"enhancementSkills":["独・明鏡","真なる孤高の力"]
 	},
 	"201000104": {
 		"name":"Warrior of Light",
@@ -17153,16 +17423,20 @@
 		"name":"Duran",
 		"jpname":"デュラン",
 		"id":"312000505",
-		"max_rarity":"7",
+		"braveShift":"312000527",
+		"exAwakening": [{"hp":676,"mp":32,"atk":28,"def":28,"mag":18,"spr":28},{"hp":520,"mp":25,"atk":22,"def":22,"mag":13,"spr":22},{"hp":364,"mp":17,"atk":15,"def":15,"mag":9,"spr":15}],
+		"fragmentId": "250000870",
+		"max_rarity":"NV",
 		"min_rarity":"5",
 		"sex":"male",
 		"stats": {
-			"maxStats":{"hp":5008,"mp":210,"atk":209,"def":197,"mag":139,"spr":168},
-			"minStats":{"hp":1653,"mp":69,"atk":69,"def":65,"mag":46,"spr":55},
+			"maxStats":{"hp":5200,"mp":250,"atk":220,"def":220,"mag":139,"spr":220},
+			"minStats":{"hp":1716,"mp":83,"atk":73,"def":73,"mag":46,"spr":73},
 			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
 		},
 		"stats_pattern":4,
-		"equip":["dagger","sword","greatSword","axe","hammer","mace","fist","lightShield","heavyShield","helm","clothes","lightArmor","heavyArmor"],
+		"equip":["dagger","sword","greatSword","axe","hammer","mace","fist","lightShield","heavyShield","helm","clothes","lightArmor","heavyArmor","visionCard"],
+		"enhancementSkills":["3段斬り","かばう・物理"],
 		"6_form": {
 			"name":"Duran",
 			"jpname":"デュラン",
@@ -17177,23 +17451,64 @@
 				"pots":{"hp":390,"mp":65,"atk":34,"def":26,"mag":26,"spr":26}
 			},
 			"stats_pattern":1,
-			"equip":["dagger","sword","greatSword","axe","hammer","mace","fist","lightShield","heavyShield","helm","clothes","lightArmor","heavyArmor"]
+			"equip":["dagger","sword","greatSword","axe","hammer","mace","fist","lightShield","heavyShield","helm","clothes","lightArmor","heavyArmor"],
+			"enhancementSkills":["3段斬り","かばう・物理"]
+		},
+		"7_form": {
+			"name":"Duran",
+			"jpname":"デュラン",
+			"id":"312000505",
+			"sevenStarForm":true,
+			"max_rarity":"7",
+			"min_rarity":"5",
+			"sex":"male",
+			"stats": {
+				"maxStats":{"hp":5008,"mp":210,"atk":209,"def":197,"mag":139,"spr":168},
+				"minStats":{"hp":1653,"mp":69,"atk":69,"def":65,"mag":46,"spr":55},
+				"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+			},
+			"stats_pattern":4,
+			"equip":["dagger","sword","greatSword","axe","hammer","mace","fist","lightShield","heavyShield","helm","clothes","lightArmor","heavyArmor"],
+			"enhancementSkills":["3段斬り","かばう・物理"]
 		}
+	},
+	"312000527": {
+		"name":"デュエリスト デュラン BS",
+		"jpname":"デュエリスト デュラン BS",
+		"id":"312000527",
+		"braveShifted":"312000517",
+		"exAwakening": [{"hp":676,"mp":32,"atk":28,"def":28,"mag":18,"spr":28},{"hp":520,"mp":25,"atk":22,"def":22,"mag":13,"spr":22},{"hp":364,"mp":17,"atk":15,"def":15,"mag":9,"spr":15}],
+		"fragmentId": "250000870",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":5200,"mp":250,"atk":250,"def":200,"mag":139,"spr":200},
+			"minStats":{"hp":1716,"mp":83,"atk":83,"def":66,"mag":46,"spr":66},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","sword","greatSword","axe","hammer","mace","fist","lightShield","heavyShield","helm","clothes","lightArmor","heavyArmor","visionCard"],
+		"enhancementSkills":["3段斬り","真・旋風剣"]
 	},
 	"312000605": {
 		"name":"Angela",
 		"jpname":"アンジェラ",
 		"id":"312000605",
-		"max_rarity":"7",
+		"braveShift":"312000627",
+		"exAwakening": [{"hp":611,"mp":39,"atk":19,"def":24,"mag":28,"spr":28},{"hp":470,"mp":30,"atk":15,"def":19,"mag":22,"spr":22},{"hp":329,"mp":21,"atk":10,"def":13,"mag":15,"spr":15}],
+		"fragmentId": "250000880",
+		"max_rarity":"NV",
 		"min_rarity":"5",
 		"sex":"female",
 		"stats": {
-			"maxStats":{"hp":4576,"mp":287,"atk":130,"def":165,"mag":219,"spr":202},
-			"minStats":{"hp":1510,"mp":95,"atk":43,"def":54,"mag":72,"spr":67},
+			"maxStats":{"hp":4700,"mp":300,"atk":150,"def":190,"mag":220,"spr":220},
+			"minStats":{"hp":1551,"mp":99,"atk":50,"def":63,"mag":73,"spr":73},
 			"pots":{"hp":540,"mp":90,"atk":40,"def":40,"mag":65,"spr":40}
 		},
 		"stats_pattern":4,
-		"equip":["dagger","staff","rod","whip","hat","clothes","robe"],
+		"equip":["dagger","staff","rod","whip","hat","clothes","robe","visionCard"],
+		"enhancementSkills":["マナコントロール","ダブルアタック"],
 		"6_form": {
 			"name":"Angela",
 			"jpname":"アンジェラ",
@@ -17208,8 +17523,45 @@
 				"pots":{"hp":390,"mp":65,"atk":26,"def":26,"mag":34,"spr":26}
 			},
 			"stats_pattern":1,
-			"equip":["dagger","staff","rod","whip","hat","clothes","robe"]
+			"equip":["dagger","staff","rod","whip","hat","clothes","robe"],
+			"enhancementSkills":["マナコントロール","ダブルアタック"]
+		},
+		"7_form": {
+			"name":"Angela",
+			"jpname":"アンジェラ",
+			"id":"312000605",
+			"sevenStarForm":true,
+			"max_rarity":"7",
+			"min_rarity":"5",
+			"sex":"female",
+			"stats": {
+				"maxStats":{"hp":4576,"mp":287,"atk":130,"def":165,"mag":219,"spr":202},
+				"minStats":{"hp":1510,"mp":95,"atk":43,"def":54,"mag":72,"spr":67},
+				"pots":{"hp":540,"mp":90,"atk":40,"def":40,"mag":65,"spr":40}
+			},
+			"stats_pattern":4,
+			"equip":["dagger","staff","rod","whip","hat","clothes","robe"],
+			"enhancementSkills":["マナコントロール","ダブルアタック"]
 		}
+	},
+	"312000627": {
+		"name":"メイガス アンジェラ BS",
+		"jpname":"メイガス アンジェラ BS",
+		"id":"312000627",
+		"braveShifted":"312000617",
+		"exAwakening": [{"hp":611,"mp":39,"atk":19,"def":24,"mag":28,"spr":28},{"hp":470,"mp":30,"atk":15,"def":19,"mag":22,"spr":22},{"hp":329,"mp":21,"atk":10,"def":13,"mag":15,"spr":15}],
+		"fragmentId": "250000880",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"female",
+		"stats": {
+			"maxStats":{"hp":4700,"mp":300,"atk":150,"def":190,"mag":300,"spr":220},
+			"minStats":{"hp":1551,"mp":99,"atk":50,"def":63,"mag":99,"spr":73},
+			"pots":{"hp":540,"mp":90,"atk":40,"def":40,"mag":65,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","staff","rod","whip","hat","clothes","robe","visionCard"],
+		"enhancementSkills":["マナコントロール","ホットショット"]
 	},
 	"312000705": {
 		"name":"Fenrir Knight Riesz",
@@ -17225,6 +17577,7 @@
 		},
 		"stats_pattern":4,
 		"equip":["sword","staff","bow","spear","whip","lightShield","hat","helm","clothes","lightArmor","robe"],
+		"enhancementSkills":["オフェンスアップ","覚醒ラミアンナーガ"],
 		"6_form": {
 			"name":"Fenrir Knight Riesz",
 			"jpname":"フェンリルナイト リース",
@@ -17239,7 +17592,8 @@
 				"pots":{"hp":450,"mp":75,"atk":30,"def":30,"mag":30,"spr":30}
 			},
 			"stats_pattern":1,
-			"equip":["sword","staff","bow","spear","whip","lightShield","hat","helm","clothes","lightArmor","robe"]
+			"equip":["sword","staff","bow","spear","whip","lightShield","hat","helm","clothes","lightArmor","robe"],
+			"enhancementSkills":["オフェンスアップ","覚醒ラミアンナーガ"]
 		}
 	},
 	"312000805": {
@@ -17256,6 +17610,7 @@
 		},
 		"stats_pattern":4,
 		"equip":["dagger","staff","rod","spear","mace","fist","hat","clothes","lightArmor","robe"],
+		"enhancementSkills":["金狼の魂の力","スターダストボム"],
 		"6_form": {
 			"name":"Divine Fist Kevin",
 			"jpname":"ゴッドハンド ケヴィン",
@@ -17270,7 +17625,8 @@
 				"pots":{"hp":390,"mp":65,"atk":34,"def":26,"mag":26,"spr":26}
 			},
 			"stats_pattern":1,
-			"equip":["dagger","staff","rod","spear","mace","fist","hat","clothes","lightArmor","robe"]
+			"equip":["dagger","staff","rod","spear","mace","fist","hat","clothes","lightArmor","robe"],
+			"enhancementSkills":["金狼の魂の力","スターダストボム"]
 		}
 	},
 	"312000905": {
@@ -17287,6 +17643,7 @@
 		},
 		"stats_pattern":4,
 		"equip":["dagger","sword","staff","rod","bow","harp","whip","mace","lightShield","hat","clothes","robe"],
+		"enhancementSkills":["エルフの血をひく者","じゅもんをとなえるでち！"],
 		"6_form": {
 			"name":"Warlock Charlotte",
 			"jpname":"イビルシャーマン シャルロット",
@@ -17301,8 +17658,47 @@
 				"pots":{"hp":450,"mp":75,"atk":30,"def":30,"mag":30,"spr":30}
 			},
 			"stats_pattern":1,
-			"equip":["dagger","sword","staff","rod","bow","harp","whip","mace","lightShield","hat","clothes","robe"]
+			"equip":["dagger","sword","staff","rod","bow","harp","whip","mace","lightShield","hat","clothes","robe"],
+			"enhancementSkills":["エルフの血をひく者","じゅもんをとなえるでち！"]
 		}
+	},
+	"312001007": {
+		"name":"Ninja Master Hawkeye",
+		"jpname":"ニンジャマスター ホークアイ",
+		"id":"312001007",
+		"braveShift":"312001017",
+		"exAwakening": [{"hp":507,"mp":39,"atk":62,"def":23,"mag":18,"spr":27},{"hp":390,"mp":30,"atk":48,"def":18,"mag":14,"spr":21},{"hp":273,"mp":21,"atk":33,"def":12,"mag":9,"spr":14}],
+		"fragmentId": "250000860",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":3900,"mp":300,"atk":240,"def":180,"mag":140,"spr":210},
+			"minStats":{"hp":1287,"mp":99,"atk":79,"def":59,"mag":46,"spr":69},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","sword","throwing","hat","clothes","lightArmor","visionCard"],
+		"enhancementSkills":["残影斬","真・雷神の術"]
+	},
+	"312001017": {
+		"name":"Nightblade Hawkeye BS",
+		"jpname":"ナイトブレード ホークアイ BS",
+		"id":"312001017",
+		"braveShifted":"312001007",
+		"exAwakening": [{"hp":507,"mp":39,"atk":62,"def":23,"mag":18,"spr":27},{"hp":390,"mp":30,"atk":48,"def":18,"mag":14,"spr":21},{"hp":273,"mp":21,"atk":33,"def":12,"mag":9,"spr":14}],
+		"fragmentId": "250000860",
+		"max_rarity":"NV",
+		"min_rarity":"NV",
+		"sex":"male",
+		"stats": {
+			"maxStats":{"hp":3900,"mp":300,"atk":280,"def":140,"mag":140,"spr":170},
+			"minStats":{"hp":1287,"mp":99,"atk":92,"def":46,"mag":46,"spr":56},
+			"pots":{"hp":540,"mp":90,"atk":65,"def":40,"mag":40,"spr":40}
+		},
+		"stats_pattern":4,
+		"equip":["dagger","sword","throwing","hat","clothes","lightArmor","visionCard"],
+		"enhancementSkills":["残影斬","真・ブラックレイン"]
 	},
 	"313000105": {
 		"name":"Tiz",
